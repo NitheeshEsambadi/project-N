@@ -1,6 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import axios from 'axios';
+import api from '../api';
 import Sidebar from '../components/Sidebar';
 import { AuthContext } from '../context/AuthContext';
 import Workers from './Workers';
@@ -23,9 +24,9 @@ const Dashboard = () => {
     const fetchData = async () => {
       try {
         const [statsRes, transRes, settingsRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/stats/dashboard'),
-          axios.get('http://localhost:5000/api/mgmt/transactions'),
-          axios.get('http://localhost:5000/api/settings')
+          api.get('/stats/dashboard'),
+          api.get('/mgmt/transactions'),
+          api.get('/settings')
         ]);
         setStats(statsRes.data);
         setRecentActivity(transRes.data.slice(0, 5));

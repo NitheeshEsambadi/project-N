@@ -22,7 +22,7 @@ const importData = async () => {
         // 1. Create Default Admin
         const adminUser = await User.create({
             username: 'admin',
-            password: 'password123',
+            password: process.env.ADMIN_PASSWORD || 'password123',
             role: 'admin',
             email: 'admin@jewellery.com'
         });

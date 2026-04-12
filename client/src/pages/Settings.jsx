@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import api from '../api';
 import { Coins, TrendingUp, Users, Database, Save, ToggleLeft, ToggleRight } from 'lucide-react';
 
 const Settings = () => {
@@ -13,7 +14,7 @@ const Settings = () => {
 
     const fetchSettings = async () => {
         try {
-            const { data } = await axios.get('http://localhost:5000/api/settings');
+            const { data } = await api.get('/settings');
             const settingsObj = data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {});
             setSettings(settingsObj);
             setLoading(false);
@@ -27,7 +28,7 @@ const Settings = () => {
         setSaveStatus('Saving...');
         try {
             const updates = Object.entries(settings).map(([key, value]) => 
-                axios.post('http://localhost:5000/api/settings', { key, value })
+                api.post('/settings', { key, value })
             );
             await Promise.all(updates);
             setSaveStatus('✓ Saved!');
@@ -40,10 +41,10 @@ const Settings = () => {
     const handleBackup = async () => {
         try {
             const [w, p, t, i] = await Promise.all([
-                axios.get('http://localhost:5000/api/workers'),
-                axios.get('http://localhost:5000/api/mgmt/products'),
-                axios.get('http://localhost:5000/api/mgmt/transactions'),
-                axios.get('http://localhost:5000/api/gold')
+                api.get('/workers'),
+                api.get('/mgmt/products'),
+                api.get('/mgmt/transactions'),
+                api.get('/gold')
             ]);
             const backupData = {
                 workers: w.data,

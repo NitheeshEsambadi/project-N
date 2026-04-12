@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import api from '../api';
 import { Plus, Edit2, Trash2, Search, Eye, Phone } from 'lucide-react';
 
 const Workers = () => {
@@ -8,6 +9,7 @@ const Workers = () => {
     const [workers, setWorkers] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [showModal, setShowModal] = useState(false);
+    const [editingId, setEditingId] = useState(null);
     const [formData, setFormData] = useState({
         name: '', contact: '', specialization: '', labourRateType: 'perGram', baseRate: ''
     });
@@ -18,22 +20,43 @@ const Workers = () => {
 
     const fetchWorkers = async () => {
         try {
-            const { data } = await axios.get('http://localhost:5000/api/workers');
+            const { data } = await api.get('/workers');
             setWorkers(data);
         } catch (err) {
             console.error(err);
         }
     };
 
+    const handleEdit = (worker) => {
+        setEditingId(worker._id);
+        setFormData({
+            name: worker.name || '',
+            contact: worker.contact || '',
+            specialization: worker.specialization || '',
+            labourRateType: worker.labourRateType || 'perGram',
+            baseRate: worker.baseRate || ''
+        });
+        setShowModal(true);
+    };
+
+    const closeModal = () => {
+        setShowModal(false);
+        setEditingId(null);
+        setFormData({ name: '', contact: '', specialization: '', labourRateType: 'perGram', baseRate: '' });
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:5000/api/workers', formData);
-            setShowModal(false);
-            setFormData({ name: '', contact: '', specialization: '', labourRateType: 'perGram', baseRate: '' });
+            if (editingId) {
+                await api.put(`/workers/${editingId}`, formData);
+            } else {
+                await api.post('/workers', formData);
+            }
+            closeModal();
             fetchWorkers();
         } catch (err) {
-            const msg = err.response?.data?.message || 'Error adding worker';
+            const msg = err.response?.data?.message || 'Error saving worker';
             alert(msg);
             console.error(err);
         }
@@ -42,7 +65,7 @@ const Workers = () => {
     const handleDelete = async (id) => {
         if (!window.confirm('Are you sure you want to delete this worker?')) return;
         try {
-            await axios.delete(`http://localhost:5000/api/workers/${id}`);
+            await api.delete(`/workers/${id}`);
             fetchWorkers();
         } catch (err) {
             alert('Error deleting worker');
@@ -50,7 +73,7 @@ const Workers = () => {
     };
 
     const filtered = workers.filter(w => 
-        w.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        w.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
         w.specialization?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         w.workerID?.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -114,6 +137,7 @@ const Workers = () => {
                             <td style={{ padding: '16px 12px' }} onClick={e => e.stopPropagation()}>
                                 <div style={{ display: 'flex', gap: '10px' }}>
                                     <Eye size={16} title="View Dashboard" onClick={() => navigate(`/workers/${w._id}`)} style={{ cursor: 'pointer', color: 'var(--primary-gold)' }} />
+                                    <Edit2 size={16} title="Edit Worker" onClick={() => handleEdit(w)} style={{ cursor: 'pointer', color: 'var(--accent-blue)' }} />
                                     <Trash2 size={16} onClick={() => handleDelete(w._id)} style={{ cursor: 'pointer', color: 'var(--danger)' }} />
                                 </div>
                             </td>
@@ -132,7 +156,7 @@ const Workers = () => {
                     background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 
                 }}>
                     <div className="glass" style={{ width: '100%', maxWidth: '480px', padding: '30px' }}>
-                        <h3 style={{ marginBottom: '20px' }}>Register New Worker</h3>
+                        <h3 style={{ marginBottom: '20px' }}>{editingId ? 'Edit Worker' : 'Register New Worker'}</h3>
                         <form onSubmit={handleSubmit}>
                             <div className="input-group"><label>Full Name *</label><input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
                             <div className="input-group"><label>Contact Number</label><input value={formData.contact} onChange={e => setFormData({...formData, contact: e.target.value})} placeholder="e.g., 98765 43210" /></div>
@@ -151,11 +175,11 @@ const Workers = () => {
                             </div>
                             <div className="input-group"><label>Base Rate (₹)</label><input type="number" required value={formData.baseRate} onChange={e => setFormData({...formData, baseRate: e.target.value})} /></div>
                             
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '10px' }}>Worker ID will be auto-generated (e.g., W001)</p>
+                            {!editingId && <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '10px' }}>Worker ID will be auto-generated (e.g., W001)</p>}
                             
                             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                                <button type="button" className="glass" onClick={() => setShowModal(false)} style={{ flex: 1, padding: '12px', color: 'white' }}>Cancel</button>
-                                <button type="submit" className="btn-primary" style={{ flex: 1 }}>Save Worker</button>
+                                <button type="button" className="glass" onClick={closeModal} style={{ flex: 1, padding: '12px', color: 'white' }}>Cancel</button>
+                                <button type="submit" className="btn-primary" style={{ flex: 1 }}>{editingId ? 'Update Worker' : 'Save Worker'}</button>
                             </div>
                         </form>
                     </div>

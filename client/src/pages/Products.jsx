@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import api from '../api';
 import { Plus, CheckCircle, Clock, Package, ShieldCheck, ShieldAlert, ChevronRight } from 'lucide-react';
 
 const Products = () => {
@@ -24,7 +25,7 @@ const Products = () => {
 
   const fetchProducts = async () => {
     try {
-      const { data } = await axios.get('http://localhost:5000/api/mgmt/products');
+      const { data } = await api.get('/mgmt/products');
       setProducts(data);
     } catch (err) {
       console.error(err);
@@ -33,7 +34,7 @@ const Products = () => {
 
   const fetchWorkers = async () => {
     try {
-      const { data } = await axios.get('http://localhost:5000/api/workers');
+      const { data } = await api.get('/workers');
       setWorkers(data);
     } catch (err) {
       console.error(err);
@@ -43,7 +44,7 @@ const Products = () => {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/mgmt/products', newProductData);
+      await api.post('/mgmt/products', newProductData);
       setShowCreateModal(false);
       setNewProductData({ productId: '', category: 'Necklace', designName: '', expectedWeight: '', stoneDetails: '', workerId: '' });
       fetchProducts();
@@ -55,7 +56,7 @@ const Products = () => {
   const handleReceive = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`http://localhost:5000/api/mgmt/products/${selectedProduct._id}/receive`, receiveData);
+      await api.put(`/mgmt/products/${selectedProduct._id}/receive`, receiveData);
       setShowReceiveModal(false);
       setSelectedProduct(null);
       setReceiveData({ grossWeight: '', netWeight: '', actualWastage: '', qualityCheck: 'passed' });

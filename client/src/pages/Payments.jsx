@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import api from '../api';
 import { Plus, CreditCard, ArrowUpRight, ArrowDownLeft, Search, Calendar, Landmark } from 'lucide-react';
 
 const Payments = () => {
@@ -21,7 +22,7 @@ const Payments = () => {
 
   const fetchTransactions = async () => {
     try {
-      const { data } = await axios.get('http://localhost:5000/api/mgmt/transactions');
+      const { data } = await api.get('/mgmt/transactions');
       setTransactions(data);
     } catch (err) {
       console.error(err);
@@ -30,7 +31,7 @@ const Payments = () => {
 
   const fetchWorkers = async () => {
     try {
-      const { data } = await axios.get('http://localhost:5000/api/workers');
+      const { data } = await api.get('/workers');
       setWorkers(data);
     } catch (err) {
       console.error(err);
@@ -40,7 +41,7 @@ const Payments = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/mgmt/transactions', formData);
+      await api.post('/mgmt/transactions', formData);
       setShowModal(false);
       setFormData({ workerId: '', type: 'payment', amount: '', paymentMode: 'Cash', notes: '' });
       fetchTransactions();

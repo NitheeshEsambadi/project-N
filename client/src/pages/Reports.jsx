@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import api from '../api';
 import { BarChart3, FileText, Download, TrendingUp, PieChart, Info, Map, ChevronRight } from 'lucide-react';
 
 const Reports = () => {
@@ -8,8 +9,8 @@ const Reports = () => {
   useEffect(() => {
     const fetchData = async () => {
       const [tRes, pRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/mgmt/transactions'),
-        axios.get('http://localhost:5000/api/mgmt/products')
+        api.get('/mgmt/transactions'),
+        api.get('/mgmt/products')
       ]);
       setData({ transactions: tRes.data, products: pRes.data });
     };

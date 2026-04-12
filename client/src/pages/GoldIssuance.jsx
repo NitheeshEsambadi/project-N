@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import api from '../api';
 import { Plus, Trash2, Clock, CheckCircle, AlertCircle, Eye } from 'lucide-react';
 
 const GoldIssuance = () => {
@@ -22,9 +23,7 @@ const GoldIssuance = () => {
 
   const fetchIssues = async () => {
     try {
-      const { data } = await axios.get('http://localhost:5000/api/gold', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
+      const { data } = await api.get('/gold');
       setIssues(data);
     } catch (err) {
       console.error('Error fetching issues:', err);
@@ -33,7 +32,7 @@ const GoldIssuance = () => {
 
   const fetchWorkers = async () => {
     try {
-      const { data } = await axios.get('http://localhost:5000/api/workers');
+      const { data } = await api.get('/workers');
       setWorkers(data);
     } catch (err) {
       console.error('Error fetching workers:', err);
@@ -43,9 +42,7 @@ const GoldIssuance = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/gold', formData, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
+      await api.post('/gold', formData);
       setShowModal(false);
       setFormData({ workerId: '', weight: '', purity: '22k', expectedWastage: '0', deliveryDate: '', notes: '' });
       fetchIssues();
@@ -56,9 +53,7 @@ const GoldIssuance = () => {
 
   const updateStatus = async (id, status) => {
     try {
-      await axios.patch(`http://localhost:5000/api/gold/${id}`, { status }, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
+      await api.patch(`/gold/${id}`, { status });
       fetchIssues();
     } catch (err) {
       alert('Error updating status');

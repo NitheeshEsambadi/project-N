@@ -14,12 +14,22 @@ const workerSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' } // Link if role is 'worker'
 }, { timestamps: true });
 
-workerSchema.pre('save', async function(next) {
+workerSchema.pre('save', async function() {
     if (!this.workerID) {
-        const count = await mongoose.model('Worker').countDocuments();
-        this.workerID = `W${(count + 1).toString().padStart(3, '0')}`;
+        // Find the highest existing workerID and increment
+        const lastWorker = await mongoose.model('Worker')
+            .findOne({ workerID: { $regex: /^W\d+$/ } })
+            .sort({ workerID: -1 })
+            .lean();
+        
+        let nextNum = 1;
+        if (lastWorker && lastWorker.workerID) {
+            const num = parseInt(lastWorker.workerID.replace('W', ''), 10);
+            if (!isNaN(num)) nextNum = num + 1;
+        }
+        
+        this.workerID = `W${nextNum.toString().padStart(3, '0')}`;
     }
-    next();
 });
 
 module.exports = mongoose.model('Worker', workerSchema);

@@ -9,7 +9,24 @@ connectDB();
 const app = express();
 
 app.use(express.json());
-app.use(cors());
+
+// CORS: Allow frontend origins (localhost for dev, Vercel URL for production)
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : ['http://localhost:5173', 'http://localhost:5174'];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(null, true); // Allow all for now during initial deployment
+        }
+    },
+    credentials: true
+}));
 
 // Basic Route
 app.get('/', (req, res) => {

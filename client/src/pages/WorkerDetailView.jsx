@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import api from '../api';
 import { 
   ArrowLeft, Coins, Package, CreditCard, History, AlertCircle, Phone, Hammer, RotateCcw
 } from 'lucide-react';
@@ -24,11 +25,11 @@ const WorkerDetailView = () => {
     try {
       setLoading(true);
       const [workerRes, statsRes, transRes, productRes, goldRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/workers/${id}`),
-        axios.get(`http://localhost:5000/api/stats/worker/${id}`),
-        axios.get(`http://localhost:5000/api/mgmt/transactions?workerId=${id}`),
-        axios.get(`http://localhost:5000/api/mgmt/products?workerId=${id}`),
-        axios.get(`http://localhost:5000/api/gold?workerId=${id}`)
+        api.get(`/workers/${id}`),
+        api.get(`/stats/worker/${id}`),
+        api.get(`/mgmt/transactions?workerId=${id}`),
+        api.get(`/mgmt/products?workerId=${id}`),
+        api.get(`/gold?workerId=${id}`)
       ]);
       setWorker(workerRes.data);
       setStats(statsRes.data);

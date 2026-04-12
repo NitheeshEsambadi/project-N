@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import api from '../api';
 import { TrendingUp, AlertTriangle, ShieldCheck, ArrowRight, Activity, Filter } from 'lucide-react';
 
 const WastageAnalytics = () => {
@@ -12,7 +13,7 @@ const WastageAnalytics = () => {
 
   const fetchData = async () => {
     try {
-      const { data } = await axios.get('http://localhost:5000/api/mgmt/products');
+      const { data } = await api.get('/mgmt/products');
       setProducts(data.filter(p => p.status === 'completed'));
     } catch (err) {
       console.error(err);
