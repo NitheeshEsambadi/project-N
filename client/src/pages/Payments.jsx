@@ -52,17 +52,17 @@ const Payments = () => {
 
   return (
     <div className="glass" style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
         <div>
           <h2 className="gold-gradient">LABOUR & PAYMENTS</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Record payments and track worker financial history</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }} className="desktop-only">Record payments and track worker financial history</p>
         </div>
         <button className="btn-primary" onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Plus size={18} /> Record Payment
+          <Plus size={18} /> <span className="desktop-only">Record Payment</span><span className="mobile-only">Record</span>
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+      <div className="responsive-grid" style={{ marginBottom: '30px' }}>
         <div className="glass" style={{ padding: '20px', borderLeft: '4px solid var(--success)' }}>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Total Distributed</p>
             <h3 style={{ fontSize: '1.8rem', marginTop: '5px' }}>₹ {transactions.filter(t => t.type === 'payment').reduce((acc, t) => acc + t.amount, 0).toLocaleString()}</h3>
@@ -73,8 +73,8 @@ const Payments = () => {
         </div>
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div className="table-container">
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
           <thead>
             <tr style={{ textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
               <th style={{ padding: '12px' }}>DATE</th>
@@ -128,13 +128,13 @@ const Payments = () => {
       </div>
 
       {showModal && (
-        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="glass" style={{ width: '100%', maxWidth: '450px', padding: '30px' }}>
+        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="glass" style={{ width: '90%', maxWidth: '450px', padding: '24px', maxHeight: '90vh', overflowY: 'auto' }}>
             <h3 className="gold-gradient" style={{ marginBottom: '20px' }}>Record Labour Payment</h3>
             <form onSubmit={handleSubmit}>
               <div className="input-group">
                 <label>Worker Selection</label>
-                <select required value={formData.workerId} onChange={e => setFormData({...formData, workerId: e.target.value})} style={{ width: '100%', background: 'var(--surface-bg)', color: 'white', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                <select required value={formData.workerId} onChange={e => setFormData({...formData, workerId: e.target.value})} style={{ width: '100%', background: 'var(--surface-bg)', color: 'var(--text-main)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
                   <option value="">Select Worker...</option>
                   {workers.map(w => <option key={w._id} value={w._id}>{w.name}</option>)}
                 </select>
@@ -145,7 +145,7 @@ const Payments = () => {
               </div>
               <div className="input-group">
                 <label>Payment Mode</label>
-                <select value={formData.paymentMode} onChange={e => setFormData({...formData, paymentMode: e.target.value})} style={{ width: '100%', background: 'var(--surface-bg)', color: 'white', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                <select value={formData.paymentMode} onChange={e => setFormData({...formData, paymentMode: e.target.value})} style={{ width: '100%', background: 'var(--surface-bg)', color: 'var(--text-main)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
                   <option value="Cash">Cash</option>
                   <option value="Bank Transfer">Bank Transfer</option>
                   <option value="UPI">UPI / Digital</option>
@@ -156,7 +156,7 @@ const Payments = () => {
                 <input placeholder="Transaction reference or notes" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
               </div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                <button type="button" className="glass" onClick={() => setShowModal(false)} style={{ flex: 1, padding: '12px', color: 'white' }}>Cancel</button>
+                <button type="button" className="glass" onClick={() => setShowModal(false)} style={{ flex: 1, padding: '12px', color: 'var(--text-main)' }}>Cancel</button>
                 <button type="submit" className="btn-primary" style={{ flex: 1 }}>Submit Payment</button>
               </div>
             </form>

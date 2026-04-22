@@ -5,7 +5,14 @@ const productSchema = new mongoose.Schema({
     category: { type: String },
     designName: { type: String },
     expectedWeight: { type: Number },
-    stoneDetails: { type: String },
+    purity: { type: String },
+    stones: [
+        {
+            stoneName: { type: String },
+            stoneWeight: { type: Number }, // in carats or grams depending on business metric, use Number.
+            stoneDetails: { type: String } // specific cut/clarity if needed
+        }
+    ],
     workerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Worker' },
     status: { 
         type: String, 
@@ -15,7 +22,8 @@ const productSchema = new mongoose.Schema({
     grossWeight: { type: Number }, // Received weight
     netWeight: { type: Number },
     actualWastage: { type: Number },
-    qualityCheck: { type: String, enum: ['passed', 'failed', 'pending'], default: 'pending' }
+    qualityCheck: { type: String, enum: ['passed', 'failed', 'pending'], default: 'pending' },
+    totalStoneWeight: { type: Number, default: 0 } // Simplified gross stone weight
 }, { timestamps: true });
 
 module.exports = mongoose.model('Product', productSchema);

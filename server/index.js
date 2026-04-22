@@ -39,11 +39,14 @@ const workerRoutes = require('./routes/workerRoutes');
 const goldRoutes = require('./routes/goldRoutes');
 const statsRoutes = require('./routes/statsRoutes');
 const settingRoutes = require('./routes/settingRoutes');
+const companyRoutes = require('./routes/companyRoutes');
+
 app.use('/api/auth', authRoutes);
 app.use('/api/workers', workerRoutes);
 app.use('/api/gold', goldRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/settings', settingRoutes);
+app.use('/api/company', companyRoutes);
 app.use('/api/mgmt', require('./routes/mgmtRoutes'));
 
 const PORT = process.env.PORT || 5000;

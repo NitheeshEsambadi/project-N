@@ -11,7 +11,14 @@ const goldIssueSchema = new mongoose.Schema({
         enum: ['issued', 'completed', 'returned'], 
         default: 'issued' 
     },
-    notes: { type: String }
+    stones: [
+        {
+            stoneName: { type: String },
+            stoneWeight: { type: Number }
+        }
+    ],
+    notes: { type: String },
+    totalStoneWeight: { type: Number, default: 0 } // Simplified gross stone weight
 }, { timestamps: true });
 
 module.exports = mongoose.model('GoldIssue', goldIssueSchema);

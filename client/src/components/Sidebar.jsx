@@ -9,15 +9,21 @@ import {
   CreditCard, 
   BarChart3, 
   Settings,
-  LogOut
+  LogOut,
+  X,
+  ShieldCheck,
+  Briefcase,
+  ShoppingCart
 } from 'lucide-react';
 
-const Sidebar = ({ user, logout }) => {
+const Sidebar = ({ user, logout, closeSidebar, company }) => {
   const links = [
     { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20}/>, roles: ['admin', 'accountant', 'worker'] },
     { name: 'Workers', path: '/workers', icon: <Users size={20}/>, roles: ['admin', 'accountant'] },
     { name: 'Gold Issue', path: '/gold', icon: <Coins size={20}/>, roles: ['admin', 'accountant'] },
     { name: 'Products', path: '/products', icon: <Package size={20}/>, roles: ['admin', 'accountant', 'worker'] },
+    { name: 'Inventory', path: '/inventory', icon: <ShieldCheck size={20}/>, roles: ['admin', 'accountant'] },
+    { name: 'Sales', path: '/sales', icon: <ShoppingCart size={20}/>, roles: ['admin', 'accountant'] },
     { name: 'Wastage', path: '/wastage', icon: <TrendingUp size={20}/>, roles: ['admin', 'accountant'] },
     { name: 'Payments', path: '/payments', icon: <CreditCard size={20}/>, roles: ['admin', 'accountant'] },
     { name: 'Reports', path: '/reports', icon: <BarChart3 size={20}/>, roles: ['admin', 'accountant'] },
@@ -26,16 +32,35 @@ const Sidebar = ({ user, logout }) => {
 
   return (
     <div className="glass" style={{ 
-      width: '260px', 
-      height: 'calc(100vh - 40px)', 
-      margin: '20px',
-      padding: '20px',
+      width: '100%', 
+      height: '100%', 
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      padding: '24px',
+      borderRadius: 0,
+      border: 'none'
     }}>
-      <div style={{ marginBottom: '40px' }}>
-        <h3 className="gold-gradient">PRO PORTAL</h3>
-        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{user?.role.toUpperCase()}</p>
+      <div style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {company?.logo ? (
+            <img src={company.logo} alt="Logo" style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '8px' }} />
+          ) : (
+            <div style={{ width: '40px', height: '40px', background: 'var(--primary-gold)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '1.2rem' }}>
+              P
+            </div>
+          )}
+          <div>
+            <h3 className="gold-gradient" style={{ margin: 0, fontSize: '1.1rem' }}>PRO PORTAL</h3>
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{user?.role}</p>
+          </div>
+        </div>
+        <button 
+          className="mobile-only glass" 
+          onClick={closeSidebar}
+          style={{ padding: '8px', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+        >
+          <X size={20} />
+        </button>
       </div>
 
       <div style={{ flex: 1 }}>

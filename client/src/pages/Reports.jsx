@@ -50,22 +50,22 @@ const Reports = () => {
 
   return (
     <div className="glass" style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
         <div>
           <h2 className="gold-gradient">REPORTS & ANALYTICS</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Generate and export business intelligence reports</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }} className="desktop-only">Generate and export business intelligence reports</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="glass" onClick={() => handleExport('transactions')} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', color: 'white' }}>
-                <Download size={18}/> Export CSV (Transactions)
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button className="glass" onClick={() => handleExport('transactions')} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', color: 'var(--text-main)', fontSize: '0.8rem' }}>
+                <Download size={18}/> <span className="desktop-only">Export CSV (Transactions)</span><span className="mobile-only">Trans. CSV</span>
             </button>
-            <button className="btn-primary" onClick={() => handleExport('products')} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileText size={18}/> Export CSV (Products)
+            <button className="btn-primary" onClick={() => handleExport('products')} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', fontSize: '0.8rem' }}>
+                <FileText size={18}/> <span className="desktop-only">Export CSV (Products)</span><span className="mobile-only">Prod. CSV</span>
             </button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
+      <div className="responsive-grid">
         {reports.map((report, idx) => (
           <div key={idx} className="glass" style={{ padding: '24px', display: 'flex', gap: '20px', alignItems: 'flex-start', cursor: 'pointer', transition: 'var(--transition)' }}>
             <div style={{ background: 'rgba(255,255,255,0.05)', padding: '16px', borderRadius: '12px' }}>
@@ -91,11 +91,32 @@ const Reports = () => {
             </div>
         </div>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '30px', marginTop: '30px' }}>
+        <div className="responsive-grid" style={{ marginTop: '30px' }}>
             <Metric title="Circulating Gold" value="1.42 kg" status="optimal" />
             <Metric title="Total Unpaid Labour" value="₹ 45,200" status="on-track" />
             <Metric title="Average Turnaround" value="4.2 Days" status="alert" />
             <Metric title="Workshop Efficiency" value="94.2%" status="optimal" />
+        </div>
+
+        <div style={{ marginTop: '40px', padding: '20px', background: 'rgba(0,0,0,0.1)', borderRadius: '15px' }}>
+            <h4 style={{ marginBottom: '20px', fontSize: '0.9rem', color: 'var(--primary-gold)' }}>WASTAGE TREND (LAST 6 MONTHS)</h4>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '15px', height: '150px', padding: '0 20px' }}>
+                {[
+                    { month: 'Jan', val: 60, loss: '3.1g' },
+                    { month: 'Feb', val: 85, loss: '4.2g' },
+                    { month: 'Mar', val: 45, loss: '2.8g' },
+                    { month: 'Apr', val: 100, loss: '5.1g' },
+                    { month: 'May', val: 75, loss: '3.9g' },
+                    { month: 'Jun', val: 30, loss: '1.5g' }
+                ].map((d, i) => (
+                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '100%', height: `${d.val}%`, background: d.val > 80 ? 'var(--danger)' : 'var(--primary-gold)', borderRadius: '4px 4px 0 0', position: 'relative' }} title={d.loss}>
+                            <span style={{ position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.65rem', fontWeight: 600 }}>{d.loss}</span>
+                        </div>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{d.month}</span>
+                    </div>
+                ))}
+            </div>
         </div>
       </div>
     </div>

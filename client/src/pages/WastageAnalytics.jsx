@@ -35,7 +35,7 @@ const WastageAnalytics = () => {
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Comparative analysis of expected vs actual material loss</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="glass" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', color: 'white' }}>
+          <button className="glass" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', color: 'var(--text-main)' }}>
             <Filter size={18}/> Filter by Worker
           </button>
         </div>

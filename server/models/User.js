@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
         enum: ['admin', 'accountant', 'worker'], 
         default: 'worker' 
     },
+    permissions: [{ type: String }], // Array of permission strings
     email: { type: String, unique: true }
 }, { timestamps: true });
 

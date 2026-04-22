@@ -2,10 +2,46 @@ const Product = require('../models/Product');
 const Transaction = require('../models/Transaction');
 const Worker = require('../models/Worker');
 
+const Company = require('../models/Company');
+
 const createProduct = async (req, res) => {
     try {
-        const product = await Product.create(req.body);
-        res.status(201).json(product);
+        const { category, workerId, quantity, ...rest } = req.body;
+        const qty = parseInt(quantity) || 1;
+        const products = [];
+        
+        const worker = await Worker.findById(workerId);
+        const workerCode = worker?.workerID || 'W000';
+        
+        let company = await Company.findOne({ isGlobal: true });
+        let catCode = 'XX';
+        if (company && company.categories) {
+            const catObj = company.categories.find(c => c.name === category);
+            if (catObj) catCode = catObj.code;
+        }
+
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        let count = await Product.countDocuments({ createdAt: { $gte: startOfDay } });
+        const dateStr = startOfDay.toLocaleDateString('en-GB').replace(/\//g, '');
+
+        for (let i = 0; i < qty; i++) {
+            const serial = String(count + 1).padStart(3, '0');
+            const finalProductId = `${workerCode}-${catCode}-${dateStr}-${serial}`;
+            
+            const product = new Product({
+                ...rest,
+                category,
+                workerId,
+                productId: finalProductId
+            });
+            
+            const saved = await product.save();
+            products.push(saved);
+            count++;
+        }
+        
+        res.status(201).json(qty === 1 ? products[0] : products);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
@@ -58,4 +94,14 @@ const getProducts = async (req, res) => {
     res.json(products);
 };
 
-module.exports = { createProduct, receiveProduct, getProducts };
+const updateProduct = async (req, res) => {
+    try {
+        const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+        if (!product) return res.status(404).json({ message: 'Product not found' });
+        res.json(product);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+module.exports = { createProduct, receiveProduct, getProducts, updateProduct };

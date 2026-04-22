@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import Login from './pages/Auth/Login';
 import Dashboard from './pages/Dashboard';
+import PrintQR from './pages/PrintQR';
 import './index.css';
 
 const ProtectedRoute = ({ children, roles }) => {
@@ -21,6 +22,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/print-qr" element={<PrintQR />} />
           <Route path="/*" element={<Dashboard />} />
         </Routes>
       </Router>

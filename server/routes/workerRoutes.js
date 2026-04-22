@@ -9,7 +9,7 @@ router.route('/')
 
 router.route('/:id')
     .get(protect, getWorkerById)
-    .put(protect, authorize('admin'), updateWorker)
-    .delete(protect, authorize('admin'), deleteWorker);
+    .put(protect, authorize('admin', 'accountant'), updateWorker)
+    .delete(protect, authorize('admin', 'accountant'), deleteWorker);
 
 module.exports = router;

@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import api from '../api';
 import { 
-  ArrowLeft, Coins, Package, CreditCard, History, AlertCircle, Phone, Hammer, RotateCcw
+  ArrowLeft, Coins, Package, CreditCard, History, AlertCircle, Phone, Hammer, RotateCcw, Edit2, Plus, X, ShieldCheck, Trash2, Printer
 } from 'lucide-react';
 
 const WorkerDetailView = () => {
@@ -14,8 +13,129 @@ const WorkerDetailView = () => {
   const [transactions, setTransactions] = useState([]);
   const [products, setProducts] = useState([]);
   const [goldIssues, setGoldIssues] = useState([]);
+  const [categories, setCategories] = useState([{ name: 'Necklace', code: 'NE' }]);
+  const [companyStones, setCompanyStones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  
+  // Modals Visibility
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showGoldModal, setShowGoldModal] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+
+  // Form Datas
+  const [editData, setEditData] = useState({ name: '', contact: '', specialization: '', labourRateType: 'perGram', baseRate: '' });
+  const [goldData, setGoldData] = useState({ weight: '', purity: '22k', expectedWastage: '0', deliveryDate: '', notes: '', stones: [], totalStoneWeight: 0 });
+  const [productData, setProductData] = useState({ category: '', designName: '', expectedWeight: '', stones: [], quantity: 1, totalStoneWeight: 0 });
+  const [showGoldStoneDetail, setShowGoldStoneDetail] = useState(false);
+  const [showProductStoneDetail, setShowProductStoneDetail] = useState(false);
+
+  const handlePrintPassbook = () => {
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    
+    // Using string concatenation for the inner parts to avoid template literal escaping issues
+    const transactionRows = transactions.map(t => {
+      return '<tr>' +
+        '<td>' + new Date(t.createdAt).toLocaleDateString() + '</td>' +
+        '<td>' + t.type.toUpperCase() + '</td>' +
+        '<td>' + (t.notes || '') + '</td>' +
+        '<td>₹ ' + t.amount.toLocaleString() + '</td>' +
+      '</tr>';
+    }).join('');
+
+    const netBalance = (stats?.totalEarnings - stats?.totalPayments).toLocaleString();
+
+    const content = `
+      <html>
+        <head>
+          <title>Passbook - ${worker.name}</title>
+          <style>
+            body { font-family: sans-serif; padding: 40px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+            th { background: #f4f4f4; }
+            .header { text-align: center; margin-bottom: 40px; }
+            .summary { margin-top: 30px; border-top: 2px solid #000; padding-top: 15px; text-align: right; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>WORKER TRANSACTION LEDGER</h2>
+            <p><strong>Worker:</strong> ${worker.name} (${worker.workerID})</p>
+            <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Notes</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${transactionRows}
+            </tbody>
+          </table>
+          <div class="summary">
+            <h3>Net Balance: ₹ ${netBalance}</h3>
+          </div>
+          <script>window.print();</script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(content);
+    printWindow.document.close();
+  };
+
+  const handlePrintReceipt = (product) => {
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    
+    const stoneDetails = product.stones?.map(s => 
+      `<div>• ${s.stoneName}: ${s.stoneWeight}g ${s.stoneDetails ? `(${s.stoneDetails})` : ''}</div>`
+    ).join('') || 'None';
+
+    const content = `
+      <html>
+        <head>
+          <title>Submission Receipt - ${product.productID}</title>
+          <style>
+            body { font-family: 'Courier New', Courier, monospace; padding: 20px; font-size: 14px; line-height: 1.4; }
+            .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 15px; }
+            .item-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+            .footer { text-align: center; border-top: 2px dashed #000; margin-top: 20px; padding-top: 10px; font-size: 12px; }
+            .bold { font-weight: bold; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2 style="margin:0">${worker.name}</h2>
+            <div>SUBMISSION RECEIPT</div>
+            <div>Date: ${new Date().toLocaleString()}</div>
+          </div>
+          <div class="bold" style="margin-bottom:10px">PRODUCT DETAILS:</div>
+          <div class="item-row"><span>ID:</span> <span>${product.productID}</span></div>
+          <div class="item-row"><span>Design:</span> <span>${product.designName}</span></div>
+          <div class="item-row"><span>Category:</span> <span>${product.category}</span></div>
+          <div class="item-row"><span>Weight:</span> <span>${product.goldWeight}g</span></div>
+          <div class="item-row"><span>Status:</span> <span>${product.status.toUpperCase()}</span></div>
+          
+          <div class="bold" style="margin-top:15px">STONES:</div>
+          <div style="font-size: 12px">${stoneDetails}</div>
+          
+          <div class="footer">
+            <div>Authorized Signature</div>
+            <div style="margin-top:40px">___________________</div>
+            <p>Thank you for your craftsmanship.</p>
+          </div>
+          <script>window.print(); setTimeout(() => window.close(), 500);</script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(content);
+    printWindow.document.close();
+  };
 
   useEffect(() => {
     fetchData();
@@ -24,23 +144,100 @@ const WorkerDetailView = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [workerRes, statsRes, transRes, productRes, goldRes] = await Promise.all([
+      const [workerRes, statsRes, transRes, productRes, goldRes, companyRes] = await Promise.all([
         api.get(`/workers/${id}`),
         api.get(`/stats/worker/${id}`),
         api.get(`/mgmt/transactions?workerId=${id}`),
         api.get(`/mgmt/products?workerId=${id}`),
-        api.get(`/gold?workerId=${id}`)
+        api.get(`/gold?workerId=${id}`),
+        api.get(`/company`)
       ]);
       setWorker(workerRes.data);
       setStats(statsRes.data);
       setTransactions(transRes.data);
       setProducts(productRes.data || []);
       setGoldIssues(goldRes.data || []);
+      
+      if (companyRes.data) {
+          if (companyRes.data.categories?.length > 0) {
+              setCategories(companyRes.data.categories);
+              setProductData(prev => ({...prev, category: companyRes.data.categories[0].name}));
+          }
+          if (companyRes.data.stones) setCompanyStones(companyRes.data.stones);
+      }
+
+      // Sync edit data
+      setEditData({
+        name: workerRes.data.name,
+        contact: workerRes.data.contact || '',
+        specialization: workerRes.data.specialization || '',
+        labourRateType: workerRes.data.labourRateType || 'perGram',
+        baseRate: workerRes.data.baseRate || ''
+      });
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.put(`/workers/${id}`, editData);
+      setShowEditModal(false);
+      fetchData();
+    } catch (err) { alert('Error updating worker'); }
+  };
+
+  /* Gold Issue Logic */
+  const handleGoldSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/gold', { ...goldData, workerId: id });
+      setShowGoldModal(false);
+      setGoldData({ weight: '', purity: '22k', expectedWastage: '0', deliveryDate: '', notes: '', stones: [] });
+      fetchData();
+    } catch (err) { alert('Error issuing gold'); }
+  };
+
+  const addGoldStone = () => {
+    setGoldData({ ...goldData, stones: [...goldData.stones, { stoneName: companyStones[0]?.stoneName || '', stoneWeight: '' }] });
+  };
+  const updateGoldStone = (index, field, value) => {
+    const newStones = [...goldData.stones];
+    newStones[index][field] = value;
+    setGoldData({ ...goldData, stones: newStones });
+  };
+  const removeGoldStone = (index) => {
+    const newStones = [...goldData.stones];
+    newStones.splice(index, 1);
+    setGoldData({ ...goldData, stones: newStones });
+  };
+
+  /* Product Assign Logic */
+  const handleProductSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/mgmt/products', { ...productData, workerId: id });
+      setShowProductModal(false);
+      setProductData({ category: categories[0]?.name || '', designName: '', expectedWeight: '', stones: [], quantity: 1 });
+      fetchData();
+    } catch (err) { alert('Error assigning product'); }
+  };
+
+  const addProductStone = () => {
+    setProductData({ ...productData, stones: [...productData.stones, { stoneName: companyStones[0]?.stoneName || '', stoneWeight: '', stoneDetails: '' }] });
+  };
+  const updateProductStone = (index, field, value) => {
+    const newStones = [...productData.stones];
+    newStones[index][field] = value;
+    setProductData({ ...productData, stones: newStones });
+  };
+  const removeProductStone = (index) => {
+    const newStones = [...productData.stones];
+    newStones.splice(index, 1);
+    setProductData({ ...productData, stones: newStones });
   };
 
   if (loading) return <div className="glass" style={{ padding: '40px', textAlign: 'center' }}>Loading worker data...</div>;
@@ -62,11 +259,11 @@ const WorkerDetailView = () => {
         <ArrowLeft size={18}/> Back to Workers
       </button>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '24px' }}>
+      <div className="responsive-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', alignItems: 'start' }}>
         {/* Profile Sidebar */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div className="glass" style={{ padding: '30px', textAlign: 'center' }}>
-                <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--primary-gold)', color: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px', fontSize: '2rem', fontWeight: 'bold' }}>
+                <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--primary-gold)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px', fontSize: '2rem', fontWeight: 'bold' }}>
                     {worker.name[0]}
                 </div>
                 <span style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: '6px', background: 'rgba(212,175,55,0.15)', color: 'var(--primary-gold)', fontFamily: 'monospace', fontWeight: 600 }}>
@@ -75,13 +272,19 @@ const WorkerDetailView = () => {
                 <h3 style={{ marginTop: '10px' }}>{worker.name}</h3>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{worker.specialization}</p>
 
-                <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', fontSize: '0.85rem', textAlign: 'left' }}>
+                <div style={{ marginTop: '20px', padding: '15px', background: 'var(--card-bg)', borderRadius: '12px', fontSize: '0.85rem', textAlign: 'left' }}>
                     <p style={{ color: 'var(--text-muted)', marginBottom: '5px' }}>Contact</p>
                     <p style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Phone size={14} color="var(--primary-gold)"/> {worker.contact || 'Not provided'}
                     </p>
                     <p style={{ color: 'var(--text-muted)', margin: '10px 0 5px' }}>Labour Rate</p>
                     <p>{worker.labourRateType === 'perGram' ? `₹${worker.baseRate}/g` : worker.labourRateType === 'perPiece' ? `₹${worker.baseRate}/pc` : `₹${worker.baseRate} Fixed`}</p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
+                    <button className="glass" onClick={() => setShowEditModal(true)} style={{ flex: 1, padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--accent-blue)', border: '1px solid rgba(52,152,219,0.3)' }}>
+                        <Edit2 size={14}/> Edit Profile
+                    </button>
                 </div>
             </div>
 
@@ -100,14 +303,14 @@ const WorkerDetailView = () => {
         {/* Main Content */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-                <MetricCard icon={<Coins size={20} color="var(--primary-gold)"/>} title="Gold Balance" value={`${((stats?.goldIssued || 0) - (stats?.goldReturned || 0)).toFixed(2)}g`} />
-                <MetricCard icon={<Package size={20} color="var(--accent-blue)"/>} title="Completed" value={stats?.completedProducts || 0} subtitle="Finished Products" />
-                <MetricCard icon={<CreditCard size={20} color="var(--success)"/>} title="Total Earnings" value={`₹ ${(stats?.totalEarnings || 0).toLocaleString()}`} />
+            <div className="responsive-grid">
+                <MetricCard icon={<Coins size={20} color="var(--primary-gold)"/>} title="Gold Bal." value={`${((stats?.goldIssued || 0) - (stats?.goldReturned || 0)).toFixed(2)}g`} />
+                <MetricCard icon={<Package size={20} color="var(--accent-blue)"/>} title="Done" value={stats?.completedProducts || 0} />
+                <MetricCard icon={<CreditCard size={20} color="var(--success)"/>} title="Earnings" value={`₹ ${(stats?.totalEarnings || 0).toLocaleString()}`} />
             </div>
 
             {/* Tabs */}
-            <div style={{ display: 'flex', gap: '5px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '10px' }}>
+            <div style={{ display: 'flex', gap: '5px', background: 'var(--card-bg)', padding: '4px', borderRadius: '10px' }}>
                 {tabs.map(tab => (
                     <button 
                         key={tab.key}
@@ -125,11 +328,193 @@ const WorkerDetailView = () => {
 
             {/* Tab Content */}
             {activeTab === 'overview' && <OverviewTab stats={stats} goldIssues={goldIssues} />}
-            {activeTab === 'products' && <ProductsTab products={products} />}
-            {activeTab === 'gold' && <GoldHistoryTab goldIssues={goldIssues} />}
+            {activeTab === 'products' && <ProductsTab products={products} setShowProductModal={setShowProductModal} />}
+            {activeTab === 'gold' && <GoldHistoryTab goldIssues={goldIssues} setShowGoldModal={setShowGoldModal} />}
             {activeTab === 'transactions' && <TransactionsTab transactions={transactions} />}
         </div>
       </div>
+
+      {/* MODALS */}
+      {showEditModal && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div className="glass" style={{ width: '90%', maxWidth: '480px', padding: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3>Edit Worker Details</h3>
+                    <X size={20} onClick={() => setShowEditModal(false)} style={{ cursor: 'pointer' }}/>
+                  </div>
+                  <form onSubmit={handleEditSubmit}>
+                      <div className="input-group"><label>Full Name</label><input required value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} /></div>
+                      <div className="input-group"><label>Contact</label><input value={editData.contact} onChange={e => setEditData({...editData, contact: e.target.value})} /></div>
+                      <div className="input-group"><label>Specialization</label><input value={editData.specialization} onChange={e => setEditData({...editData, specialization: e.target.value})} /></div>
+                      <div className="responsive-grid" style={{ gap: '15px' }}>
+                        <div className="input-group">
+                            <label>Rate Type</label>
+                            <select value={editData.labourRateType} onChange={e => setEditData({...editData, labourRateType: e.target.value})} style={{ width: '100%', background: 'var(--surface-bg)', color: 'var(--text-main)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                                <option value="perGram">Per Gram</option>
+                                <option value="perPiece">Per Piece</option>
+                                <option value="fixed">Fixed</option>
+                            </select>
+                        </div>
+                        <div className="input-group"><label>Base Rate (₹)</label><input type="number" required value={editData.baseRate} onChange={e => setEditData({...editData, baseRate: e.target.value})} /></div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                          <button type="button" className="glass" onClick={() => setShowEditModal(false)} style={{ flex: 1, padding: '12px', color: 'var(--text-main)' }}>Cancel</button>
+                          <button type="submit" className="btn-primary" style={{ flex: 1 }}>Update</button>
+                      </div>
+                  </form>
+              </div>
+          </div>
+      )}
+
+      {showGoldModal && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div className="glass" style={{ width: '90%', maxWidth: '600px', padding: '24px', maxHeight: '90vh', overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3 className="gold-gradient">Issue Material to {worker.name}</h3>
+                    <X size={20} onClick={() => setShowGoldModal(false)} style={{ cursor: 'pointer' }}/>
+                  </div>
+                  <form onSubmit={handleGoldSubmit}>
+                      <div className="responsive-grid" style={{ gap: '15px' }}>
+                          <div className="input-group"><label>Gold Weight (g)</label><input required type="number" step="0.01" value={goldData.weight} onChange={e => setGoldData({...goldData, weight: e.target.value})} /></div>
+                          <div className="input-group">
+                              <label>Purity</label>
+                              <select value={goldData.purity} onChange={e => setGoldData({...goldData, purity: e.target.value})} style={{ width: '100%', background: 'var(--surface-bg)', color: 'var(--text-main)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                                  <option value="22k">22k</option>
+                                  <option value="24k">24k</option>
+                              </select>
+                          </div>
+                      </div>
+                      
+                      <div className="input-group">
+                          <label>Total Stone Weight (Gross)</label>
+                          <input type="number" step="0.01" value={goldData.totalStoneWeight} onChange={e => setGoldData({...goldData, totalStoneWeight: e.target.value})} placeholder="0.00" />
+                      </div>
+
+                      <div style={{ marginBottom: '20px' }}>
+                        <button type="button" onClick={() => setShowGoldStoneDetail(!showGoldStoneDetail)} style={{ background: 'transparent', border: 'none', color: 'var(--primary-gold)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '10px' }}>
+                           {showGoldStoneDetail ? '▼ Hide Detailed Stones' : '▶ Add Detailed Stones (Optional)'}
+                        </button>
+                        
+                        {showGoldStoneDetail && (
+                            <div style={{ padding: '15px', background: 'var(--card-bg)', borderRadius: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                    <label style={{ margin: 0, fontWeight: 600, fontSize: '0.8rem' }}>Stone Manifest</label>
+                                    <button type="button" onClick={addGoldStone} style={{ background: 'transparent', border: '1px solid var(--primary-gold)', color: 'var(--primary-gold)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer' }}>+ Add Row</button>
+                                </div>
+                                {goldData.stones.map((stone, idx) => (
+                                <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+                                    <div style={{ flex: 2, position: 'relative' }}>
+                                        <input 
+                                            list={`gold-stone-list-${idx}`}
+                                            placeholder="Stone Name"
+                                            value={stone.stoneName} 
+                                            onChange={e => updateGoldStone(idx, 'stoneName', e.target.value)}
+                                            style={{ width: '100%', padding: '10px', borderRadius: '4px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-main)' }}
+                                        />
+                                        <datalist id={`gold-stone-list-${idx}`}>
+                                            {companyStones.map(cs => <option key={cs.stoneName} value={cs.stoneName}>{cs.stoneName}</option>)}
+                                        </datalist>
+                                    </div>
+                                    <input type="number" step="0.01" required placeholder="Wt" value={stone.stoneWeight} onChange={e => updateGoldStone(idx, 'stoneWeight', e.target.value)} style={{ flex: 1, padding: '10px' }} />
+                                    <Trash2 size={16} onClick={() => removeGoldStone(idx)} color="var(--danger)" style={{ cursor: 'pointer' }} />
+                                </div>
+                                ))}
+                            </div>
+                        )}
+                      </div>
+
+                      <div className="responsive-grid" style={{ gap: '15px' }}>
+                          <div className="input-group"><label>Expected Wastage %</label><input type="number" step="0.1" value={goldData.expectedWastage} onChange={e => setGoldData({...goldData, expectedWastage: e.target.value})} /></div>
+                          <div className="input-group"><label>Due Date</label><input type="date" value={goldData.deliveryDate} onChange={e => setGoldData({...goldData, deliveryDate: e.target.value})} /></div>
+                      </div>
+                      <div className="input-group">
+                        <label>Notes (Optional)</label>
+                        <textarea value={goldData.notes} onChange={e => setGoldData({...goldData, notes: e.target.value})} style={{ width: '100%', background: 'var(--surface-bg)', color: 'var(--text-main)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)', minHeight: '60px' }} />
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                          <button type="button" className="glass" onClick={() => setShowGoldModal(false)} style={{ flex: 1, padding: '12px', color: 'var(--text-main)' }}>Cancel</button>
+                          <button type="submit" className="btn-primary" style={{ flex: 1 }}>Issue Material</button>
+                      </div>
+                  </form>
+              </div>
+          </div>
+      )}
+
+      {showProductModal && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div className="glass" style={{ width: '90%', maxWidth: '600px', padding: '24px', maxHeight: '90vh', overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3 className="gold-gradient">Assign New Product</h3>
+                    <X size={20} onClick={() => setShowProductModal(false)} style={{ cursor: 'pointer' }}/>
+                  </div>
+                  <form onSubmit={handleProductSubmit}>
+                      <div className="input-group">
+                          <label>Category</label>
+                          <select 
+                            value={productData.category} 
+                            onChange={e => setProductData({ ...productData, category: e.target.value })} 
+                            style={{ width: '100%', background: 'var(--surface-bg)', color: 'var(--text-main)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}
+                          >
+                              {categories.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
+                          </select>
+                      </div>
+                      <div className="input-group">
+                          <label>Product ID</label>
+                          <input readOnly placeholder="System will generate exact ID via sequence..." style={{ background: 'rgba(0,0,0,0.3)', color: 'var(--text-muted)', fontStyle: 'italic' }} />
+                      </div>
+                      <div className="input-group"><label>Design Name</label><input required value={productData.designName} onChange={e => setProductData({...productData, designName: e.target.value})} /></div>
+                      <div className="responsive-grid" style={{ gap: '15px' }}>
+                          <div className="input-group"><label>Expected Weight (g)</label><input type="number" step="0.01" value={productData.expectedWeight} onChange={e => setProductData({...productData, expectedWeight: e.target.value})} /></div>
+                          <div className="input-group"><label>Order Quantity</label><input type="number" min="1" value={productData.quantity} onChange={e => setProductData({...productData, quantity: e.target.value})} /></div>
+                      </div>
+                      
+                      <div className="input-group">
+                          <label>Total Stone Weight (Gross)</label>
+                          <input type="number" step="0.01" value={productData.totalStoneWeight} onChange={e => setProductData({...productData, totalStoneWeight: e.target.value})} placeholder="0.00" />
+                      </div>
+
+                      <div style={{ marginBottom: '20px' }}>
+                        <button type="button" onClick={() => setShowProductStoneDetail(!showProductStoneDetail)} style={{ background: 'transparent', border: 'none', color: 'var(--primary-gold)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '10px' }}>
+                           {showProductStoneDetail ? '▼ Hide Detailed Stones' : '▶ Add Detailed Stones (Optional)'}
+                        </button>
+                        
+                        {showProductStoneDetail && (
+                            <div style={{ padding: '15px', background: 'var(--card-bg)', borderRadius: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                    <label style={{ margin: 0, fontWeight: 600, fontSize: '0.8rem' }}>Stone Manifest</label>
+                                    <button type="button" onClick={addProductStone} style={{ background: 'transparent', border: '1px solid var(--primary-gold)', color: 'var(--primary-gold)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer' }}>+ Add Row</button>
+                                </div>
+                                {productData.stones.map((stone, idx) => (
+                                   <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+                                      <div style={{ flex: 2, position: 'relative' }}>
+                                        <input 
+                                          list={`prod-stone-list-${idx}`}
+                                          placeholder="Stone Name"
+                                          value={stone.stoneName} 
+                                          onChange={e => updateProductStone(idx, 'stoneName', e.target.value)}
+                                          style={{ width: '100%', padding: '10px', borderRadius: '4px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-main)' }}
+                                        />
+                                        <datalist id={`prod-stone-list-${idx}`}>
+                                          {companyStones.map(cs => <option key={cs.stoneName} value={cs.stoneName}>{cs.stoneName}</option>)}
+                                        </datalist>
+                                      </div>
+                                      <input type="number" step="0.01" required placeholder="Wt" value={stone.stoneWeight} onChange={e => updateProductStone(idx, 'stoneWeight', e.target.value)} style={{ flex: 1, padding: '10px' }} />
+                                      <input type="text" placeholder="Details" value={stone.stoneDetails} onChange={e => updateProductStone(idx, 'stoneDetails', e.target.value)} style={{ flex: 2, padding: '10px' }} />
+                                      <Trash2 size={16} onClick={() => removeProductStone(idx)} color="var(--danger)" style={{ cursor: 'pointer' }} />
+                                   </div>
+                                ))}
+                            </div>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                          <button type="button" className="glass" onClick={() => setShowProductModal(false)} style={{ flex: 1, padding: '12px', color: 'var(--text-main)' }}>Cancel</button>
+                          <button type="submit" className="btn-primary" style={{ flex: 1 }}>Assign Product</button>
+                      </div>
+                  </form>
+              </div>
+          </div>
+      )}
     </div>
   );
 };
@@ -142,7 +527,7 @@ const OverviewTab = ({ stats, goldIssues }) => (
                 <History size={18} color="var(--primary-gold)"/>
                 <h3>Production Status</h3>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
+            <div className="responsive-grid" style={{ gap: '15px' }}>
                 <ProgressBox label="Gold Issued" value={`${stats?.goldIssued || 0}g`} color="var(--primary-gold)" />
                 <ProgressBox label="Gold Returned" value={`${stats?.goldReturned || 0}g`} color="var(--success)" />
                 <ProgressBox label="Pending Gold" value={`${((stats?.goldIssued || 0) - (stats?.goldReturned || 0)).toFixed(2)}g`} color="var(--danger)" />
@@ -164,14 +549,24 @@ const OverviewTab = ({ stats, goldIssues }) => (
 );
 
 /* ──────────── TAB: Products ──────────── */
-const ProductsTab = ({ products }) => (
-    <div className="glass" style={{ padding: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-            <Hammer size={18} color="var(--primary-gold)"/>
-            <h3>Products Made & Returned</h3>
-        </div>
+const ProductsTab = ({ products, setShowProductModal }) => (
+        <div className="glass" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Hammer size={18} color="var(--primary-gold)"/>
+                    <h3>Products Made & Returned</h3>
+                </div>
+                <button 
+                    className="btn-primary" 
+                    onClick={() => setShowProductModal(true)}
+                    style={{ fontSize: '0.8rem', padding: '8px 15px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                    <Plus size={16}/> New Product
+                </button>
+            </div>
         {products.length > 0 ? (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="table-container">
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '500px' }}>
                 <thead>
                     <tr style={{ textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                         <th style={{ padding: '10px' }}>DESIGN</th>
@@ -184,7 +579,7 @@ const ProductsTab = ({ products }) => (
                     {products.map(p => (
                         <tr key={p._id} style={{ borderTop: '1px solid var(--glass-border)', fontSize: '0.85rem' }}>
                             <td style={{ padding: '12px 10px', fontWeight: 500 }}>{p.designName}</td>
-                            <td style={{ padding: '12px 10px' }}>{p.goldWeight}g</td>
+                            <td style={{ padding: '12px 10px' }}>{p.goldWeight || p.expectedWeight}g</td>
                             <td style={{ padding: '12px 10px' }}>
                                 <span style={{ 
                                     padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase',
@@ -194,30 +589,49 @@ const ProductsTab = ({ products }) => (
                                     {p.status}
                                 </span>
                             </td>
-                            <td style={{ padding: '12px 10px', color: 'var(--text-muted)' }}>{new Date(p.createdAt).toLocaleDateString()}</td>
+                            <td style={{ padding: '12px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ color: 'var(--text-muted)' }}>{new Date(p.createdAt).toLocaleDateString()}</span>
+                                <button 
+                                    onClick={() => handlePrintReceipt(p)}
+                                    style={{ border: 'none', background: 'transparent', color: 'var(--primary-gold)', cursor: 'pointer', padding: '4px' }}
+                                    title="Print Submission Receipt"
+                                >
+                                    <Printer size={16} />
+                                </button>
+                            </td>
                         </tr>
                     ))}
                 </tbody>
             </table>
+            </div>
         ) : <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center', padding: '30px' }}>No products assigned to this worker yet.</p>}
     </div>
 );
 
 /* ──────────── TAB: Gold History ──────────── */
-const GoldHistoryTab = ({ goldIssues }) => (
+const GoldHistoryTab = ({ goldIssues, setShowGoldModal }) => (
     <div className="glass" style={{ padding: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-            <RotateCcw size={18} color="var(--primary-gold)"/>
-            <h3>Gold Issue & Return History</h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <RotateCcw size={18} color="var(--primary-gold)"/>
+                <h3>Gold Issue & Return History</h3>
+            </div>
+            <button 
+                className="btn-primary" 
+                onClick={() => setShowGoldModal(true)}
+                style={{ fontSize: '0.8rem', padding: '8px 15px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+                <Plus size={16}/> Issue Gold
+            </button>
         </div>
         {goldIssues.length > 0 ? (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="table-container">
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
                 <thead>
                     <tr style={{ textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                         <th style={{ padding: '10px' }}>DATE</th>
                         <th style={{ padding: '10px' }}>WEIGHT</th>
-                        <th style={{ padding: '10px' }}>PURITY</th>
-                        <th style={{ padding: '10px' }}>WASTAGE %</th>
+                        <th style={{ padding: '10px' }}>STONES</th>
                         <th style={{ padding: '10px' }}>STATUS</th>
                         <th style={{ padding: '10px' }}>NOTES</th>
                     </tr>
@@ -226,9 +640,8 @@ const GoldHistoryTab = ({ goldIssues }) => (
                     {goldIssues.map(g => (
                         <tr key={g._id} style={{ borderTop: '1px solid var(--glass-border)', fontSize: '0.85rem' }}>
                             <td style={{ padding: '12px 10px' }}>{new Date(g.createdAt).toLocaleDateString()}</td>
-                            <td style={{ padding: '12px 10px', fontWeight: 600 }}>{g.weight}g</td>
-                            <td style={{ padding: '12px 10px' }}>{g.purity}</td>
-                            <td style={{ padding: '12px 10px' }}>{g.expectedWastage}%</td>
+                            <td style={{ padding: '12px 10px', fontWeight: 600 }}>{g.weight}g ({g.purity})</td>
+                            <td style={{ padding: '12px 10px' }}>{g.stones?.length || 0} attached</td>
                             <td style={{ padding: '12px 10px' }}>
                                 <span style={{ 
                                     padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase',
@@ -245,6 +658,7 @@ const GoldHistoryTab = ({ goldIssues }) => (
                     ))}
                 </tbody>
             </table>
+            </div>
         ) : <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center', padding: '30px' }}>No gold issue records found.</p>}
     </div>
 );
@@ -252,12 +666,18 @@ const GoldHistoryTab = ({ goldIssues }) => (
 /* ──────────── TAB: Transactions ──────────── */
 const TransactionsTab = ({ transactions }) => (
     <div className="glass" style={{ padding: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-            <History size={18} color="var(--primary-gold)"/>
-            <h3>Payment & Earning History</h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <History size={18} color="var(--primary-gold)"/>
+                <h3>Payment & Earning History</h3>
+            </div>
+            <button onClick={handlePrintPassbook} className="glass" style={{ padding: '8px 15px', color: 'var(--primary-gold)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
+                <Printer size={16}/> Print Ledger
+            </button>
         </div>
         {transactions.length > 0 ? (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="table-container">
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                 <thead>
                     <tr style={{ textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                         <th style={{ padding: '10px' }}>DATE</th>
@@ -285,6 +705,7 @@ const TransactionsTab = ({ transactions }) => (
                     ))}
                 </tbody>
             </table>
+            </div>
         ) : <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center', padding: '30px' }}>No transactions found.</p>}
     </div>
 );
@@ -302,7 +723,7 @@ const MetricCard = ({ icon, title, value, subtitle }) => (
 );
 
 const ProgressBox = ({ label, value, color }) => (
-    <div style={{ padding: '15px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', borderTop: `3px solid ${color}` }}>
+    <div style={{ padding: '15px', background: 'var(--card-bg)', borderRadius: '12px', borderTop: `3px solid ${color}` }}>
         <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '5px' }}>{label}</p>
         <p style={{ fontSize: '1.2rem', fontWeight: 600 }}>{value}</p>
     </div>

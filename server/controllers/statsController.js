@@ -46,12 +46,14 @@ exports.getWorkerStats = async (req, res) => {
     try {
         const workerId = new mongoose.Types.ObjectId(req.params.id);
 
-        const goldStats = await GoldIssue.aggregate([
+        const totalGoldIssued = await GoldIssue.aggregate([
             { $match: { workerId } },
-            { $group: { 
-                _id: '$status', 
-                total: { $sum: '$weight' } 
-            } }
+            { $group: { _id: null, total: { $sum: '$weight' } } }
+        ]);
+
+        const goldReturnedStats = await GoldIssue.aggregate([
+            { $match: { workerId, status: { $in: ['completed', 'returned'] } } },
+            { $group: { _id: null, total: { $sum: '$weight' } } }
         ]);
 
         const productStats = await Product.countDocuments({ workerId, status: 'completed' });
@@ -65,8 +67,8 @@ exports.getWorkerStats = async (req, res) => {
         ]);
 
         res.json({
-            goldIssued: goldStats.find(s => s._id === 'issued')?.total || 0,
-            goldReturned: goldStats.find(s => s._id === 'completed')?.total || 0,
+            goldIssued: totalGoldIssued[0]?.total || 0,
+            goldReturned: goldReturnedStats[0]?.total || 0,
             completedProducts: productStats,
             totalEarnings: financeStats.find(s => s._id === 'earning')?.total || 0,
             totalPayments: financeStats.find(s => s._id === 'payment')?.total || 0

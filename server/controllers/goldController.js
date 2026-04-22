@@ -6,7 +6,7 @@ const Worker = require('../models/Worker');
 // @access  Private/Admin
 exports.issueGold = async (req, res) => {
     try {
-        const { workerId, weight, purity, expectedWastage, deliveryDate, notes } = req.body;
+        const { workerId, weight, purity, expectedWastage, deliveryDate, notes, stones } = req.body;
 
         const worker = await Worker.findById(workerId);
         if (!worker) {
@@ -19,7 +19,8 @@ exports.issueGold = async (req, res) => {
             purity,
             expectedWastage,
             deliveryDate,
-            notes
+            notes,
+            stones
         });
 
         const savedIssue = await goldIssue.save();
@@ -54,6 +55,27 @@ exports.updateIssueStatus = async (req, res) => {
         const issue = await GoldIssue.findByIdAndUpdate(
             req.params.id,
             { status },
+            { new: true, runValidators: true }
+        );
+
+        if (!issue) {
+            return res.status(404).json({ message: 'Issue not found' });
+        }
+
+        res.json(issue);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Update gold issue completely
+// @route   PUT /api/gold/:id
+// @access  Private/Admin
+exports.updateIssue = async (req, res) => {
+    try {
+        const issue = await GoldIssue.findByIdAndUpdate(
+            req.params.id,
+            req.body,
             { new: true, runValidators: true }
         );
 
