@@ -24,6 +24,7 @@ const Products = () => {
   const [activeSubTab, setActiveSubTab] = useState('ongoing'); // 'ongoing' or 'received'
   const [showReceiveDecisionModal, setShowReceiveDecisionModal] = useState(false);
   const [pendingReceiveProduct, setPendingReceiveProduct] = useState(null);
+  const [receivedWeightInput, setReceivedWeightInput] = useState('');
 
   // Draft Receive State
   const [draftList, setDraftList] = useState([]);
@@ -120,6 +121,7 @@ const Products = () => {
 
   const handleReceiveClick = (product) => {
     setPendingReceiveProduct(product);
+    setReceivedWeightInput(product.expectedWeight || ''); // Default to issued weight
     setShowReceiveDecisionModal(true);
   };
 
@@ -128,9 +130,17 @@ const Products = () => {
       setSelectedAssignment(pendingReceiveProduct);
       setShowReceiveDecisionModal(false);
     } else {
+      if (!receivedWeightInput) {
+        alert('Please enter the received weight.');
+        return;
+      }
       try {
-        await api.put(`/mgmt/products/${pendingReceiveProduct._id}`, { status: 'received' });
+        await api.put(`/mgmt/products/${pendingReceiveProduct._id}`, { 
+          status: 'received',
+          grossWeight: parseFloat(receivedWeightInput)
+        });
         setShowReceiveDecisionModal(false);
+        setReceivedWeightInput('');
         fetchData();
         setActiveSubTab('received');
       } catch (err) {
@@ -646,7 +656,10 @@ const Products = () => {
                             <td style={{ padding: '15px', fontFamily: 'monospace', fontWeight: 600 }}>{product.productId}</td>
                             <td style={{ padding: '15px', fontWeight: 600 }}>{product.designName}</td>
                             <td style={{ padding: '15px' }}>{product.workerId?.name}</td>
-                            <td style={{ padding: '15px' }}>{product.expectedWeight}g</td>
+                            <td style={{ padding: '15px' }}>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Issued: {product.expectedWeight}g</div>
+                                <div style={{ fontWeight: 700, color: 'var(--primary-gold)' }}>Recvd: {product.grossWeight}g</div>
+                            </td>
                             <td style={{ padding: '15px' }}>
                                 <span style={{ padding: '4px 10px', borderRadius: '6px', background: 'rgba(212, 175, 55, 0.1)', color: 'var(--primary-gold)', fontSize: '0.75rem', fontWeight: 600 }}>PENDING SEPARATION</span>
                             </td>
@@ -671,11 +684,23 @@ const Products = () => {
                       <RotateCcw size={30} color="var(--primary-gold)"/>
                   </div>
                   <h3 style={{ marginBottom: '10px' }}>Receive Work</h3>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '30px' }}>Would you like to separate the items and add to stock now, or just mark as received for later separation?</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '20px' }}>Record the weight received from craftsman before proceeding.</p>
+                  
+                  <div style={{ background: 'var(--dark-bg)', padding: '15px', borderRadius: '10px', marginBottom: '25px', border: '1px solid var(--glass-border)' }}>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--primary-gold)', fontWeight: 700, display: 'block', marginBottom: '8px', textAlign: 'left' }}>RECEIVED GROSS WEIGHT (G)</label>
+                      <input 
+                        type="number" 
+                        step="0.001" 
+                        value={receivedWeightInput}
+                        onChange={e => setReceivedWeightInput(e.target.value)}
+                        placeholder="0.000"
+                        style={{ width: '100%', padding: '12px', background: 'var(--surface-bg)', border: '1px solid var(--primary-gold)', borderRadius: '8px', color: 'var(--text-main)', fontSize: '1.2rem', fontWeight: 700, textAlign: 'center' }}
+                      />
+                  </div>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <button onClick={() => processReceiveDecision('now')} className="btn-primary" style={{ padding: '14px', borderRadius: '10px', fontWeight: 600 }}>Separate Detailed Work Now</button>
-                      <button onClick={() => processReceiveDecision('later')} className="glass" style={{ padding: '14px', borderRadius: '10px', fontWeight: 600, color: 'var(--text-main)' }}>Mark Received (Separate Later)</button>
+                      <button onClick={() => processReceiveDecision('later')} className="btn-primary" style={{ padding: '14px', borderRadius: '10px', fontWeight: 600 }}>Mark Received (Separate Later)</button>
+                      <button onClick={() => processReceiveDecision('now')} className="glass" style={{ padding: '14px', borderRadius: '10px', fontWeight: 600, color: 'var(--text-main)' }}>Separate Detailed Work Now</button>
                       <button onClick={() => setShowReceiveDecisionModal(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', marginTop: '10px', cursor: 'pointer' }}>Cancel</button>
                   </div>
               </div>
