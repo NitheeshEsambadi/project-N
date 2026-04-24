@@ -528,6 +528,26 @@ const Products = () => {
                   </div>
               </div>
 
+              {/* Stone Issuance Section */}
+              <div className="glass" style={{ padding: '20px', background: 'rgba(212, 175, 55, 0.02)', borderRadius: '12px', border: '1px dashed var(--primary-gold)', marginTop: '20px' }}>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--primary-gold)', margin: '0 0 15px 0', fontWeight: 600 }}>Issued Stones (Optional)</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {newProductData.stones.map((stone, idx) => (
+                          <div key={idx} style={{ display: 'flex', gap: '10px' }}>
+                              <select value={stone.stoneName} onChange={e => updateCreateStone(idx, 'stoneName', e.target.value)} style={{ flex: 1, background: 'var(--dark-bg)', padding: '8px', borderRadius: '6px', border: '1px solid var(--glass-border)', color: 'var(--text-main)' }}>
+                                  <option value="">Select Stone...</option>
+                                  {companyStones.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+                              </select>
+                              <input type="number" placeholder="Weight" value={stone.stoneWeight} onChange={e => updateCreateStone(idx, 'stoneWeight', e.target.value)} style={{ width: '90px', padding: '8px', borderRadius: '6px', border: '1px solid var(--glass-border)', background: 'var(--dark-bg)', color: 'var(--text-main)' }} />
+                              <button type="button" onClick={() => removeCreateStone(idx)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}><X size={18}/></button>
+                          </div>
+                      ))}
+                      <button type="button" onClick={addCreateStone} style={{ background: 'transparent', border: '1px dashed var(--primary-gold)', color: 'var(--primary-gold)', padding: '10px', borderRadius: '8px', fontSize: '0.8rem', cursor: 'pointer' }}>
+                          + Add Stone to Issuance
+                      </button>
+                  </div>
+              </div>
+
               <div style={{ display: 'flex', gap: '15px', marginTop: '30px' }}>
                 <button type="button" className="glass" onClick={() => setShowCreateModal(false)} style={{ flex: 1, padding: '14px', borderRadius: '10px' }}>Cancel</button>
                 <button type="submit" className="btn-primary" style={{ flex: 1, borderRadius: '10px' }}>Issue Gold & Assign Work</button>

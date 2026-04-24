@@ -37,4 +37,5 @@ workerSchema.pre('save', async function(next) {
     }
 });
 
+delete mongoose.models.Worker;
 module.exports = mongoose.model('Worker', workerSchema);
