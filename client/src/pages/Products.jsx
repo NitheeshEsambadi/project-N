@@ -92,6 +92,16 @@ const Products = () => {
     setNewProductData(prev => ({ ...prev, pureWeight: pure.toFixed(3) }));
   }, [newProductData.expectedWeight, newProductData.purity, newProductData.purityType, purityStandards]);
 
+  const formatDate = (date) => {
+    if (!date) return '-';
+    const d = new Date(date);
+    return d.toLocaleDateString('en-GB', { 
+        day: '2-digit', 
+        month: 'short', 
+        year: 'numeric' 
+    }).split(' ').join(' - ');
+  };
+
   // ---- CREATE ASSIGNMENT LOGIC ----
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -110,7 +120,7 @@ const Products = () => {
     const s = [...newProductData.stones]; 
     s[i][f] = v; 
     const total = s.reduce((acc, st) => acc + (parseFloat(st.stoneWeight) || 0), 0);
-    setNewProductData({ ...newProductData, stones: s, totalStoneWeight: total }); 
+    setNewProductData({ ...newProductData, stones: s, totalStoneWeight: total.toFixed(3) }); 
   };
   const removeCreateStone = (i) => { 
     const s = [...newProductData.stones]; 
@@ -503,7 +513,7 @@ const Products = () => {
                     {product.dueDate && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', padding: '8px 12px', background: 'rgba(231, 76, 60, 0.05)', borderRadius: '8px' }}>
                             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>DUE DATE</span>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--danger)' }}>{new Date(product.dueDate).toLocaleDateString('en-GB').split('/').join('-')}</span>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--danger)' }}>{formatDate(product.dueDate)}</span>
                         </div>
                     )}
                 </div>
@@ -537,7 +547,7 @@ const Products = () => {
                         <tr key={product._id} style={{ borderTop: '1px solid var(--glass-border)', transition: '0.2s' }}>
                             <td style={{ padding: '15px' }}>
                                 <div style={{ fontFamily: 'monospace', fontSize: '0.8rem', fontWeight: 600 }}>{product.productId}</div>
-                                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{product.issuanceDate ? new Date(product.issuanceDate).toLocaleDateString('en-GB').split('/').join('-') : '-'}</div>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{formatDate(product.issuanceDate)}</div>
                             </td>
                             <td style={{ padding: '15px' }}>
                                 <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{product.designName}</div>
@@ -548,7 +558,7 @@ const Products = () => {
                             <td style={{ padding: '15px', fontWeight: 700, color: 'var(--success)' }}>{product.pureWeight?.toFixed(3)}g</td>
                             <td style={{ padding: '15px' }}>
                                 <span style={{ color: 'var(--danger)', fontWeight: 600, fontSize: '0.85rem' }}>
-                                    {product.dueDate ? new Date(product.dueDate).toLocaleDateString('en-GB').split('/').join('-') : '-'}
+                                    {formatDate(product.dueDate)}
                                 </span>
                             </td>
                             <td style={{ padding: '15px', textAlign: 'right' }}>
@@ -599,8 +609,8 @@ const Products = () => {
 
               <div className="responsive-grid" style={{ gap: '20px', marginTop: '15px' }}>
                 <div className="input-group">
-                  <label>Gold Issued Weight (g) *</label>
-                  <input type="number" step="0.001" required value={newProductData.expectedWeight} onChange={e => setNewProductData({...newProductData, expectedWeight: e.target.value})} style={{ background: 'var(--dark-bg)' }} placeholder="0.000" />
+                  <label>Gold Issued Weight (Grams) *</label>
+                  <input type="number" step="0.001" required value={newProductData.expectedWeight} onChange={e => setNewProductData({...newProductData, expectedWeight: e.target.value})} style={{ background: 'var(--dark-bg)' }} placeholder="0.000 g" />
                 </div>
                 <div className="input-group">
                   <label>Purity Selection</label>
@@ -625,7 +635,7 @@ const Products = () => {
                         </div>
                       )}
                       {newProductData.purityType === 'Percentage' && (
-                        <input type="number" value={newProductData.purity} onChange={e => setNewProductData({...newProductData, purity: e.target.value})} style={{ flex: 1, background: 'var(--dark-bg)' }} />
+                        <input type="number" step="0.01" value={newProductData.purity} onChange={e => setNewProductData({...newProductData, purity: e.target.value})} style={{ flex: 1, background: 'var(--dark-bg)' }} />
                       )}
                   </div>
                 </div>
@@ -633,8 +643,8 @@ const Products = () => {
 
               <div className="responsive-grid" style={{ gap: '20px', marginTop: '15px' }}>
                 <div className="input-group">
-                  <label>Pure Weight (Calculated)</label>
-                  <input type="number" readOnly value={newProductData.pureWeight} style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--primary-gold)', fontWeight: 600 }} />
+                  <label>Pure Weight (Grams)</label>
+                  <input type="number" readOnly value={newProductData.pureWeight} style={{ background: 'rgba(46, 204, 113, 0.05)', color: 'var(--success)', fontWeight: 700 }} />
                 </div>
                 <div className="input-group">
                   <label>Due Date</label>
@@ -643,46 +653,47 @@ const Products = () => {
               </div>
 
               {/* Stone Section */}
-              <div style={{ marginTop: '25px', display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
-                <div className="input-group" style={{ flex: 1 }}>
-                  <label>Stones Weight (Total)</label>
-                  <input 
-                    type="number" 
-                    step="0.001" 
-                    value={newProductData.totalStoneWeight} 
-                    onChange={e => setNewProductData({...newProductData, totalStoneWeight: parseFloat(e.target.value) || 0})}
-                    style={{ background: 'var(--dark-bg)' }} 
-                    placeholder="0.000"
-                  />
-                </div>
-                <button 
-                    type="button" 
-                    onClick={() => setShowStoneDetail(!showStoneDetail)}
-                    style={{ padding: '12px 20px', borderRadius: '8px', background: showStoneDetail ? 'var(--primary-gold)' : 'var(--dark-bg)', color: showStoneDetail ? 'black' : 'var(--primary-gold)', border: '1px solid var(--primary-gold)', fontWeight: 600, cursor: 'pointer', transition: '0.3s' }}
-                >
-                    {showStoneDetail ? '- Hide Split' : '+ Add Split Stones'}
-                </button>
-              </div>
-
-              {showStoneDetail && (
-                <div className="glass" style={{ padding: '20px', background: 'rgba(212, 175, 55, 0.02)', borderRadius: '12px', border: '1px dashed var(--primary-gold)', marginTop: '15px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {newProductData.stones.map((stone, idx) => (
-                            <div key={idx} style={{ display: 'flex', gap: '10px' }}>
-                                <select value={stone.stoneName} onChange={e => updateCreateStone(idx, 'stoneName', e.target.value)} style={{ flex: 1, background: 'var(--dark-bg)', padding: '8px', borderRadius: '6px', border: '1px solid var(--glass-border)', color: 'var(--text-main)' }}>
-                                    <option value="">Select Stone...</option>
-                                    {companyStones.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
-                                </select>
-                                <input type="number" placeholder="Weight" value={stone.stoneWeight} onChange={e => updateCreateStone(idx, 'stoneWeight', e.target.value)} style={{ width: '90px', padding: '8px', borderRadius: '6px', border: '1px solid var(--glass-border)', background: 'var(--dark-bg)', color: 'var(--text-main)' }} />
-                                <button type="button" onClick={() => removeCreateStone(idx)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}><X size={18}/></button>
-                            </div>
-                        ))}
-                        <button type="button" onClick={addCreateStone} style={{ background: 'transparent', border: '1px dashed var(--primary-gold)', color: 'var(--primary-gold)', padding: '10px', borderRadius: '8px', fontSize: '0.8rem', cursor: 'pointer' }}>
-                            + Add Item to Split List
-                        </button>
+              <div className="glass" style={{ marginTop: '25px', padding: '20px', background: 'rgba(212, 175, 55, 0.02)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Package size={18} color="var(--primary-gold)"/>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--primary-gold)', margin: 0, fontWeight: 700 }}>Stone Issuance</p>
                     </div>
-                </div>
-              )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Stone Wt (g):</span>
+                        <input 
+                            type="number" 
+                            step="0.001" 
+                            value={newProductData.totalStoneWeight} 
+                            onChange={e => setNewProductData({...newProductData, totalStoneWeight: parseFloat(e.target.value) || 0})}
+                            style={{ width: '100px', background: 'var(--dark-bg)', border: '1px solid var(--primary-gold)', borderRadius: '6px', color: 'var(--primary-gold)', fontWeight: 700, textAlign: 'center', padding: '5px' }}
+                        />
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {newProductData.stones.map((stone, idx) => (
+                          <div key={idx} style={{ display: 'flex', gap: '8px', background: 'var(--dark-bg)', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                              <select value={stone.stoneName} onChange={e => updateCreateStone(idx, 'stoneName', e.target.value)} style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none' }}>
+                                  <option value="">Select Stone...</option>
+                                  {companyStones.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+                              </select>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', borderLeft: '1px solid var(--glass-border)', paddingLeft: '10px' }}>
+                                  <input type="number" step="0.001" placeholder="0.000" value={stone.stoneWeight} onChange={e => updateCreateStone(idx, 'stoneWeight', e.target.value)} style={{ width: '80px', background: 'transparent', border: 'none', color: 'var(--primary-gold)', fontWeight: 600, outline: 'none' }} />
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>g</span>
+                              </div>
+                              <button type="button" onClick={() => removeCreateStone(idx)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0 5px' }}><X size={16}/></button>
+                          </div>
+                      ))}
+                      <button 
+                          type="button" 
+                          onClick={addCreateStone} 
+                          style={{ background: 'transparent', border: '1px dashed var(--primary-gold)', color: 'var(--primary-gold)', padding: '10px', borderRadius: '8px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 600, marginTop: '5px' }}
+                      >
+                          + Add Stone Item to Split
+                      </button>
+                  </div>
+              </div>
 
               <div className="input-group" style={{ marginTop: '20px' }}>
                   <label>Design & Instructions Description</label>
