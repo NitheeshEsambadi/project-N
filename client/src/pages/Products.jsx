@@ -239,6 +239,9 @@ const Products = () => {
                   <div><span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>ASSIGNED CODE</span><div style={{ fontWeight: 600, fontFamily: 'monospace' }}>{selectedAssignment.productId}</div></div>
                   <div><span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>WORKER</span><div style={{ fontWeight: 600 }}>{selectedAssignment.workerId?.name || 'Unknown'}</div></div>
                   <div><span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>GOLD ISSUED</span><div style={{ fontWeight: 600 }}>{selectedAssignment.expectedWeight}g</div></div>
+                  {selectedAssignment.notes && (
+                    <div style={{ flex: 1 }}><span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>DESIGN NOTES</span><div style={{ fontWeight: 600, color: 'var(--primary-gold)' }}>{selectedAssignment.notes}</div></div>
+                  )}
                   {selectedAssignment.dueDate && (
                     <div><span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>DUE DATE</span><div style={{ fontWeight: 600 }}>{new Date(selectedAssignment.dueDate).toLocaleDateString()}</div></div>
                   )}

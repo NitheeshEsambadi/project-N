@@ -68,7 +68,8 @@ const importData = async () => {
                 designName: 'Majesty Gold',
                 expectedWeight: 240,
                 workerId: workers[0]._id,
-                status: 'in-progress'
+                status: 'in-progress',
+                notes: 'Use antique finish as per customer request'
             },
             {
                 productId: 'PRD-002',
@@ -80,7 +81,8 @@ const importData = async () => {
                 grossWeight: 14.8,
                 netWeight: 14.2,
                 actualWastage: 2.1,
-                qualityCheck: 'passed'
+                qualityCheck: 'passed',
+                notes: 'Standard 6-prong setting'
             }
         ]);
 
