@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Plus, Package, Clock, ChevronRight, Search, X, Trash2, Printer, Save, LayoutGrid, List } from 'lucide-react';
+import { Plus, Package, Clock, ChevronRight, Search, X, Trash2, Printer, Save, LayoutGrid, List, RotateCcw } from 'lucide-react';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -18,9 +18,12 @@ const Products = () => {
   
   // Create Assignment State
   const [newProductData, setNewProductData] = useState({
-    category: '', designName: '', expectedWeight: '', pureWeight: '', workerId: '', stones: [], totalStoneWeight: 0, purity: '92', purityType: 'Percentage', dueDate: '', issuanceDate: new Date().toISOString().split('T')[0]
+    category: '', designName: '', expectedWeight: '', pureWeight: '', workerId: '', stones: [], totalStoneWeight: 0, purity: '92', purityType: 'Percentage', dueDate: '', issuanceDate: new Date().toISOString().split('T')[0], notes: ''
   });
   const [showStoneDetail, setShowStoneDetail] = useState(false);
+  const [activeSubTab, setActiveSubTab] = useState('ongoing'); // 'ongoing' or 'received'
+  const [showReceiveDecisionModal, setShowReceiveDecisionModal] = useState(false);
+  const [pendingReceiveProduct, setPendingReceiveProduct] = useState(null);
 
   // Draft Receive State
   const [draftList, setDraftList] = useState([]);
@@ -112,6 +115,27 @@ const Products = () => {
       fetchData();
     } catch (err) {
        alert('Error creating assignment');
+    }
+  };
+
+  const handleReceiveClick = (product) => {
+    setPendingReceiveProduct(product);
+    setShowReceiveDecisionModal(true);
+  };
+
+  const processReceiveDecision = async (decision) => {
+    if (decision === 'now') {
+      setSelectedAssignment(pendingReceiveProduct);
+      setShowReceiveDecisionModal(false);
+    } else {
+      try {
+        await api.put(`/mgmt/products/${pendingReceiveProduct._id}`, { status: 'received' });
+        setShowReceiveDecisionModal(false);
+        fetchData();
+        setActiveSubTab('received');
+      } catch (err) {
+        alert('Error updating status');
+      }
     }
   };
 
@@ -447,6 +471,22 @@ const Products = () => {
         </button>
       </div>
 
+      <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', alignItems: 'center', borderBottom: '1px solid var(--glass-border)', paddingBottom: '15px' }}>
+          <button 
+              onClick={() => setActiveSubTab('ongoing')}
+              style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: activeSubTab === 'ongoing' ? 'rgba(212, 175, 55, 0.15)' : 'transparent', color: activeSubTab === 'ongoing' ? 'var(--primary-gold)' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer' }}
+          >
+              Ongoing Assignments ({products.filter(p => p.status !== 'received').length})
+          </button>
+          <button 
+              onClick={() => setActiveSubTab('received')}
+              style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: activeSubTab === 'received' ? 'rgba(212, 175, 55, 0.15)' : 'transparent', color: activeSubTab === 'received' ? 'var(--primary-gold)' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer' }}
+          >
+              Received Work ({products.filter(p => p.status === 'received').length})
+          </button>
+          <div style={{ flex: 1 }} />
+      </div>
+
       <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: 1 }}>
             <Search style={{ position: 'absolute', left: '15px', top: '15px', color: 'var(--text-muted)' }} size={20}/>
@@ -455,6 +495,7 @@ const Products = () => {
                 placeholder="Search pending assignments by ID, design or craftsman..." 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
+                className="glass" 
                 style={{ width: '100%', padding: '15px 15px 15px 50px', background: 'var(--dark-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px', color: 'var(--text-main)' }}
             />
         </div>
@@ -474,113 +515,171 @@ const Products = () => {
         </div>
       </div>
 
-      {viewMode === 'card' ? (
-        <div className="responsive-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-            {filteredProducts.map(product => (
-            <div key={product._id} className="glass" style={{ padding: '20px', borderTop: `4px solid ${product.status === 'in-progress' ? 'var(--accent-blue)' : 'var(--primary-gold)'}`, background: 'var(--surface-bg)', borderRadius: '15px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                        <div>
-                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{product.productId}</span>
-                            <h3 style={{ fontSize: '1.15rem', margin: '4px 0', fontWeight: 700 }}>{product.designName}</h3>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--primary-gold)', fontWeight: 600 }}>{product.category}</span>
+      {activeSubTab === 'ongoing' ? (
+        <>
+          {viewMode === 'card' ? (
+            <div className="responsive-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+                {filteredProducts.filter(p => p.status !== 'received').map(product => (
+                <div key={product._id} className="glass" style={{ padding: '20px', borderTop: `4px solid ${product.status === 'in-progress' ? 'var(--accent-blue)' : 'var(--primary-gold)'}`, background: 'var(--surface-bg)', borderRadius: '15px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                            <div>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{product.productId}</span>
+                                <h3 style={{ fontSize: '1.15rem', margin: '4px 0', fontWeight: 700 }}>{product.designName}</h3>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--primary-gold)', fontWeight: 600 }}>{product.category}</span>
+                            </div>
+                            <span style={{ padding: '4px 8px', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 700, background: 'rgba(212, 175, 55, 0.1)', color: 'var(--primary-gold)', border: '1px solid rgba(212, 175, 55, 0.2)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Clock size={12}/> {product.status.toUpperCase()}
+                            </span>
                         </div>
-                        <span style={{ padding: '4px 8px', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 700, background: 'rgba(212, 175, 55, 0.1)', color: 'var(--primary-gold)', border: '1px solid rgba(212, 175, 55, 0.2)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Clock size={12}/> {product.status.toUpperCase()}
-                        </span>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', margin: '15px 0', padding: '12px', background: 'var(--dark-bg)', borderRadius: '10px' }}>
+                            <div>
+                                <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Issued</p>
+                                <p style={{ fontSize: '0.85rem', fontWeight: 700 }}>{product.expectedWeight}g</p>
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                                <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Purity</p>
+                                <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-gold)' }}>{product.purity}{product.purityType === 'Carat' ? 'k' : '%'}</p>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Pure Wt</p>
+                                <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--success)' }}>{product.pureWeight?.toFixed(3) || '0.000'}g</p>
+                            </div>
+                        </div>
+
+                        <div style={{ marginBottom: '15px', padding: '10px', background: 'var(--dark-bg)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                            <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px' }}>CRAFTSMAN</p>
+                            <p style={{ fontSize: '0.85rem', fontWeight: 600 }}>{product.workerId?.name || 'Unassigned'}</p>
+                        </div>
+
+                        {product.dueDate && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', padding: '8px 12px', background: 'rgba(231, 76, 60, 0.05)', borderRadius: '8px' }}>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>DUE DATE</span>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--danger)' }}>{formatDate(product.dueDate)}</span>
+                            </div>
+                        )}
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', margin: '15px 0', padding: '12px', background: 'var(--dark-bg)', borderRadius: '10px' }}>
-                        <div>
-                            <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Issued</p>
-                            <p style={{ fontSize: '0.85rem', fontWeight: 700 }}>{product.expectedWeight}g</p>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                            <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Purity</p>
-                            <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-gold)' }}>{product.purity}{product.purityType === 'Carat' ? 'k' : '%'}</p>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                            <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Pure Wt</p>
-                            <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--success)' }}>{product.pureWeight?.toFixed(3) || '0.000'}g</p>
-                        </div>
-                    </div>
-
-                    <div style={{ marginBottom: '15px', padding: '10px', background: 'var(--dark-bg)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                        <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px' }}>CRAFTSMAN</p>
-                        <p style={{ fontSize: '0.85rem', fontWeight: 600 }}>{product.workerId?.name || 'Unassigned'}</p>
-                    </div>
-
-                    {product.dueDate && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', padding: '8px 12px', background: 'rgba(231, 76, 60, 0.05)', borderRadius: '8px' }}>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>DUE DATE</span>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--danger)' }}>{formatDate(product.dueDate)}</span>
-                        </div>
-                    )}
+                    <button 
+                        className="glass" 
+                        onClick={() => handleReceiveClick(product)}
+                        style={{ width: '100%', padding: '12px', color: 'var(--primary-gold)', border: '1px solid var(--primary-gold)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 700, transition: '0.3s' }}
+                    >
+                        Receive Work <ChevronRight size={18} />
+                    </button>
                 </div>
-
-                <button 
-                    className="glass" 
-                    onClick={() => setSelectedAssignment(product)}
-                    style={{ width: '100%', padding: '12px', color: 'var(--primary-gold)', border: '1px solid var(--primary-gold)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 700, transition: '0.3s' }}
-                >
-                    Receive Work <ChevronRight size={18} />
-                </button>
+                ))}
             </div>
-            ))}
-        </div>
+          ) : (
+            <div className="table-container glass" style={{ padding: '0', overflow: 'hidden', borderRadius: '15px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead style={{ background: 'var(--dark-bg)' }}>
+                        <tr style={{ textAlign: 'left', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            <th style={{ padding: '15px' }}>ID / DATE</th>
+                            <th style={{ padding: '15px' }}>DESIGN / CAT</th>
+                            <th style={{ padding: '15px' }}>CRAFTSMAN</th>
+                            <th style={{ padding: '15px' }}>ISSUED (G)</th>
+                            <th style={{ padding: '15px' }}>PURE (G)</th>
+                            <th style={{ padding: '15px' }}>DUE DATE</th>
+                            <th style={{ padding: '15px', textAlign: 'right' }}>ACTION</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredProducts.filter(p => p.status !== 'received').map(product => (
+                            <tr key={product._id} style={{ borderTop: '1px solid var(--glass-border)', transition: '0.2s' }}>
+                                <td style={{ padding: '15px' }}>
+                                    <div style={{ fontFamily: 'monospace', fontSize: '0.8rem', fontWeight: 600 }}>{product.productId}</div>
+                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{formatDate(product.issuanceDate)}</div>
+                                </td>
+                                <td style={{ padding: '15px' }}>
+                                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{product.designName}</div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--primary-gold)' }}>{product.category}</div>
+                                </td>
+                                <td style={{ padding: '15px', fontWeight: 500 }}>{product.workerId?.name || 'Unassigned'}</td>
+                                <td style={{ padding: '15px', fontWeight: 600 }}>{product.expectedWeight}g</td>
+                                <td style={{ padding: '15px', fontWeight: 700, color: 'var(--success)' }}>{product.pureWeight?.toFixed(3)}g</td>
+                                <td style={{ padding: '15px' }}>
+                                    <span style={{ color: 'var(--danger)', fontWeight: 600, fontSize: '0.85rem' }}>
+                                        {formatDate(product.dueDate)}
+                                    </span>
+                                </td>
+                                <td style={{ padding: '15px', textAlign: 'right' }}>
+                                    <button 
+                                        onClick={() => handleReceiveClick(product)}
+                                        style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--primary-gold)', color: 'var(--primary-gold)', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+                                    >
+                                        Receive
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+          )}
+
+          {filteredProducts.filter(p => p.status !== 'received').length === 0 && (
+            <div style={{ textAlign: 'center', padding: '80px', color: 'var(--text-muted)' }}>
+              <Package size={50} style={{ opacity: 0.1, marginBottom: '20px' }}/>
+              <p>No pending assignments found.</p>
+            </div>
+          )}
+        </>
       ) : (
-        <div className="table-container glass" style={{ padding: '0', overflow: 'hidden', borderRadius: '15px' }}>
+          /* RECEIVED TAB VIEW */
+          <div className="table-container glass" style={{ padding: '0', overflow: 'hidden', borderRadius: '15px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead style={{ background: 'var(--dark-bg)' }}>
-                    <tr style={{ textAlign: 'left', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                        <th style={{ padding: '15px' }}>ID / DATE</th>
-                        <th style={{ padding: '15px' }}>DESIGN / CAT</th>
-                        <th style={{ padding: '15px' }}>CRAFTSMAN</th>
-                        <th style={{ padding: '15px' }}>ISSUED (G)</th>
-                        <th style={{ padding: '15px' }}>PURE (G)</th>
-                        <th style={{ padding: '15px' }}>DUE DATE</th>
-                        <th style={{ padding: '15px', textAlign: 'right' }}>ACTION</th>
+                    <tr style={{ textAlign: 'left', fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                        <th style={{ padding: '15px' }}>Product Code</th>
+                        <th style={{ padding: '15px' }}>Design</th>
+                        <th style={{ padding: '15px' }}>Craftsman</th>
+                        <th style={{ padding: '15px' }}>Issued Wt</th>
+                        <th style={{ padding: '15px' }}>Status</th>
+                        <th style={{ padding: '15px', textAlign: 'right' }}>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {filteredProducts.map(product => (
-                        <tr key={product._id} style={{ borderTop: '1px solid var(--glass-border)', transition: '0.2s' }}>
+                    {filteredProducts.filter(p => p.status === 'received').map(product => (
+                        <tr key={product._id} style={{ borderTop: '1px solid var(--glass-border)' }}>
+                            <td style={{ padding: '15px', fontFamily: 'monospace', fontWeight: 600 }}>{product.productId}</td>
+                            <td style={{ padding: '15px', fontWeight: 600 }}>{product.designName}</td>
+                            <td style={{ padding: '15px' }}>{product.workerId?.name}</td>
+                            <td style={{ padding: '15px' }}>{product.expectedWeight}g</td>
                             <td style={{ padding: '15px' }}>
-                                <div style={{ fontFamily: 'monospace', fontSize: '0.8rem', fontWeight: 600 }}>{product.productId}</div>
-                                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{formatDate(product.issuanceDate)}</div>
-                            </td>
-                            <td style={{ padding: '15px' }}>
-                                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{product.designName}</div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--primary-gold)' }}>{product.category}</div>
-                            </td>
-                            <td style={{ padding: '15px', fontWeight: 500 }}>{product.workerId?.name || 'Unassigned'}</td>
-                            <td style={{ padding: '15px', fontWeight: 600 }}>{product.expectedWeight}g</td>
-                            <td style={{ padding: '15px', fontWeight: 700, color: 'var(--success)' }}>{product.pureWeight?.toFixed(3)}g</td>
-                            <td style={{ padding: '15px' }}>
-                                <span style={{ color: 'var(--danger)', fontWeight: 600, fontSize: '0.85rem' }}>
-                                    {formatDate(product.dueDate)}
-                                </span>
+                                <span style={{ padding: '4px 10px', borderRadius: '6px', background: 'rgba(212, 175, 55, 0.1)', color: 'var(--primary-gold)', fontSize: '0.75rem', fontWeight: 600 }}>PENDING SEPARATION</span>
                             </td>
                             <td style={{ padding: '15px', textAlign: 'right' }}>
-                                <button 
-                                    onClick={() => setSelectedAssignment(product)}
-                                    style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--primary-gold)', color: 'var(--primary-gold)', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
-                                >
-                                    Receive
-                                </button>
+                                <button onClick={() => setSelectedAssignment(product)} className="btn-primary" style={{ padding: '8px 15px', borderRadius: '6px', fontSize: '0.8rem' }}>Separate & Add stock</button>
                             </td>
                         </tr>
                     ))}
+                    {filteredProducts.filter(p => p.status === 'received').length === 0 && (
+                        <tr><td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No work is currently pending detailed separation.</td></tr>
+                    )}
                 </tbody>
             </table>
-        </div>
+          </div>
       )}
 
-      {filteredProducts.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '80px', color: 'var(--text-muted)' }}>
-          <Package size={50} style={{ opacity: 0.1, marginBottom: '20px' }}/>
-          <p>No pending assignments match your search.</p>
-        </div>
+      {/* Decision Modal */}
+      {showReceiveDecisionModal && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(5px)' }}>
+              <div className="glass" style={{ width: '90%', maxWidth: '400px', padding: '30px', textAlign: 'center', border: '1px solid var(--primary-gold)' }}>
+                  <div style={{ background: 'rgba(212, 175, 55, 0.1)', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                      <RotateCcw size={30} color="var(--primary-gold)"/>
+                  </div>
+                  <h3 style={{ marginBottom: '10px' }}>Receive Work</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '30px' }}>Would you like to separate the items and add to stock now, or just mark as received for later separation?</p>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <button onClick={() => processReceiveDecision('now')} className="btn-primary" style={{ padding: '14px', borderRadius: '10px', fontWeight: 600 }}>Separate Detailed Work Now</button>
+                      <button onClick={() => processReceiveDecision('later')} className="glass" style={{ padding: '14px', borderRadius: '10px', fontWeight: 600, color: 'var(--text-main)' }}>Mark Received (Separate Later)</button>
+                      <button onClick={() => setShowReceiveDecisionModal(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', marginTop: '10px', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+              </div>
+          </div>
       )}
 
       {/* Create Product Modal */}
@@ -647,8 +746,8 @@ const Products = () => {
                   <input type="number" readOnly value={newProductData.pureWeight} style={{ background: 'rgba(46, 204, 113, 0.05)', color: 'var(--success)', fontWeight: 700 }} />
                 </div>
                 <div className="input-group">
-                  <label>Due Date</label>
-                  <input type="date" required value={newProductData.dueDate} onChange={e => setNewProductData({...newProductData, dueDate: e.target.value})} style={{ background: 'var(--dark-bg)' }} />
+                  <label>Due Date (Optional)</label>
+                  <input type="date" value={newProductData.dueDate} onChange={e => setNewProductData({...newProductData, dueDate: e.target.value})} style={{ background: 'var(--dark-bg)' }} />
                 </div>
               </div>
 

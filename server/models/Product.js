@@ -20,7 +20,7 @@ const productSchema = new mongoose.Schema({
     workerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Worker' },
     status: { 
         type: String, 
-        enum: ['pending', 'in-progress', 'completed'], 
+        enum: ['pending', 'in-progress', 'received', 'completed'], 
         default: 'pending' 
     },
     grossWeight: { type: Number }, // Received weight
