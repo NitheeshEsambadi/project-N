@@ -26,13 +26,39 @@ exports.getDashboardStats = async (req, res) => {
         const totalEarnings = financialStats.find(s => s._id === 'earning')?.total || 0;
         const totalPayments = financialStats.find(s => s._id === 'payment')?.total || 0;
 
+        // Gold Distribution Details
+        const allWorkers = await Worker.find({}, 'name workerID');
+        const goldDistribution = await Promise.all(allWorkers.map(async (w) => {
+            const workerId = w._id;
+            const issued = await GoldIssue.aggregate([
+                { $match: { workerId } },
+                { $group: { _id: null, total: { $sum: '$weight' } } }
+            ]);
+            const returned = await GoldIssue.aggregate([
+                { $match: { workerId, status: { $in: ['completed', 'returned'] } } },
+                { $group: { _id: null, total: { $sum: '$weight' } } }
+            ]);
+            const adjustmentStats = await Transaction.aggregate([
+                { $match: { workerId } },
+                { $group: { _id: null, total: { $sum: '$goldAmount' } } }
+            ]);
+
+            const bal = (issued[0]?.total || 0) - (returned[0]?.total || 0) + (adjustmentStats[0]?.total || 0);
+            return {
+                name: w.name,
+                workerID: w.workerID,
+                goldBalance: parseFloat(bal.toFixed(3))
+            };
+        }));
+
         res.json({
             goldIssued: totalGoldIssued[0]?.total || 0,
             completedProducts,
             pendingProducts,
             totalEarnings,
             totalPayments,
-            netBalance: totalEarnings - totalPayments
+            netBalance: totalEarnings - totalPayments,
+            goldDistribution: goldDistribution.filter(d => d.goldBalance !== 0)
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
