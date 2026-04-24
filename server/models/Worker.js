@@ -5,30 +5,32 @@ const workerSchema = new mongoose.Schema({
     name: { type: String, required: true },
     contact: { type: String },
     specialization: { type: String }, // e.g., Necklace, Rings, Polishing
-    labourRateType: { 
-        type: String, 
-        enum: ['perGram', 'perPiece', 'fixed'], 
-        required: true 
-    },
-    baseRate: { type: Number, default: 0 },
+    identityNumber: { type: String }, // Aadhar, PAN, etc.
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' } // Link if role is 'worker'
 }, { timestamps: true });
 
-workerSchema.pre('save', async function() {
+workerSchema.pre('save', async function(next) {
     if (!this.workerID) {
-        // Find the highest existing workerID and increment
-        const lastWorker = await mongoose.model('Worker')
-            .findOne({ workerID: { $regex: /^W\d+$/ } })
-            .sort({ workerID: -1 })
-            .lean();
-        
-        let nextNum = 1;
-        if (lastWorker && lastWorker.workerID) {
-            const num = parseInt(lastWorker.workerID.replace('W', ''), 10);
-            if (!isNaN(num)) nextNum = num + 1;
+        try {
+            // Find the most recently created worker to get the highest ID
+            const lastWorker = await mongoose.model('Worker')
+                .findOne()
+                .sort({ createdAt: -1 })
+                .lean();
+            
+            let nextNum = 1;
+            if (lastWorker && lastWorker.workerID) {
+                const num = parseInt(lastWorker.workerID.replace(/\D/g, ''), 10); // Remove non-digits like 'W'
+                if (!isNaN(num)) nextNum = num + 1;
+            }
+            
+            this.workerID = nextNum.toString().padStart(3, '0');
+            next();
+        } catch (err) {
+            next(err);
         }
-        
-        this.workerID = `W${nextNum.toString().padStart(3, '0')}`;
+    } else {
+        next();
     }
 });
 

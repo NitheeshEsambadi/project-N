@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
+import { AuthContext } from '../context/AuthContext';
 import { 
-  ArrowLeft, Coins, Package, CreditCard, History, AlertCircle, Phone, Hammer, RotateCcw, Edit2, Plus, X, ShieldCheck, Trash2, Printer
+  ArrowLeft, Coins, Package, CreditCard, History, AlertCircle, Phone, Hammer, RotateCcw, Edit2, Plus, X, ShieldCheck, Trash2, Printer, Settings2
 } from 'lucide-react';
 
 const WorkerDetailView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
   const [worker, setWorker] = useState(null);
   const [stats, setStats] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -22,10 +24,12 @@ const WorkerDetailView = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showGoldModal, setShowGoldModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
+  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
 
   // Form Datas
-  const [editData, setEditData] = useState({ name: '', contact: '', specialization: '', labourRateType: 'perGram', baseRate: '' });
+  const [editData, setEditData] = useState({ name: '', contact: '', specialization: '', identityNumber: '' });
   const [goldData, setGoldData] = useState({ weight: '', purity: '22k', expectedWastage: '0', deliveryDate: '', notes: '', stones: [], totalStoneWeight: 0 });
+  const [adjustmentData, setAdjustmentData] = useState({ type: 'payment', amount: '', goldAmount: '', notes: 'Manual Adjustment' });
   const [productData, setProductData] = useState({ category: '', designName: '', expectedWeight: '', stones: [], quantity: 1, totalStoneWeight: 0 });
   const [showGoldStoneDetail, setShowGoldStoneDetail] = useState(false);
   const [showProductStoneDetail, setShowProductStoneDetail] = useState(false);
@@ -171,8 +175,7 @@ const WorkerDetailView = () => {
         name: workerRes.data.name,
         contact: workerRes.data.contact || '',
         specialization: workerRes.data.specialization || '',
-        labourRateType: workerRes.data.labourRateType || 'perGram',
-        baseRate: workerRes.data.baseRate || ''
+        identityNumber: workerRes.data.identityNumber || ''
       });
     } catch (err) {
       console.error(err);
@@ -199,6 +202,21 @@ const WorkerDetailView = () => {
       setGoldData({ weight: '', purity: '22k', expectedWastage: '0', deliveryDate: '', notes: '', stones: [] });
       fetchData();
     } catch (err) { alert('Error issuing gold'); }
+  };
+
+  const handleAdjustmentSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/mgmt/transactions', {
+        ...adjustmentData,
+        workerId: id,
+        amount: parseFloat(adjustmentData.amount) || 0,
+        goldAmount: parseFloat(adjustmentData.goldAmount) || 0
+      });
+      setShowAdjustmentModal(false);
+      alert('Adjustment applied');
+      fetchData();
+    } catch (err) { alert('Error applying adjustment'); }
   };
 
   const addGoldStone = () => {
@@ -277,14 +295,19 @@ const WorkerDetailView = () => {
                     <p style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Phone size={14} color="var(--primary-gold)"/> {worker.contact || 'Not provided'}
                     </p>
-                    <p style={{ color: 'var(--text-muted)', margin: '10px 0 5px' }}>Labour Rate</p>
-                    <p>{worker.labourRateType === 'perGram' ? `₹${worker.baseRate}/g` : worker.labourRateType === 'perPiece' ? `₹${worker.baseRate}/pc` : `₹${worker.baseRate} Fixed`}</p>
+                    <p style={{ color: 'var(--text-muted)', margin: '10px 0 5px' }}>Identity Number</p>
+                    <p>{worker.identityNumber || '—'}</p>
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
                     <button className="glass" onClick={() => setShowEditModal(true)} style={{ flex: 1, padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--accent-blue)', border: '1px solid rgba(52,152,219,0.3)' }}>
                         <Edit2 size={14}/> Edit Profile
                     </button>
+                    {user?.role === 'admin' && (
+                        <button className="glass" onClick={() => setShowAdjustmentModal(true)} style={{ flex: 1, padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--primary-gold)', border: '1px solid rgba(212,175,55,0.3)' }}>
+                            <Settings2 size={14}/> Adjustments
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -304,7 +327,7 @@ const WorkerDetailView = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* Stats */}
             <div className="responsive-grid">
-                <MetricCard icon={<Coins size={20} color="var(--primary-gold)"/>} title="Gold Bal." value={`${((stats?.goldIssued || 0) - (stats?.goldReturned || 0)).toFixed(2)}g`} />
+                <MetricCard icon={<Coins size={20} color="var(--primary-gold)"/>} title="Gold Bal." value={`${((stats?.goldIssued || 0) - (stats?.goldReturned || 0) + (stats?.goldAdjustment || 0)).toFixed(3)}g`} />
                 <MetricCard icon={<Package size={20} color="var(--accent-blue)"/>} title="Done" value={stats?.completedProducts || 0} />
                 <MetricCard icon={<CreditCard size={20} color="var(--success)"/>} title="Earnings" value={`₹ ${(stats?.totalEarnings || 0).toLocaleString()}`} />
             </div>
@@ -346,20 +369,40 @@ const WorkerDetailView = () => {
                       <div className="input-group"><label>Full Name</label><input required value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} /></div>
                       <div className="input-group"><label>Contact</label><input value={editData.contact} onChange={e => setEditData({...editData, contact: e.target.value})} /></div>
                       <div className="input-group"><label>Specialization</label><input value={editData.specialization} onChange={e => setEditData({...editData, specialization: e.target.value})} /></div>
-                      <div className="responsive-grid" style={{ gap: '15px' }}>
-                        <div className="input-group">
-                            <label>Rate Type</label>
-                            <select value={editData.labourRateType} onChange={e => setEditData({...editData, labourRateType: e.target.value})} style={{ width: '100%', background: 'var(--surface-bg)', color: 'var(--text-main)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                                <option value="perGram">Per Gram</option>
-                                <option value="perPiece">Per Piece</option>
-                                <option value="fixed">Fixed</option>
-                            </select>
-                        </div>
-                        <div className="input-group"><label>Base Rate (₹)</label><input type="number" required value={editData.baseRate} onChange={e => setEditData({...editData, baseRate: e.target.value})} /></div>
-                      </div>
+                      <div className="input-group"><label>Identity Proof Number</label><input value={editData.identityNumber} onChange={e => setEditData({...editData, identityNumber: e.target.value})} /></div>
                       <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                           <button type="button" className="glass" onClick={() => setShowEditModal(false)} style={{ flex: 1, padding: '12px', color: 'var(--text-main)' }}>Cancel</button>
                           <button type="submit" className="btn-primary" style={{ flex: 1 }}>Update</button>
+                      </div>
+                  </form>
+              </div>
+          </div>
+      )}
+
+      {showAdjustmentModal && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div className="glass" style={{ width: '90%', maxWidth: '480px', padding: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3 className="gold-gradient">History Adjustment</h3>
+                    <X size={20} onClick={() => setShowAdjustmentModal(false)} style={{ cursor: 'pointer' }}/>
+                  </div>
+                  <form onSubmit={handleAdjustmentSubmit}>
+                      <div className="input-group">
+                          <label>Adjustment Type</label>
+                          <select value={adjustmentData.type} onChange={e => setAdjustmentData({...adjustmentData, type: e.target.value})} style={{ width: '100%', background: 'var(--surface-bg)', color: 'var(--text-main)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                              <option value="payment">Debit (Give/Subtract from worker)</option>
+                              <option value="earning">Credit (Add to worker balance)</option>
+                          </select>
+                      </div>
+                      <div className="responsive-grid" style={{ gap: '15px' }}>
+                          <div className="input-group"><label>Cash Amount (₹)</label><input type="number" value={adjustmentData.amount} onChange={e => setAdjustmentData({...adjustmentData, amount: e.target.value})} placeholder="0" /></div>
+                          <div className="input-group"><label>Gold Weight (g)</label><input type="number" step="0.001" value={adjustmentData.goldAmount} onChange={e => setAdjustmentData({...adjustmentData, goldAmount: e.target.value})} placeholder="0.000" /></div>
+                      </div>
+                      <div className="input-group"><label>Notes / Reason</label><input required value={adjustmentData.notes} onChange={e => setAdjustmentData({...adjustmentData, notes: e.target.value})} /></div>
+                      
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                          <button type="button" className="glass" onClick={() => setShowAdjustmentModal(false)} style={{ flex: 1, padding: '12px', color: 'var(--text-main)' }}>Cancel</button>
+                          <button type="submit" className="btn-primary" style={{ flex: 1 }}>Apply Adjustment</button>
                       </div>
                   </form>
               </div>
@@ -696,7 +739,14 @@ const TransactionsTab = ({ transactions }) => (
                                 </span>
                             </td>
                             <td style={{ padding: '12px 10px', fontWeight: 600 }}>
-                                {t.type === 'payment' ? '-' : '+'} ₹ {t.amount?.toLocaleString()}
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span>{t.type === 'payment' ? '-' : '+'} ₹ {t.amount?.toLocaleString()}</span>
+                                    {t.goldAmount !== 0 && (
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--primary-gold)' }}>
+                                            {t.goldAmount > 0 ? '+' : ''}{t.goldAmount}g Gold
+                                        </span>
+                                    )}
+                                </div>
                             </td>
                             <td style={{ padding: '12px 10px', color: 'var(--text-muted)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {t.notes || '—'}

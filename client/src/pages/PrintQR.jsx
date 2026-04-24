@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import Barcode from 'react-barcode';
 import api from '../api';
 
 const PrintQR = () => {
@@ -40,10 +41,17 @@ const PrintQR = () => {
     };
 
     return (
-        <div style={{ textAlign: 'center', fontFamily: 'sans-serif', margin: '20px auto', maxWidth: '300px', background: 'white', color: 'white', padding: '20px' }}>
-            <QRCodeSVG value={product.productId} size={150} level="H" style={{ margin: '0 auto' }} />
+        <div style={{ textAlign: 'center', fontFamily: 'sans-serif', margin: '20px auto', maxWidth: '300px', background: 'white', color: 'black', padding: '20px' }}>
             
-            {companySettings?.qrFormat !== 'qr' && (
+            {companySettings?.qrFormat === 'barcode_128' ? (
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
+                    <Barcode value={product.productId} width={1.5} height={50} fontSize={14} margin={0} displayValue={true} />
+                </div>
+            ) : (
+                <QRCodeSVG value={product.productId} size={120} level="H" style={{ margin: '0 auto', display: 'block' }} />
+            )}
+            
+            {companySettings?.qrFormat !== 'qr' && companySettings?.qrFormat !== 'barcode_128' && (
                 <div style={{ marginTop: '10px', fontSize: '12px' }}>
                     <p style={{ margin: '4px 0', fontWeight: 'bold', fontSize: '14px' }}>{product.designName}</p>
                     
@@ -65,22 +73,20 @@ const PrintQR = () => {
                 </div>
             )}
             
-            {/* Added a button to close the tab easily after printing */}
             <div className="no-print" style={{ marginTop: '30px' }}>
                 <button 
                     onClick={() => window.close()} 
-                    style={{ padding: '8px 16px', background: '#333', color: 'var(--text-main)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    style={{ padding: '8px 16px', background: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                 >
                     Close Window
                 </button>
             </div>
             
-            {/* Since PrintQR replaces the body, we need to add standard print media queries just in case */}
             <style>
                 {`
                 @media print {
                     .no-print { display: none !important; }
-                    body { background: white; margin: 0; padding: 0; }
+                    body { background: white; margin: 0; padding: 0; color: black; }
                 }
                 `}
             </style>

@@ -326,6 +326,48 @@ const Settings = () => {
                     </div>
                 </div>
             )}
+            {/* Print/QR Tab */}
+            {activeTab === 'qr' && (
+                <div className="fade-in">
+                    <h3 style={{ marginBottom: '20px' }}>Print Label & Tag Configuration</h3>
+                    <div className="glass" style={{ padding: '24px', background: 'var(--dark-bg)' }}>
+                        <div className="input-group" style={{ marginBottom: '20px' }}>
+                            <label>Label Format Strategy</label>
+                            <select 
+                                value={qrFormat} 
+                                onChange={e => setQrFormat(e.target.value)} 
+                                style={{ background: 'var(--surface-bg)', padding: '12px', width: '100%', maxWidth: '400px' }}
+                            >
+                                <option value="qr">Standard QR Code (ID Only)</option>
+                                <option value="qr_name_wt">QR + Name & Net Wt</option>
+                                <option value="qr_name_wt_stone">QR + Name, Gross/Net & Stone Wt</option>
+                                <option value="qr_name_wt_stonewt_details">QR + Full Details (Includes individual stones)</option>
+                                <option value="barcode_128">Standard Barcode (CODE128)</option>
+                            </select>
+                            <p style={{ marginTop: '10px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                Choose whether to print a standard QR Code or a Barcode (CODE128), and select the level of detail to print alongside it.
+                            </p>
+                        </div>
+
+                        <div style={{ padding: '20px', background: 'var(--surface-bg)', borderRadius: '12px', border: '1px dashed var(--glass-border)', display: 'inline-block' }}>
+                            <p style={{ margin: '0 0 10px 0', fontSize: '0.8rem', color: 'var(--primary-gold)', fontWeight: 600 }}>PREVIEW</p>
+                            <div style={{ width: '200px', height: '100px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }}>
+                                {qrFormat === 'barcode_128' ? (
+                                    <div style={{ color: 'black', textAlign: 'center', fontFamily: 'monospace', fontWeight: 'bold' }}>
+                                        ||||| |||| |||<br/>
+                                        <span style={{ fontSize: '10px' }}>PROD-12345</span>
+                                    </div>
+                                ) : (
+                                    <div style={{ color: 'black', textAlign: 'center', fontWeight: 'bold' }}>
+                                        [ QR ]<br/>
+                                        {qrFormat !== 'qr' && <span style={{ fontSize: '10px' }}>Details...</span>}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Audit Log Tab */}
             {activeTab === 'audit' && (

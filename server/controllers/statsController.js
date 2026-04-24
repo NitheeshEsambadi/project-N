@@ -62,13 +62,17 @@ exports.getWorkerStats = async (req, res) => {
             { $match: { workerId } },
             { $group: { 
                 _id: '$type', 
-                total: { $sum: '$amount' } 
+                total: { $sum: '$amount' },
+                goldTotal: { $sum: '$goldAmount' }
             } }
         ]);
+
+        const goldAdjustment = financeStats.reduce((acc, curr) => acc + (curr.goldTotal || 0), 0);
 
         res.json({
             goldIssued: totalGoldIssued[0]?.total || 0,
             goldReturned: goldReturnedStats[0]?.total || 0,
+            goldAdjustment,
             completedProducts: productStats,
             totalEarnings: financeStats.find(s => s._id === 'earning')?.total || 0,
             totalPayments: financeStats.find(s => s._id === 'payment')?.total || 0

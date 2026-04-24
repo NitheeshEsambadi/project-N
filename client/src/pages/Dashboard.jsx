@@ -5,7 +5,6 @@ import api from '../api';
 import Sidebar from '../components/Sidebar';
 import { AuthContext } from '../context/AuthContext';
 import Workers from './Workers';
-import GoldIssuance from './GoldIssuance';
 import Products from './Products';
 import WastageAnalytics from './WastageAnalytics';
 import Payments from './Payments';
@@ -113,7 +112,7 @@ const Dashboard = () => {
         <Routes>
           <Route path="/" element={<Home stats={stats} user={user} recentActivity={recentActivity} additions={dashboardAdditions} currency={company.currency} />} />
           <Route path="/workers" element={<Workers />} />
-          <Route path="/gold" element={<GoldIssuance />} />
+
           <Route path="/products" element={<Products />} />
           <Route path="/wastage" element={<WastageAnalytics />} />
           <Route path="/payments" element={<Payments />} />
