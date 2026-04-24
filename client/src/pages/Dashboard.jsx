@@ -13,7 +13,7 @@ import Settings from './Settings';
 import WorkerDetailView from './WorkerDetailView';
 import Inventory from './Inventory';
 import Sales from './Sales';
-import { History, ArrowUpRight, ArrowDownLeft, Menu, X, ShoppingBag } from 'lucide-react';
+import { History, ArrowUpRight, ArrowDownLeft, Menu, X, ShoppingBag, RotateCcw } from 'lucide-react';
 
 const Dashboard = () => {
   const { user, logout } = useContext(AuthContext);

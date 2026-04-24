@@ -16,7 +16,7 @@ const Products = () => {
   
   // Create Assignment State
   const [newProductData, setNewProductData] = useState({
-    category: '', designName: '', expectedWeight: '', workerId: '', stones: [], quantity: 1, totalStoneWeight: 0, purity: '22k', purityType: 'Carat', dueDate: ''
+    category: '', designName: '', expectedWeight: '', workerId: '', stones: [], quantity: 1, totalStoneWeight: 0, purity: '22k', purityType: 'Carat', dueDate: '', notes: ''
   });
   const [showStoneDetail, setShowStoneDetail] = useState(false);
 
@@ -80,7 +80,7 @@ const Products = () => {
     try {
       await api.post('/mgmt/products', newProductData);
       setShowCreateModal(false);
-      setNewProductData({ category: categories[0]?.name || '', designName: '', expectedWeight: '', workerId: '', stones: [], quantity: 1, totalStoneWeight: 0, purity: purityStandards[0]?.label || '22k', purityType: 'Carat', dueDate: '' });
+      setNewProductData({ category: categories[0]?.name || '', designName: '', expectedWeight: '', workerId: '', stones: [], quantity: 1, totalStoneWeight: 0, purity: purityStandards[0]?.label || '22k', purityType: 'Carat', dueDate: '', notes: '' });
       fetchData();
     } catch (err) {
        alert('Error creating assignment');
@@ -88,8 +88,18 @@ const Products = () => {
   };
 
   const addCreateStone = () => setNewProductData({ ...newProductData, stones: [...newProductData.stones, { stoneName: '', stoneWeight: '', stoneDetails: '' }] });
-  const updateCreateStone = (i, f, v) => { const s = [...newProductData.stones]; s[i][f] = v; setNewProductData({ ...newProductData, stones: s }); };
-  const removeCreateStone = (i) => { const s = [...newProductData.stones]; s.splice(i, 1); setNewProductData({ ...newProductData, stones: s }); };
+  const updateCreateStone = (i, f, v) => { 
+    const s = [...newProductData.stones]; 
+    s[i][f] = v; 
+    const total = s.reduce((acc, st) => acc + (parseFloat(st.stoneWeight) || 0), 0);
+    setNewProductData({ ...newProductData, stones: s, totalStoneWeight: total }); 
+  };
+  const removeCreateStone = (i) => { 
+    const s = [...newProductData.stones]; 
+    s.splice(i, 1); 
+    const total = s.reduce((acc, st) => acc + (parseFloat(st.stoneWeight) || 0), 0);
+    setNewProductData({ ...newProductData, stones: s, totalStoneWeight: total }); 
+  };
 
   // ---- DRAFT RECEIVE LOGIC ----
   const addDraftStone = () => setDraftForm({ ...draftForm, stones: [...draftForm.stones, { stoneName: '', stoneWeight: '', stoneDetails: '' }] });
@@ -479,14 +489,15 @@ const Products = () => {
             <form onSubmit={handleCreate}>
               <div className="responsive-grid" style={{ gap: '20px' }}>
                 <div className="input-group">
-                  <label>Category</label>
-                  <select value={newProductData.category} onChange={e => setNewProductData({...newProductData, category: e.target.value})} style={{ background: 'var(--dark-bg)' }}>
-                    {categories.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
+                  <label>Assign to Craftsman *</label>
+                  <select required value={newProductData.workerId} onChange={e => setNewProductData({...newProductData, workerId: e.target.value})} style={{ background: 'var(--dark-bg)' }}>
+                    <option value="">Select Worker...</option>
+                    {workers.map(w => <option key={w._id} value={w._id}>{w.name}</option>)}
                   </select>
                 </div>
                 <div className="input-group">
-                  <label>Gold Issued Weight (g)</label>
-                  <input type="number" step="0.01" required value={newProductData.expectedWeight} onChange={e => setNewProductData({...newProductData, expectedWeight: e.target.value})} style={{ background: 'var(--dark-bg)' }} />
+                  <label>Gold Issued Weight (g) *</label>
+                  <input type="number" step="0.001" required value={newProductData.expectedWeight} onChange={e => setNewProductData({...newProductData, expectedWeight: e.target.value})} style={{ background: 'var(--dark-bg)' }} placeholder="0.000" />
                 </div>
                 <div className="input-group">
                   <label>Due Date</label>
@@ -495,36 +506,39 @@ const Products = () => {
               </div>
 
               <div className="responsive-grid" style={{ gap: '20px' }}>
-                  <div className="input-group" style={{ flex: 2 }}>
-                    <label>Purity Value</label>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <input list="purity-standards" value={newProductData.purity} onChange={e => setNewProductData({...newProductData, purity: e.target.value})} style={{ flex: 1, background: 'var(--dark-bg)' }} />
-                        <datalist id="purity-standards">
-                            {purityStandards.map(ps => <option key={ps.label} value={ps.label} />)}
-                        </datalist>
-                        <select value={newProductData.purityType} onChange={e => setNewProductData({...newProductData, purityType: e.target.value})} style={{ width: '120px', background: 'var(--dark-bg)' }}>
-                            <option value="Carat">Carat</option>
-                            <option value="Percentage">Percentage</option>
-                        </select>
-                    </div>
+                <div className="input-group">
+                  <label>Category</label>
+                  <select value={newProductData.category} onChange={e => setNewProductData({...newProductData, category: e.target.value})} style={{ background: 'var(--dark-bg)' }}>
+                    {categories.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div className="input-group" style={{ flex: 2 }}>
+                  <label>Purity Value</label>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                      <input list="purity-standards" value={newProductData.purity} onChange={e => setNewProductData({...newProductData, purity: e.target.value})} style={{ flex: 1, background: 'var(--dark-bg)' }} />
+                      <datalist id="purity-standards">
+                          {purityStandards.map(ps => <option key={ps.label} value={ps.label} />)}
+                      </datalist>
+                      <select value={newProductData.purityType} onChange={e => setNewProductData({...newProductData, purityType: e.target.value})} style={{ width: '120px', background: 'var(--dark-bg)' }}>
+                          <option value="Carat">Carat</option>
+                          <option value="Percentage">Percentage</option>
+                      </select>
                   </div>
-                  <div className="input-group" style={{ flex: 1 }}>
-                    <label>Bulk Quantity</label>
-                    <input type="number" min="1" value={newProductData.quantity} onChange={e => setNewProductData({...newProductData, quantity: e.target.value})} style={{ background: 'var(--dark-bg)' }} />
-                  </div>
+                </div>
+                <div className="input-group" style={{ flex: 1 }}>
+                  <label>Bulk Quantity</label>
+                  <input type="number" min="1" value={newProductData.quantity} onChange={e => setNewProductData({...newProductData, quantity: e.target.value})} style={{ background: 'var(--dark-bg)' }} />
+                </div>
               </div>
 
               <div className="responsive-grid" style={{ gap: '20px' }}>
-                  <div className="input-group" style={{ flex: 2 }}>
+                  <div className="input-group" style={{ flex: 1 }}>
                     <label>Assignment / Design Name</label>
-                    <input required value={newProductData.designName} onChange={e => setNewProductData({...newProductData, designName: e.target.value})} style={{ background: 'var(--dark-bg)' }} />
+                    <input required value={newProductData.designName} onChange={e => setNewProductData({...newProductData, designName: e.target.value})} style={{ background: 'var(--dark-bg)' }} placeholder="e.g. Bridal Necklace" />
                   </div>
                   <div className="input-group" style={{ flex: 2 }}>
-                    <label>Assign to Craftsman</label>
-                    <select required value={newProductData.workerId} onChange={e => setNewProductData({...newProductData, workerId: e.target.value})} style={{ background: 'var(--dark-bg)' }}>
-                      <option value="">Select Worker...</option>
-                      {workers.map(w => <option key={w._id} value={w._id}>{w.name}</option>)}
-                    </select>
+                    <label>Design Notes / Instructions</label>
+                    <input value={newProductData.notes} onChange={e => setNewProductData({...newProductData, notes: e.target.value})} style={{ background: 'var(--dark-bg)' }} placeholder="e.g. Special pattern requested..." />
                   </div>
               </div>
 

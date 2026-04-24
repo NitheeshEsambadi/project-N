@@ -13,27 +13,20 @@ const workerSchema = new mongoose.Schema({
 }, { timestamps: true, strict: false });
 
 // Auto-generate numeric workerID (e.g., 001, 002)
-workerSchema.pre('save', async function(next) {
+workerSchema.pre('save', async function() {
     if (!this.workerID) {
-        try {
-            const lastWorker = await mongoose.model('Worker')
-                .findOne()
-                .sort({ createdAt: -1 })
-                .lean();
-            
-            let nextNum = 1;
-            if (lastWorker && lastWorker.workerID) {
-                const num = parseInt(lastWorker.workerID.replace(/\D/g, ''), 10);
-                if (!isNaN(num)) nextNum = num + 1;
-            }
-            
-            this.workerID = nextNum.toString().padStart(3, '0');
-            next();
-        } catch (err) {
-            next(err);
+        const lastWorker = await mongoose.model('Worker')
+            .findOne()
+            .sort({ createdAt: -1 })
+            .lean();
+        
+        let nextNum = 1;
+        if (lastWorker && lastWorker.workerID) {
+            const num = parseInt(lastWorker.workerID.replace(/\D/g, ''), 10);
+            if (!isNaN(num)) nextNum = num + 1;
         }
-    } else {
-        next();
+        
+        this.workerID = nextNum.toString().padStart(3, '0');
     }
 });
 
