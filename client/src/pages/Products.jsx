@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Plus, Package, Clock, ChevronRight, Search, X, Trash2, Printer, Save } from 'lucide-react';
+import { Plus, Package, Clock, ChevronRight, Search, X, Trash2, Printer, Save, LayoutGrid, List } from 'lucide-react';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -14,9 +14,11 @@ const Products = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState(null); 
   
+  const [viewMode, setViewMode] = useState('card');
+  
   // Create Assignment State
   const [newProductData, setNewProductData] = useState({
-    category: '', designName: '', expectedWeight: '', workerId: '', stones: [], quantity: 1, totalStoneWeight: 0, purity: '22k', purityType: 'Carat', dueDate: '', notes: ''
+    category: '', designName: '', expectedWeight: '', workerId: '', stones: [], totalStoneWeight: 0, purity: '22k', purityType: 'Carat', dueDate: '', notes: ''
   });
   const [showStoneDetail, setShowStoneDetail] = useState(false);
 
@@ -80,7 +82,7 @@ const Products = () => {
     try {
       await api.post('/mgmt/products', newProductData);
       setShowCreateModal(false);
-      setNewProductData({ category: categories[0]?.name || '', designName: '', expectedWeight: '', workerId: '', stones: [], quantity: 1, totalStoneWeight: 0, purity: purityStandards[0]?.label || '22k', purityType: 'Carat', dueDate: '', notes: '' });
+      setNewProductData({ category: categories[0]?.name || '', designName: '', expectedWeight: '', workerId: '', stones: [], totalStoneWeight: 0, purity: purityStandards[0]?.label || '22k', purityType: 'Carat', dueDate: '', notes: '' });
       fetchData();
     } catch (err) {
        alert('Error creating assignment');
@@ -419,59 +421,120 @@ const Products = () => {
         </button>
       </div>
 
-      <div style={{ marginBottom: '25px', position: 'relative' }}>
-        <Search style={{ position: 'absolute', left: '15px', top: '15px', color: 'var(--text-muted)' }} size={20}/>
-        <input 
-            type="text" 
-            placeholder="Search pending assignments by ID, design or craftsman..." 
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            style={{ width: '100%', padding: '15px 15px 15px 50px', background: 'var(--dark-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px', color: 'var(--text-main)' }}
-        />
+      <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+            <Search style={{ position: 'absolute', left: '15px', top: '15px', color: 'var(--text-muted)' }} size={20}/>
+            <input 
+                type="text" 
+                placeholder="Search pending assignments by ID, design or craftsman..." 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                style={{ width: '100%', padding: '15px 15px 15px 50px', background: 'var(--dark-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px', color: 'var(--text-main)' }}
+            />
+        </div>
+        <div style={{ display: 'flex', background: 'var(--dark-bg)', padding: '5px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+            <button 
+                onClick={() => setViewMode('card')}
+                style={{ padding: '8px', borderRadius: '6px', background: viewMode === 'card' ? 'var(--primary-gold)' : 'transparent', color: viewMode === 'card' ? 'black' : 'var(--text-muted)', border: 'none', cursor: 'pointer', transition: '0.2s' }}
+            >
+                <LayoutGrid size={20}/>
+            </button>
+            <button 
+                onClick={() => setViewMode('list')}
+                style={{ padding: '8px', borderRadius: '6px', background: viewMode === 'list' ? 'var(--primary-gold)' : 'transparent', color: viewMode === 'list' ? 'black' : 'var(--text-muted)', border: 'none', cursor: 'pointer', transition: '0.2s' }}
+            >
+                <List size={20}/>
+            </button>
+        </div>
       </div>
 
-      <div className="responsive-grid">
-          {filteredProducts.map(product => (
-          <div key={product._id} className="glass" style={{ padding: '20px', borderLeft: `5px solid ${product.status === 'in-progress' ? 'var(--accent-blue)' : 'var(--primary-gold)'}`, background: 'var(--surface-bg)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
-              <div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>{product.productId}</span>
-                  <h3 style={{ fontSize: '1.25rem', margin: '4px 0' }}>{product.designName}</h3>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{product.category}</p>
-              </div>
-              <span style={{ padding: '4px 8px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 600, background: 'rgba(255, 183, 178, 0.2)', color: '#FF9AA2', border: `1px solid #FF9AA233`, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Clock size={12}/> PENDING
-              </span>
-              </div>
+      {viewMode === 'card' ? (
+        <div className="responsive-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+            {filteredProducts.map(product => (
+            <div key={product._id} className="glass" style={{ padding: '20px', borderTop: `4px solid ${product.status === 'in-progress' ? 'var(--accent-blue)' : 'var(--primary-gold)'}`, background: 'var(--surface-bg)', borderRadius: '15px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                        <div>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{product.productId}</span>
+                            <h3 style={{ fontSize: '1.15rem', margin: '4px 0', fontWeight: 700 }}>{product.designName}</h3>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--primary-gold)', fontWeight: 600 }}>{product.category}</span>
+                        </div>
+                        <span style={{ padding: '4px 8px', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 700, background: 'rgba(212, 175, 55, 0.1)', color: 'var(--primary-gold)', border: '1px solid rgba(212, 175, 55, 0.2)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Clock size={12}/> {product.status.toUpperCase()}
+                        </span>
+                    </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', margin: '20px 0', padding: '15px', background: 'var(--dark-bg)', borderRadius: '12px' }}>
-              <div>
-                  <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>CRAFTSMAN</p>
-                  <p style={{ fontSize: '0.9rem', fontWeight: 500 }}>{product.workerId?.name || 'Unassigned'}</p>
-              </div>
-              <div>
-                  <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>GOLD ISSUED</p>
-                  <p style={{ fontSize: '0.9rem', fontWeight: 500 }}>{product.expectedWeight}g</p>
-              </div>
-              </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '15px', margin: '15px 0', padding: '12px', background: 'var(--dark-bg)', borderRadius: '10px' }}>
+                        <div>
+                            <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Craftsman</p>
+                            <p style={{ fontSize: '0.85rem', fontWeight: 600 }}>{product.workerId?.name || 'Unassigned'}</p>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                            <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Gold Issued</p>
+                            <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>{product.expectedWeight}g</p>
+                        </div>
+                    </div>
 
-              {product.dueDate && (
-                <div style={{ marginBottom: '15px', padding: '10px', background: 'rgba(231, 76, 60, 0.05)', borderRadius: '8px', border: '1px solid rgba(231, 76, 60, 0.1)' }}>
-                   <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>DUE DATE</p>
-                   <p style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--danger)' }}>{new Date(product.dueDate).toLocaleDateString()}</p>
+                    {product.dueDate && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', padding: '8px 12px', background: 'rgba(231, 76, 60, 0.05)', borderRadius: '8px' }}>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>DUE DATE</span>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--danger)' }}>{new Date(product.dueDate).toLocaleDateString('en-GB').split('/').join('-')}</span>
+                        </div>
+                    )}
                 </div>
-              )}
 
-              <button 
-                  className="glass" 
-                  onClick={() => setSelectedAssignment(product)}
-                  style={{ width: '100%', padding: '12px', color: 'var(--primary-gold)', border: '1px solid var(--primary-gold)', marginTop: '5px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 600, transition: 'var(--transition)' }}
-              >
-                  Receive Work <ChevronRight size={18} />
-              </button>
-          </div>
-          ))}
-      </div>
+                <button 
+                    className="glass" 
+                    onClick={() => setSelectedAssignment(product)}
+                    style={{ width: '100%', padding: '12px', color: 'var(--primary-gold)', border: '1px solid var(--primary-gold)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 700, transition: '0.3s' }}
+                >
+                    Receive Work <ChevronRight size={18} />
+                </button>
+            </div>
+            ))}
+        </div>
+      ) : (
+        <div className="table-container glass" style={{ padding: '0', overflow: 'hidden', borderRadius: '15px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ background: 'var(--dark-bg)' }}>
+                    <tr style={{ textAlign: 'left', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        <th style={{ padding: '15px' }}>PRODUCT ID</th>
+                        <th style={{ padding: '15px' }}>DESIGN & CATEGORY</th>
+                        <th style={{ padding: '15px' }}>CRAFTSMAN</th>
+                        <th style={{ padding: '15px' }}>GOLD ISSUED</th>
+                        <th style={{ padding: '15px' }}>DUE DATE</th>
+                        <th style={{ padding: '15px', textAlign: 'right' }}>ACTION</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {filteredProducts.map(product => (
+                        <tr key={product._id} style={{ borderTop: '1px solid var(--glass-border)', transition: '0.2s' }}>
+                            <td style={{ padding: '15px', fontFamily: 'monospace', fontSize: '0.8rem' }}>{product.productId}</td>
+                            <td style={{ padding: '15px' }}>
+                                <div style={{ fontWeight: 600 }}>{product.designName}</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--primary-gold)' }}>{product.category}</div>
+                            </td>
+                            <td style={{ padding: '15px', fontWeight: 500 }}>{product.workerId?.name || 'Unassigned'}</td>
+                            <td style={{ padding: '15px', fontWeight: 600 }}>{product.expectedWeight}g</td>
+                            <td style={{ padding: '15px' }}>
+                                <span style={{ color: 'var(--danger)', fontWeight: 600, fontSize: '0.85rem' }}>
+                                    {product.dueDate ? new Date(product.dueDate).toLocaleDateString('en-GB').split('/').join('-') : '-'}
+                                </span>
+                            </td>
+                            <td style={{ padding: '15px', textAlign: 'right' }}>
+                                <button 
+                                    onClick={() => setSelectedAssignment(product)}
+                                    style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--primary-gold)', color: 'var(--primary-gold)', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+                                >
+                                    Receive
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+      )}
 
       {filteredProducts.length === 0 && (
         <div style={{ textAlign: 'center', padding: '80px', color: 'var(--text-muted)' }}>
@@ -516,38 +579,65 @@ const Products = () => {
                   </select>
                 </div>
                 <div className="input-group" style={{ flex: 2 }}>
-                  <label>Purity Value</label>
+                  <label>Purity Selection</label>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                      <input list="purity-standards" value={newProductData.purity} onChange={e => setNewProductData({...newProductData, purity: e.target.value})} style={{ flex: 1, background: 'var(--dark-bg)' }} />
-                      <datalist id="purity-standards">
-                          {purityStandards.map(ps => <option key={ps.label} value={ps.label} />)}
-                      </datalist>
-                      <select value={newProductData.purityType} onChange={e => setNewProductData({...newProductData, purityType: e.target.value})} style={{ width: '120px', background: 'var(--dark-bg)' }}>
+                      <select value={newProductData.purityType} onChange={e => {
+                          const type = e.target.value;
+                          setNewProductData({
+                              ...newProductData, 
+                              purityType: type, 
+                              purity: type === 'Percentage' ? '92' : (purityStandards[0]?.label || '22k')
+                          });
+                      }} style={{ width: '130px', background: 'var(--dark-bg)' }}>
                           <option value="Carat">Carat</option>
                           <option value="Percentage">Percentage</option>
                       </select>
+                      {newProductData.purityType === 'Carat' && (
+                        <div style={{ flex: 1 }}>
+                            <input list="purity-standards" value={newProductData.purity} onChange={e => setNewProductData({...newProductData, purity: e.target.value})} style={{ width: '100%', background: 'var(--dark-bg)' }} />
+                            <datalist id="purity-standards">
+                                {purityStandards.map(ps => <option key={ps.label} value={ps.label} />)}
+                            </datalist>
+                        </div>
+                      )}
+                      {newProductData.purityType === 'Percentage' && (
+                        <input type="number" value={newProductData.purity} onChange={e => setNewProductData({...newProductData, purity: e.target.value})} style={{ flex: 1, background: 'var(--dark-bg)' }} />
+                      )}
                   </div>
-                </div>
-                <div className="input-group" style={{ flex: 1 }}>
-                  <label>Bulk Quantity</label>
-                  <input type="number" min="1" value={newProductData.quantity} onChange={e => setNewProductData({...newProductData, quantity: e.target.value})} style={{ background: 'var(--dark-bg)' }} />
                 </div>
               </div>
 
-              <div className="responsive-grid" style={{ gap: '20px' }}>
-                  <div className="input-group" style={{ flex: 1 }}>
-                    <label>Assignment / Design Name</label>
-                    <input required value={newProductData.designName} onChange={e => setNewProductData({...newProductData, designName: e.target.value})} style={{ background: 'var(--dark-bg)' }} placeholder="e.g. Bridal Necklace" />
-                  </div>
-                  <div className="input-group" style={{ flex: 2 }}>
-                    <label>Design Notes / Instructions</label>
-                    <input value={newProductData.notes} onChange={e => setNewProductData({...newProductData, notes: e.target.value})} style={{ background: 'var(--dark-bg)' }} placeholder="e.g. Special pattern requested..." />
-                  </div>
+              <div className="input-group" style={{ marginTop: '10px' }}>
+                <label>Due Date</label>
+                <input type="date" required value={newProductData.dueDate} onChange={e => setNewProductData({...newProductData, dueDate: e.target.value})} style={{ background: 'var(--dark-bg)' }} />
+              </div>
+
+              <div className="input-group" style={{ marginTop: '20px' }}>
+                  <label>Assignment / Design / Instructions</label>
+                  <textarea 
+                    required 
+                    value={newProductData.designName} 
+                    onChange={e => setNewProductData({...newProductData, designName: e.target.value})} 
+                    style={{ background: 'var(--dark-bg)', minHeight: '100px', width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)', color: 'var(--text-main)', resize: 'vertical' }} 
+                    placeholder="Enter full design details and instructions here..."
+                  />
               </div>
 
               {/* Stone Issuance Section */}
               <div className="glass" style={{ padding: '20px', background: 'rgba(212, 175, 55, 0.02)', borderRadius: '12px', border: '1px dashed var(--primary-gold)', marginTop: '20px' }}>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--primary-gold)', margin: '0 0 15px 0', fontWeight: 600 }}>Issued Stones (Optional)</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--primary-gold)', margin: 0, fontWeight: 600 }}>Stone Issuance (Optional)</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Stone Weight:</span>
+                        <input 
+                            type="number" 
+                            step="0.001" 
+                            value={newProductData.totalStoneWeight} 
+                            onChange={e => setNewProductData({...newProductData, totalStoneWeight: parseFloat(e.target.value) || 0})}
+                            style={{ width: '80px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--primary-gold)', color: 'var(--primary-gold)', fontWeight: 600, textAlign: 'right', outline: 'none' }}
+                        />
+                    </div>
+                  </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {newProductData.stones.map((stone, idx) => (
                           <div key={idx} style={{ display: 'flex', gap: '10px' }}>
