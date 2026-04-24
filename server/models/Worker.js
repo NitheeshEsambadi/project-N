@@ -7,10 +7,10 @@ const workerSchema = new mongoose.Schema({
     specialization: { type: String }, // e.g., Necklace, Rings, Polishing
     identityNumber: { type: String }, // Aadhar, PAN, etc.
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Link if role is 'worker'
-    // Legacy fields marked as optional to prevent validation errors during transition
-    labourRateType: { type: String, required: false },
-    baseRate: { type: Number, required: false }
-}, { timestamps: true });
+    // Legacy fields handled gracefully
+    labourRateType: { type: String, default: null },
+    baseRate: { type: Number, default: 0 }
+}, { timestamps: true, strict: false });
 
 // Auto-generate numeric workerID (e.g., 001, 002)
 workerSchema.pre('save', async function(next) {

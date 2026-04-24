@@ -234,56 +234,79 @@ const Products = () => {
                   )}
               </div>
 
-              {/* Add Received Item Row */}
-              <div style={{ padding: '15px 20px', background: 'var(--dark-bg)', borderRadius: '12px', marginBottom: '20px', borderLeft: '4px solid var(--accent-blue)', display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'flex-end' }}>
-                  <div style={{ flex: 2, minWidth: '150px' }}>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '5px' }}>Product Name</label>
-                      <input value={draftForm.name} onChange={e => setDraftForm({...draftForm, name: e.target.value})} placeholder="e.g. Necklace Type A" style={{ width: '100%', padding: '10px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', borderRadius: '6px', color: 'var(--text-main)' }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: '90px' }}>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '5px' }}>Gross Wt (g)</label>
-                      <input type="number" step="0.01" value={draftForm.grossWt} onChange={e => setDraftForm({...draftForm, grossWt: e.target.value})} style={{ width: '100%', padding: '10px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', borderRadius: '6px', color: 'var(--text-main)' }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: '90px' }}>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '5px' }}>Net Wt (g)</label>
-                      <input type="number" step="0.01" value={draftForm.goldWt} onChange={e => setDraftForm({...draftForm, goldWt: e.target.value})} style={{ width: '100%', padding: '10px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', borderRadius: '6px', color: 'var(--text-main)' }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: '140px' }}>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '5px' }}>Total Stone Wt</label>
-                      <div style={{ display: 'flex', gap: '5px' }}>
-                          <input type="number" step="0.01" value={draftForm.stoneWt} onChange={e => setDraftForm({...draftForm, stoneWt: e.target.value})} style={{ width: '100%', padding: '10px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', borderRadius: '6px', color: 'var(--text-main)' }} />
-                          <button onClick={() => setShowDraftStones(!showDraftStones)} title="Split Stone Details" className="glass" style={{ padding: '0 10px', borderRadius: '6px' }}>💎</button>
+              {/* Add Received Item Form */}
+              <div className="glass" style={{ padding: '24px', background: 'var(--dark-bg)', borderRadius: '15px', marginBottom: '25px', border: '1px solid var(--glass-border)', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+                  <h4 style={{ margin: '0 0 20px 0', fontSize: '1rem', color: 'var(--primary-gold)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Plus size={18}/> Add Finished Item
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', alignItems: 'flex-end' }}>
+                      <div>
+                          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Product Name / Design</label>
+                          <input value={draftForm.name} onChange={e => setDraftForm({...draftForm, name: e.target.value})} placeholder="e.g. Bridal Necklace - Final" style={{ width: '100%', padding: '12px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-main)' }} />
                       </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                          <div>
+                              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Gross Wt (g)</label>
+                              <input type="number" step="0.001" value={draftForm.grossWt} onChange={e => setDraftForm({...draftForm, grossWt: e.target.value})} placeholder="0.000" style={{ width: '100%', padding: '12px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-main)' }} />
+                          </div>
+                          <div>
+                              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Net Wt (g)</label>
+                              <input type="number" step="0.001" value={draftForm.goldWt} onChange={e => setDraftForm({...draftForm, goldWt: e.target.value})} placeholder="0.000" style={{ width: '100%', padding: '12px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-main)' }} />
+                          </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                          <div style={{ flex: 1 }}>
+                              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Total Stone Wt</label>
+                              <input type="number" step="0.001" value={draftForm.stoneWt} onChange={e => setDraftForm({...draftForm, stoneWt: e.target.value})} placeholder="0.000" style={{ width: '100%', padding: '12px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-main)' }} />
+                          </div>
+                          <button onClick={() => setShowDraftStones(!showDraftStones)} title="Stone Details" className="glass" style={{ padding: '0 15px', borderRadius: '8px', height: '45px', marginTop: '26px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>💎 <span style={{ fontSize: '0.7rem' }}>Stones</span></div>
+                          </button>
+                      </div>
+                      <button onClick={handleAddDraft} className="btn-primary" style={{ padding: '12px', borderRadius: '8px', height: '45px', fontWeight: 600 }}>
+                          SUBMIT TO LIST
+                      </button>
                   </div>
-                  <button onClick={handleAddDraft} className="btn-primary" style={{ padding: '10px 20px', borderRadius: '6px', height: '42px', minWidth: '100px' }}>
-                      Submit
-                  </button>
                   
                   {/* Expanded Stone Panel */}
                   {showDraftStones && (
-                      <div style={{ width: '100%', padding: '15px', background: 'var(--surface-bg)', borderRadius: '10px', border: '1px dashed var(--glass-border)', marginTop: '5px' }}>
-                          {selectedAssignment.stones && selectedAssignment.stones.length > 0 && (
-                              <div style={{ marginBottom: '15px' }}>
-                                  <p style={{ fontSize: '0.8rem', color: 'var(--primary-gold)', margin: '0 0 10px 0', fontWeight: 600 }}>Assigned Stones Reference</p>
-                                  {selectedAssignment.stones.map((s, i) => (
-                                      <div key={i} style={{ display: 'flex', gap: '15px', fontSize: '0.85rem', color: 'var(--text-muted)', padding: '5px 0' }}>
-                                          <span style={{ width: '120px' }}>{s.stoneName}</span>
-                                          <span>{s.stoneWeight} (Weight)</span>
-                                          <span>{s.stoneDetails}</span>
+                      <div style={{ width: '100%', padding: '20px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed var(--glass-border)', marginTop: '20px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '30px' }}>
+                              {/* Assigned Stones Reference */}
+                              <div style={{ borderRight: '1px solid var(--glass-border)', paddingRight: '20px' }}>
+                                  <p style={{ fontSize: '0.85rem', color: 'var(--primary-gold)', margin: '0 0 15px 0', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Clock size={16}/> Assigned Stone Details
+                                  </p>
+                                  {selectedAssignment.stones && selectedAssignment.stones.length > 0 ? (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                          {selectedAssignment.stones.map((s, i) => (
+                                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px' }}>
+                                                  <span style={{ fontWeight: 500 }}>{s.stoneName}</span>
+                                                  <span style={{ color: 'var(--text-muted)' }}>{s.stoneWeight}g</span>
+                                              </div>
+                                          ))}
                                       </div>
-                                  ))}
+                                  ) : (
+                                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No stones were assigned to this work.</p>
+                                  )}
                               </div>
-                          )}
-                          <div style={{ borderTop: selectedAssignment.stones && selectedAssignment.stones.length > 0 ? '1px solid var(--glass-border)' : 'none', paddingTop: selectedAssignment.stones && selectedAssignment.stones.length > 0 ? '15px' : '0' }}>
-                              <p style={{ fontSize: '0.8rem', color: 'var(--text-main)', margin: '0 0 10px 0', fontWeight: 600 }}>Custom / Actual Stones Used</p>
-                              <button type="button" onClick={addDraftStone} style={{ background: 'transparent', border: '1px solid var(--primary-gold)', color: 'var(--primary-gold)', padding: '4px 10px', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', marginBottom: '10px' }}>+ Add Custom Stone</button>
-                              {draftForm.stones.map((stone, idx) => (
-                                  <div key={idx} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                                      <input placeholder="Stone Name" value={stone.stoneName} onChange={e => updateDraftStone(idx, 'stoneName', e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid var(--glass-border)', background: 'var(--dark-bg)', color: 'var(--text-main)' }} />
-                                      <input type="number" placeholder="Weight" value={stone.stoneWeight} onChange={e => updateDraftStone(idx, 'stoneWeight', e.target.value)} style={{ width: '80px', padding: '8px', borderRadius: '6px', border: '1px solid var(--glass-border)', background: 'var(--dark-bg)', color: 'var(--text-main)' }} />
-                                      <button onClick={() => removeDraftStone(idx)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}><X size={18}/></button>
+
+                              {/* Custom Stones Input */}
+                              <div>
+                                  <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', margin: '0 0 15px 0', fontWeight: 600 }}>Custom / Actual Stones Used</p>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                      {draftForm.stones.map((stone, idx) => (
+                                          <div key={idx} style={{ display: 'flex', gap: '10px' }}>
+                                              <input placeholder="Stone Name" value={stone.stoneName} onChange={e => updateDraftStone(idx, 'stoneName', e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid var(--glass-border)', background: 'var(--dark-bg)', color: 'var(--text-main)', fontSize: '0.8rem' }} />
+                                              <input type="number" step="0.001" placeholder="Weight" value={stone.stoneWeight} onChange={e => updateDraftStone(idx, 'stoneWeight', e.target.value)} style={{ width: '90px', padding: '8px', borderRadius: '6px', border: '1px solid var(--glass-border)', background: 'var(--dark-bg)', color: 'var(--text-main)', fontSize: '0.8rem' }} />
+                                              <button onClick={() => removeDraftStone(idx)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}><X size={18}/></button>
+                                          </div>
+                                      ))}
+                                      <button type="button" onClick={addDraftStone} style={{ background: 'rgba(212, 175, 55, 0.1)', border: '1px dashed var(--primary-gold)', color: 'var(--primary-gold)', padding: '10px', borderRadius: '8px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 600 }}>
+                                          + Add Custom Stone Details
+                                      </button>
                                   </div>
-                              ))}
+                              </div>
                           </div>
                       </div>
                   )}

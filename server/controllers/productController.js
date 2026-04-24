@@ -67,9 +67,11 @@ const receiveProduct = async (req, res) => {
         // Calculate Labour Earning
         let labourAmount = 0;
         if (worker.labourRateType === 'perGram') {
-            labourAmount = netWeight * worker.baseRate;
+            labourAmount = netWeight * (worker.baseRate || 0);
+        } else if (worker.labourRateType === 'perPiece' || worker.labourRateType === 'fixed') {
+            labourAmount = (worker.baseRate || 0);
         } else {
-            labourAmount = worker.baseRate; // perPiece or fixed
+            labourAmount = 0; // Default if no rate type is set
         }
 
         // Create Earning Transaction
