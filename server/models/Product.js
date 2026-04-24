@@ -7,6 +7,8 @@ const productSchema = new mongoose.Schema({
     expectedWeight: { type: Number },
     purity: { type: String },
     purityType: { type: String, enum: ['Carat', 'Percentage'], default: 'Carat' },
+    pureWeight: { type: Number },
+    issuanceDate: { type: Date, default: Date.now },
     dueDate: { type: Date },
     stones: [
         {

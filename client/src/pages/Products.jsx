@@ -480,15 +480,24 @@ const Products = () => {
                         </span>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '15px', margin: '15px 0', padding: '12px', background: 'var(--dark-bg)', borderRadius: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', margin: '15px 0', padding: '12px', background: 'var(--dark-bg)', borderRadius: '10px' }}>
                         <div>
-                            <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Craftsman</p>
-                            <p style={{ fontSize: '0.85rem', fontWeight: 600 }}>{product.workerId?.name || 'Unassigned'}</p>
+                            <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Issued</p>
+                            <p style={{ fontSize: '0.85rem', fontWeight: 700 }}>{product.expectedWeight}g</p>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                            <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Purity</p>
+                            <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-gold)' }}>{product.purity}{product.purityType === 'Carat' ? 'k' : '%'}</p>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                            <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Gold Issued</p>
-                            <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>{product.expectedWeight}g</p>
+                            <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Pure Wt</p>
+                            <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--success)' }}>{product.pureWeight?.toFixed(3) || '0.000'}g</p>
                         </div>
+                    </div>
+
+                    <div style={{ marginBottom: '15px', padding: '10px', background: 'var(--dark-bg)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                        <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px' }}>CRAFTSMAN</p>
+                        <p style={{ fontSize: '0.85rem', fontWeight: 600 }}>{product.workerId?.name || 'Unassigned'}</p>
                     </div>
 
                     {product.dueDate && (
@@ -513,11 +522,12 @@ const Products = () => {
         <div className="table-container glass" style={{ padding: '0', overflow: 'hidden', borderRadius: '15px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead style={{ background: 'var(--dark-bg)' }}>
-                    <tr style={{ textAlign: 'left', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        <th style={{ padding: '15px' }}>PRODUCT ID</th>
-                        <th style={{ padding: '15px' }}>DESIGN & CATEGORY</th>
+                    <tr style={{ textAlign: 'left', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        <th style={{ padding: '15px' }}>ID / DATE</th>
+                        <th style={{ padding: '15px' }}>DESIGN / CAT</th>
                         <th style={{ padding: '15px' }}>CRAFTSMAN</th>
-                        <th style={{ padding: '15px' }}>GOLD ISSUED</th>
+                        <th style={{ padding: '15px' }}>ISSUED (G)</th>
+                        <th style={{ padding: '15px' }}>PURE (G)</th>
                         <th style={{ padding: '15px' }}>DUE DATE</th>
                         <th style={{ padding: '15px', textAlign: 'right' }}>ACTION</th>
                     </tr>
@@ -525,13 +535,17 @@ const Products = () => {
                 <tbody>
                     {filteredProducts.map(product => (
                         <tr key={product._id} style={{ borderTop: '1px solid var(--glass-border)', transition: '0.2s' }}>
-                            <td style={{ padding: '15px', fontFamily: 'monospace', fontSize: '0.8rem' }}>{product.productId}</td>
                             <td style={{ padding: '15px' }}>
-                                <div style={{ fontWeight: 600 }}>{product.designName}</div>
+                                <div style={{ fontFamily: 'monospace', fontSize: '0.8rem', fontWeight: 600 }}>{product.productId}</div>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{product.issuanceDate ? new Date(product.issuanceDate).toLocaleDateString('en-GB').split('/').join('-') : '-'}</div>
+                            </td>
+                            <td style={{ padding: '15px' }}>
+                                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{product.designName}</div>
                                 <div style={{ fontSize: '0.7rem', color: 'var(--primary-gold)' }}>{product.category}</div>
                             </td>
                             <td style={{ padding: '15px', fontWeight: 500 }}>{product.workerId?.name || 'Unassigned'}</td>
                             <td style={{ padding: '15px', fontWeight: 600 }}>{product.expectedWeight}g</td>
+                            <td style={{ padding: '15px', fontWeight: 700, color: 'var(--success)' }}>{product.pureWeight?.toFixed(3)}g</td>
                             <td style={{ padding: '15px' }}>
                                 <span style={{ color: 'var(--danger)', fontWeight: 600, fontSize: '0.85rem' }}>
                                     {product.dueDate ? new Date(product.dueDate).toLocaleDateString('en-GB').split('/').join('-') : '-'}
