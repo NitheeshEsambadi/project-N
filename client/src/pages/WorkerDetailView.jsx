@@ -18,8 +18,16 @@ const WorkerDetailView = () => {
   const [categories, setCategories] = useState([{ name: 'Necklace', code: 'NE' }]);
   const [companyStones, setCompanyStones] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
-  
+  const formatDate = (date) => {
+    if (!date) return '-';
+    const d = new Date(date);
+    return d.toLocaleDateString('en-GB', { 
+        day: '2-digit', 
+        month: 'short', 
+        year: 'numeric' 
+    }).split(' ').join(' - ');
+  };
+
   // Modals Visibility
   const [showEditModal, setShowEditModal] = useState(false);
   const [showGoldModal, setShowGoldModal] = useState(false);
@@ -40,7 +48,7 @@ const WorkerDetailView = () => {
     // Using string concatenation for the inner parts to avoid template literal escaping issues
     const transactionRows = transactions.map(t => {
       return '<tr>' +
-        '<td>' + new Date(t.createdAt).toLocaleDateString() + '</td>' +
+        '<td>' + formatDate(t.createdAt) + '</td>' +
         '<td>' + t.type.toUpperCase() + '</td>' +
         '<td>' + (t.notes || '') + '</td>' +
         '<td>₹ ' + t.amount.toLocaleString() + '</td>' +
@@ -66,7 +74,7 @@ const WorkerDetailView = () => {
           <div class="header">
             <h2>WORKER TRANSACTION LEDGER</h2>
             <p><strong>Worker:</strong> ${worker.name} (${worker.workerID})</p>
-            <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+            <p><strong>Date:</strong> ${formatDate(new Date())}</p>
           </div>
           <table>
             <thead>
@@ -116,7 +124,7 @@ const WorkerDetailView = () => {
           <div class="header">
             <h2 style="margin:0">${worker.name}</h2>
             <div>SUBMISSION RECEIPT</div>
-            <div>Date: ${new Date().toLocaleString()}</div>
+            <div>Date: ${formatDate(new Date())}</div>
           </div>
           <div class="bold" style="margin-bottom:10px">PRODUCT DETAILS:</div>
           <div class="item-row"><span>ID:</span> <span>${product.productID}</span></div>
@@ -584,7 +592,7 @@ const OverviewTab = ({ stats, goldIssues }) => (
                     <span style={{ color: g.status === 'issued' ? 'var(--primary-gold)' : g.status === 'completed' ? 'var(--success)' : 'var(--accent-blue)', textTransform: 'uppercase', fontSize: '0.7rem', fontWeight: 600 }}>
                         {g.status}
                     </span>
-                    <span style={{ color: 'var(--text-muted)' }}>{new Date(g.createdAt).toLocaleDateString()}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>{formatDate(g.createdAt)}</span>
                 </div>
             )) : <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No gold requests yet.</p>}
         </div>
@@ -633,7 +641,7 @@ const ProductsTab = ({ products, setShowProductModal }) => (
                                 </span>
                             </td>
                             <td style={{ padding: '12px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <span style={{ color: 'var(--text-muted)' }}>{new Date(p.createdAt).toLocaleDateString()}</span>
+                                <span style={{ color: 'var(--text-muted)' }}>{formatDate(p.createdAt)}</span>
                                 <button 
                                     onClick={() => handlePrintReceipt(p)}
                                     style={{ border: 'none', background: 'transparent', color: 'var(--primary-gold)', cursor: 'pointer', padding: '4px' }}
@@ -682,7 +690,7 @@ const GoldHistoryTab = ({ goldIssues, setShowGoldModal }) => (
                 <tbody>
                     {goldIssues.map(g => (
                         <tr key={g._id} style={{ borderTop: '1px solid var(--glass-border)', fontSize: '0.85rem' }}>
-                            <td style={{ padding: '12px 10px' }}>{new Date(g.createdAt).toLocaleDateString()}</td>
+                            <td style={{ padding: '12px 10px' }}>{formatDate(g.createdAt)}</td>
                             <td style={{ padding: '12px 10px', fontWeight: 600 }}>{g.weight}g ({g.purity})</td>
                             <td style={{ padding: '12px 10px' }}>{g.stones?.length || 0} attached</td>
                             <td style={{ padding: '12px 10px' }}>
@@ -732,7 +740,7 @@ const TransactionsTab = ({ transactions }) => (
                 <tbody>
                     {transactions.map(t => (
                         <tr key={t._id} style={{ borderTop: '1px solid var(--glass-border)', fontSize: '0.85rem' }}>
-                            <td style={{ padding: '12px 10px' }}>{new Date(t.createdAt).toLocaleDateString()}</td>
+                            <td style={{ padding: '12px 10px' }}>{formatDate(t.createdAt)}</td>
                             <td style={{ padding: '12px 10px' }}>
                                 <span style={{ color: t.type === 'earning' ? 'var(--accent-blue)' : 'var(--success)', fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 600 }}>
                                     {t.type}

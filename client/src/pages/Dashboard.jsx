@@ -177,7 +177,9 @@ const Home = ({ stats, user, recentActivity, additions, currency }) => {
                    {activity.activityType === 'material' ? '' : (activity.type === 'payment' ? '-' : '+')} 
                    {activity.activityType === 'material' ? `${activity.amount}g` : `₹${activity.amount?.toLocaleString()}`}
                 </p>
-                <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(activity.createdAt).toLocaleDateString()}</p>
+                <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                  {new Date(activity.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).split(' ').join(' - ')}
+                </p>
               </div>
             </div>
           )) : (
