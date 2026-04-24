@@ -18,7 +18,7 @@ const Products = () => {
   
   // Create Assignment State
   const [newProductData, setNewProductData] = useState({
-    category: '', designName: '', expectedWeight: '', pureWeight: '', workerId: '', stones: [], totalStoneWeight: 0, purity: '22k', purityType: 'Carat', dueDate: '', issuanceDate: new Date().toISOString().split('T')[0]
+    category: '', designName: '', expectedWeight: '', pureWeight: '', workerId: '', stones: [], totalStoneWeight: 0, purity: '92', purityType: 'Percentage', dueDate: '', issuanceDate: new Date().toISOString().split('T')[0]
   });
   const [showStoneDetail, setShowStoneDetail] = useState(false);
 
@@ -68,7 +68,7 @@ const Products = () => {
           if (companyRes.data.stones) setCompanyStones(companyRes.data.stones);
           if (companyRes.data.purityStandards?.length > 0) {
               setPurityStandards(companyRes.data.purityStandards);
-              setNewProductData(prev => ({...prev, purity: companyRes.data.purityStandards[0].label}));
+              setNewProductData(prev => ({...prev, purity: '92', purityType: 'Percentage'}));
           }
       }
     } catch (err) {
@@ -108,7 +108,7 @@ const Products = () => {
     try {
       await api.post('/mgmt/products', newProductData);
       setShowCreateModal(false);
-      setNewProductData({ category: categories[0]?.name || '', designName: '', expectedWeight: '', pureWeight: '', workerId: '', stones: [], totalStoneWeight: 0, purity: purityStandards[0]?.label || '22k', purityType: 'Carat', dueDate: '', issuanceDate: new Date().toISOString().split('T')[0] });
+      setNewProductData({ category: categories[0]?.name || '', designName: '', expectedWeight: '', pureWeight: '', workerId: '', stones: [], totalStoneWeight: 0, purity: '92', purityType: 'Percentage', dueDate: '', issuanceDate: new Date().toISOString().split('T')[0] });
       fetchData();
     } catch (err) {
        alert('Error creating assignment');
