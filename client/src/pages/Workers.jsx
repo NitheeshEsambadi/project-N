@@ -186,22 +186,70 @@ const Workers = () => {
             {showModal && (
                 <div style={{ 
                     position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', 
-                    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 
+                    background: 'rgba(0, 0, 0, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                    zIndex: 1000, backdropFilter: 'blur(4px)'
                 }}>
-                    <div className="glass" style={{ width: '90%', maxWidth: '480px', padding: '24px', maxHeight: '90vh', overflowY: 'auto' }}>
-                        <h3 style={{ marginBottom: '20px' }}>{editingId ? 'Edit Worker' : 'Register New Worker'}</h3>
+                    <div className="glass" style={{ 
+                        width: '90%', maxWidth: '460px', padding: '32px', borderRadius: '16px', 
+                        maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--glass-border)'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                                {editingId ? 'Edit Worker' : 'Register New Worker'}
+                            </h3>
+                            <button type="button" onClick={closeModal} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
+                                <X size={20} />
+                            </button>
+                        </div>
                         <form onSubmit={handleSubmit}>
-                            <div className="input-group"><label>Full Name *</label><input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
-                            <div className="input-group">
-                                <label>Contact Number</label>
-                                <input type="text" value={formData.contact} onChange={e => setFormData({...formData, contact: e.target.value})} placeholder="e.g., 9876543210" />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                                        Full Name *
+                                    </label>
+                                    <input 
+                                        required 
+                                        type="text"
+                                        value={formData.name} 
+                                        onChange={e => setFormData({...formData, name: e.target.value})} 
+                                        placeholder="e.g. Rahul Sharma"
+                                        style={{ width: '100%', padding: '12px 16px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-main)', outline: 'none' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                                        Contact Number *
+                                    </label>
+                                    <input 
+                                        required 
+                                        type="text" 
+                                        value={formData.contact} 
+                                        onChange={e => setFormData({...formData, contact: e.target.value})} 
+                                        placeholder="e.g., 9876543210" 
+                                        style={{ width: '100%', padding: '12px 16px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-main)', outline: 'none' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                                        Identity Proof Number (Optional)
+                                    </label>
+                                    <input 
+                                        type="text"
+                                        value={formData.identityNumber} 
+                                        onChange={e => setFormData({...formData, identityNumber: e.target.value})} 
+                                        placeholder="e.g., Aadhar / PAN" 
+                                        style={{ width: '100%', padding: '12px 16px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-main)', outline: 'none' }}
+                                    />
+                                </div>
                             </div>
-                            <div className="input-group"><label>Specialization</label><input value={formData.specialization} onChange={e => setFormData({...formData, specialization: e.target.value})} /></div>
-                            <div className="input-group"><label>Identity Proof Number</label><input value={formData.identityNumber} onChange={e => setFormData({...formData, identityNumber: e.target.value})} placeholder="Aadhar / PAN" /></div>
                             
-                            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                                <button type="button" className="glass" onClick={closeModal} style={{ flex: 1, padding: '12px', color: 'var(--text-main)' }}>Cancel</button>
-                                <button type="submit" className="btn-primary" style={{ flex: 1 }}>{editingId ? 'Update Worker' : 'Save Worker'}</button>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px' }}>
+                                <button type="button" className="glass" onClick={closeModal} style={{ padding: '10px 20px', borderRadius: '8px', color: 'var(--text-main)', cursor: 'pointer', fontWeight: 600, border: '1px solid var(--glass-border)' }}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn-primary" style={{ padding: '10px 24px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>
+                                    Save Worker
+                                </button>
                             </div>
                         </form>
                     </div>
