@@ -37,13 +37,19 @@ const getCompany = async (req, res) => {
 // @access  Private (Admin)
 const updateCompany = async (req, res) => {
     try {
-        const { categories, stones, qrFormat, logo } = req.body;
+        const { categories, stones, qrFormat, logo, address, phone, email, taxId, purityStandards, currency } = req.body;
         const company = await getCompanyDoc();
         
         if (categories) company.categories = categories;
         if (stones) company.stones = stones;
         if (qrFormat) company.qrFormat = qrFormat;
         if (logo !== undefined) company.logo = logo;
+        if (address !== undefined) company.address = address;
+        if (phone !== undefined) company.phone = phone;
+        if (email !== undefined) company.email = email;
+        if (taxId !== undefined) company.taxId = taxId;
+        if (purityStandards !== undefined) company.purityStandards = purityStandards;
+        if (currency !== undefined) company.currency = currency;
 
         const updated = await company.save();
         res.json(updated);

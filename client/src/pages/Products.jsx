@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { Plus, Package, Clock, ChevronRight, Search, X, Trash2, Printer, Save, LayoutGrid, List, RotateCcw } from 'lucide-react';
+import { Plus, Package, Clock, ChevronRight, Search, X, Trash2, Printer, Save, LayoutGrid, List, RotateCcw, FileText } from 'lucide-react';
 
 const Products = () => {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [categories, setCategories] = useState([{ name: 'Necklace', code: 'NE' }]);
@@ -66,10 +68,16 @@ const Products = () => {
       setWorkers(workersRes.data || []);
       if (companyRes.data) {
           if (companyRes.data.categories?.length > 0) {
-              setCategories(companyRes.data.categories);
-              setNewProductData(prev => ({...prev, category: companyRes.data.categories[0].name}));
+              const activeCats = companyRes.data.categories.filter(c => c.status !== 'Inactive');
+              setCategories(activeCats);
+              if (activeCats.length > 0) {
+                  setNewProductData(prev => ({...prev, category: activeCats[0].name}));
+              }
           }
-          if (companyRes.data.stones) setCompanyStones(companyRes.data.stones);
+          if (companyRes.data.stones) {
+              const activeStones = companyRes.data.stones.filter(s => s.status !== 'Inactive');
+              setCompanyStones(activeStones);
+          }
           if (companyRes.data.purityStandards?.length > 0) {
               setPurityStandards(companyRes.data.purityStandards);
               setNewProductData(prev => ({...prev, purity: '92', purityType: 'Percentage'}));
@@ -476,9 +484,14 @@ const Products = () => {
           <h2 className="gold-gradient" style={{ fontSize: '1.8rem', margin: 0 }}>PRODUCTION FLOW</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '5px' }}>Monitor ongoing works and receive finished products</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowCreateModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '10px' }}>
-            <Plus size={18} /> New Assignment
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button className="glass" onClick={() => navigate('/worker-receipt')} style={{ padding: '10px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600, color: 'var(--text-main)', border: '1px solid var(--glass-border)' }}>
+              <FileText size={18} /> Worker Receipt
+          </button>
+          <button className="btn-primary" onClick={() => setShowCreateModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '10px' }}>
+              <Plus size={18} /> New Assignment
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', alignItems: 'center', borderBottom: '1px solid var(--glass-border)', paddingBottom: '15px' }}>

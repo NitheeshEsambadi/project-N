@@ -18,6 +18,7 @@ const WorkerDetailView = () => {
   const [categories, setCategories] = useState([{ name: 'Necklace', code: 'NE' }]);
   const [companyStones, setCompanyStones] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
   const formatDate = (date) => {
     if (!date) return '-';
     const d = new Date(date);
@@ -172,10 +173,16 @@ const WorkerDetailView = () => {
       
       if (companyRes.data) {
           if (companyRes.data.categories?.length > 0) {
-              setCategories(companyRes.data.categories);
-              setProductData(prev => ({...prev, category: companyRes.data.categories[0].name}));
+              const activeCats = companyRes.data.categories.filter(c => c.status !== 'Inactive');
+              setCategories(activeCats);
+              if (activeCats.length > 0) {
+                  setProductData(prev => ({...prev, category: activeCats[0].name}));
+              }
           }
-          if (companyRes.data.stones) setCompanyStones(companyRes.data.stones);
+          if (companyRes.data.stones) {
+              const activeStones = companyRes.data.stones.filter(s => s.status !== 'Inactive');
+              setCompanyStones(activeStones);
+          }
       }
 
       // Sync edit data
@@ -296,7 +303,6 @@ const WorkerDetailView = () => {
                     {worker.workerID || 'N/A'}
                 </span>
                 <h3 style={{ marginTop: '10px' }}>{worker.name}</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{worker.specialization}</p>
 
                 <div style={{ marginTop: '20px', padding: '15px', background: 'var(--card-bg)', borderRadius: '12px', fontSize: '0.85rem', textAlign: 'left' }}>
                     <p style={{ color: 'var(--text-muted)', marginBottom: '5px' }}>Contact</p>
@@ -376,7 +382,6 @@ const WorkerDetailView = () => {
                   <form onSubmit={handleEditSubmit}>
                       <div className="input-group"><label>Full Name</label><input required value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} /></div>
                       <div className="input-group"><label>Contact</label><input value={editData.contact} onChange={e => setEditData({...editData, contact: e.target.value})} /></div>
-                      <div className="input-group"><label>Specialization</label><input value={editData.specialization} onChange={e => setEditData({...editData, specialization: e.target.value})} /></div>
                       <div className="input-group"><label>Identity Proof Number</label><input value={editData.identityNumber} onChange={e => setEditData({...editData, identityNumber: e.target.value})} /></div>
                       <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                           <button type="button" className="glass" onClick={() => setShowEditModal(false)} style={{ flex: 1, padding: '12px', color: 'var(--text-main)' }}>Cancel</button>

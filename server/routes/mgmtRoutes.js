@@ -23,6 +23,10 @@ router.route('/products/:id/receive').put(protect, authorize('admin', 'accountan
 
 router.route('/transactions').get(protect, getTransactions).post(protect, authorize('admin', 'accountant'), recordTransaction);
 
+// Worker Receipts
+const { createWorkerReceipt, getWorkerReceipts } = require('../controllers/workerReceiptController');
+router.route('/worker-receipts').get(protect, getWorkerReceipts).post(protect, authorize('admin', 'accountant'), createWorkerReceipt);
+
 // System Management
 const { clearAllData, getUsers, updateUser } = require('../controllers/systemController');
 router.route('/system/clear-data').post(protect, authorize('admin'), clearAllData);

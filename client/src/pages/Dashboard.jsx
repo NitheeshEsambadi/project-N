@@ -11,8 +11,10 @@ import Payments from './Payments';
 import Reports from './Reports';
 import Settings from './Settings';
 import WorkerDetailView from './WorkerDetailView';
+import WorkerReceipt from './WorkerReceipt';
 import Inventory from './Inventory';
 import Sales from './Sales';
+import Billing from './Billing';
 import { History, ArrowUpRight, ArrowDownLeft, Menu, X, ShoppingBag, RotateCcw } from 'lucide-react';
 
 const Dashboard = () => {
@@ -129,8 +131,10 @@ const Dashboard = () => {
           <Route path="/reports" element={<Reports />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/sales" element={<Sales />} />
+          <Route path="/billing" element={<Billing setSidebarOpen={setSidebarOpen} />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/workers/:id" element={<WorkerDetailView />} />
+          <Route path="/worker-receipt" element={<WorkerReceipt />} />
         </Routes>
       </main>
     </div>
@@ -151,7 +155,7 @@ const Home = ({ stats, user, recentActivity, additions, currency }) => {
         <StatCard title="Total Revenue" value={`${currency || '₹'} ${additions.totalSales.toLocaleString()}`} />
       </div>
 
-      <div className="glass" style={{ padding: '24px' }}>
+      <div className="glass-card fade-in" style={{ padding: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
           <History size={18} color="var(--primary-gold)"/>
           <h3 style={{ fontSize: '1.1rem' }}>Global Recent Activity</h3>
@@ -190,7 +194,7 @@ const Home = ({ stats, user, recentActivity, additions, currency }) => {
 
       {showGoldModal && (
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="glass" style={{ width: '90%', maxWidth: '600px', padding: '24px', maxHeight: '80vh', overflowY: 'auto' }}>
+          <div className="glass-card fade-in" style={{ width: '90%', maxWidth: '600px', padding: '24px', maxHeight: '80vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 className="gold-gradient">Gold Distribution Among Workers</h3>
               <X size={20} onClick={() => setShowGoldModal(false)} style={{ cursor: 'pointer' }}/>
@@ -225,7 +229,7 @@ const Home = ({ stats, user, recentActivity, additions, currency }) => {
 };
 
 const StatCard = ({ title, value }) => (
-  <div className="glass" style={{ padding: '16px 20px' }}>
+  <div className="glass-card" style={{ padding: '16px 20px' }}>
     <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginBottom: '4px', textTransform: 'uppercase' }}>{title}</p>
     <h2 style={{ fontSize: '1.5rem', fontWeight: 600 }}>{value}</h2>
   </div>

@@ -1,47 +1,47 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  /* Pastel Palette */
-  --primary-gold: #FFB7B2; /* Soft pastel pink/peach */
-  --secondary-gold: #FF9AA2;
-  --dark-bg: #F0F4F8;      /* Very soft gray/blue background */
-  --surface-bg: #FFFFFF;   /* Clean white for surfaces */
-  --card-bg: #FFFFFF;      /* Replaces solid black rgba areas */
-  --hover-bg: rgba(0, 0, 0, 0.03); /* Extremely soft dark hover */
+  /* Salo Creative Inspired Palette - Light Mode */
+  --primary-gold: #6405FF; /* Salo Violet */
+  --secondary-gold: #FF2E93; /* Salo Pink Accent */
+  --dark-bg: #FAF9FC;      
+  --surface-bg: #FFFFFF;   
+  --card-bg: #FFFFFF;      
+  --hover-bg: rgba(100, 5, 255, 0.04); 
   
-  --glass-bg: #FFFFFF;     /* Solid white for elements, light theme doesn't need heavy glass opacity */
-  --glass-border: rgba(0, 0, 0, 0.08); /* Dark subtle border instead of light border */
+  --glass-bg: rgba(255, 255, 255, 0.85);     
+  --glass-border: rgba(100, 5, 255, 0.08); 
   
-  --text-main: #2C3E50;
-  --text-muted: #7F8C8D;
-  --accent-blue: #A0C4FF;  /* Pastel blue */
-  --danger: #FFC6FF;       /* Pastel magenta/pink */
-  --success: #CAFFBF;      /* Pastel green */
-  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --text-main: #0B0A0F;
+  --text-muted: #6C687D;
+  --accent-blue: #00D5FF;  
+  --danger: #FF3B30;       
+  --success: #34C759;      
+  --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 body.dark-theme {
-  /* Dark Palette - Midnight Slate & Pastel */
-  --primary-gold: #FF8A80;
-  --secondary-gold: #FF5252;
-  --dark-bg: #0F172A;      /* Deep midnight blue */
-  --surface-bg: #1E293B;   /* Slate 800 */
-  --card-bg: #1E293B;
-  --hover-bg: rgba(255, 255, 255, 0.05);
-  --glass-bg: rgba(30, 41, 59, 0.8);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --text-main: #F1F5F9;
-  --text-muted: #94A3B8;
-  --accent-blue: #60A5FA;
-  --danger: #FB7185;
-  --success: #4ADE80;
+  /* Salo Creative Inspired Palette - Dark Mode */
+  --primary-gold: #8B45FF;
+  --secondary-gold: #FF2E93;
+  --dark-bg: #07060A;      /* Extremely deep cosmic background */
+  --surface-bg: #0E0D14;   /* Minimalist dark surfaces */
+  --card-bg: #0E0D14;
+  --hover-bg: rgba(139, 69, 255, 0.06);
+  --glass-bg: rgba(14, 13, 20, 0.8);
+  --glass-border: rgba(139, 69, 255, 0.15);
+  --text-main: #F4F3F7;
+  --text-muted: #8F8B9E;
+  --accent-blue: #38BDF8;
+  --danger: #FF453A;
+  --success: #32D74B;
 }
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 
 body {
@@ -49,21 +49,52 @@ body {
   color: var(--text-main);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
 }
 
-/* Glassmorphism utility - adapted for light theme */
+/* .glass-card and .fade-in utility classes with Salo aesthetic */
+.glass-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+  transition: var(--transition);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(139, 69, 255, 0.3);
+  box-shadow: 0 12px 40px rgba(100, 5, 255, 0.08);
+}
+
+.fade-in {
+  animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .glass {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03); /* Soft overall depth */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+  transition: var(--transition);
 }
 
 .gold-gradient {
-  background: linear-gradient(135deg, #FF9AA2, #FFB7B2);
+  background: linear-gradient(135deg, var(--primary-gold), var(--secondary-gold));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 .btn-primary {
@@ -118,9 +149,11 @@ select, input, textarea {
   color: var(--text-main);
 }
 
-h1, h2, h3 {
-  font-weight: 600;
-  letter-spacing: -0.5px;
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
   color: var(--text-main);
 }
 
@@ -162,7 +195,7 @@ a {
     grid-template-columns: 1fr;
   }
   
-  .glass {
+  .glass, .glass-card {
     padding: 16px !important;
   }
 }

@@ -106,7 +106,6 @@ const Workers = () => {
 
     const filtered = workers.filter(w => 
         w.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        w.specialization?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         w.workerID?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -125,7 +124,7 @@ const Workers = () => {
                 <Search style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} size={18}/>
                 <input 
                     type="text" 
-                    placeholder="Search by ID, name or specialization..." 
+                    placeholder="Search by ID or name..." 
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                     className="glass" 
@@ -140,7 +139,6 @@ const Workers = () => {
                             <th style={{ padding: '12px' }}>Worker ID</th>
                             <th style={{ padding: '12px' }}>Name</th>
                             <th style={{ padding: '12px' }}>Contact</th>
-                            <th style={{ padding: '12px' }}>Specialization</th>
                             <th style={{ padding: '12px' }}>Identity Number</th>
                             <th style={{ padding: '12px' }}>Actions</th>
                         </tr>
@@ -153,7 +151,23 @@ const Workers = () => {
                                         {w.workerID || '—'}
                                     </span>
                                 </td>
-                                <td style={{ padding: '16px 12px', fontWeight: 500 }}>{w.name}</td>
+                                <td 
+                                    style={{ 
+                                        padding: '16px 12px', 
+                                        fontWeight: 600, 
+                                        color: 'var(--primary-gold)', 
+                                        cursor: 'pointer' 
+                                    }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/workers/${w._id}`);
+                                    }}
+                                    title="Click to view worker profile"
+                                >
+                                    <span style={{ borderBottom: '1px dashed var(--primary-gold)' }}>
+                                        {w.name}
+                                    </span>
+                                </td>
                                 <td style={{ padding: '16px 12px' }}>
                                     {w.contact ? (
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -161,7 +175,6 @@ const Workers = () => {
                                         </span>
                                     ) : '—'}
                                 </td>
-                                <td style={{ padding: '16px 12px' }}>{w.specialization || '—'}</td>
                                 <td style={{ padding: '16px 12px' }}>{w.identityNumber || '—'}</td>
                                 <td style={{ padding: '16px 12px' }} onClick={e => e.stopPropagation()}>
                                     <div style={{ display: 'flex', gap: '10px' }}>
