@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
+import { AuthContext } from '../context/AuthContext';
 import { 
-  ArrowLeft, Coins, Package, CreditCard, History, AlertCircle, Phone, Hammer, RotateCcw, Edit2, Plus, X, ShieldCheck, Trash2, Printer
+  ArrowLeft, Coins, Package, CreditCard, History, AlertCircle, Phone, Hammer, RotateCcw, Edit2, Plus, X, ShieldCheck, Trash2, Printer, Settings2
 } from 'lucide-react';
 
 const WorkerDetailView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
   const [worker, setWorker] = useState(null);
   const [stats, setStats] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -17,15 +19,26 @@ const WorkerDetailView = () => {
   const [companyStones, setCompanyStones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
-  
+  const formatDate = (date) => {
+    if (!date) return '-';
+    const d = new Date(date);
+    return d.toLocaleDateString('en-GB', { 
+        day: '2-digit', 
+        month: 'short', 
+        year: 'numeric' 
+    }).split(' ').join(' - ');
+  };
+
   // Modals Visibility
   const [showEditModal, setShowEditModal] = useState(false);
   const [showGoldModal, setShowGoldModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
+  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
 
   // Form Datas
-  const [editData, setEditData] = useState({ name: '', contact: '', specialization: '', labourRateType: 'perGram', baseRate: '' });
+  const [editData, setEditData] = useState({ name: '', contact: '', specialization: '', identityNumber: '' });
   const [goldData, setGoldData] = useState({ weight: '', purity: '22k', expectedWastage: '0', deliveryDate: '', notes: '', stones: [], totalStoneWeight: 0 });
+  const [adjustmentData, setAdjustmentData] = useState({ type: 'payment', amount: '', goldAmount: '', notes: 'Manual Adjustment' });
   const [productData, setProductData] = useState({ category: '', designName: '', expectedWeight: '', stones: [], quantity: 1, totalStoneWeight: 0 });
   const [showGoldStoneDetail, setShowGoldStoneDetail] = useState(false);
   const [showProductStoneDetail, setShowProductStoneDetail] = useState(false);
@@ -36,7 +49,7 @@ const WorkerDetailView = () => {
     // Using string concatenation for the inner parts to avoid template literal escaping issues
     const transactionRows = transactions.map(t => {
       return '<tr>' +
-        '<td>' + new Date(t.createdAt).toLocaleDateString() + '</td>' +
+        '<td>' + formatDate(t.createdAt) + '</td>' +
         '<td>' + t.type.toUpperCase() + '</td>' +
         '<td>' + (t.notes || '') + '</td>' +
         '<td>₹ ' + t.amount.toLocaleString() + '</td>' +
@@ -62,7 +75,7 @@ const WorkerDetailView = () => {
           <div class="header">
             <h2>WORKER TRANSACTION LEDGER</h2>
             <p><strong>Worker:</strong> ${worker.name} (${worker.workerID})</p>
-            <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+            <p><strong>Date:</strong> ${formatDate(new Date())}</p>
           </div>
           <table>
             <thead>
@@ -112,7 +125,7 @@ const WorkerDetailView = () => {
           <div class="header">
             <h2 style="margin:0">${worker.name}</h2>
             <div>SUBMISSION RECEIPT</div>
-            <div>Date: ${new Date().toLocaleString()}</div>
+            <div>Date: ${formatDate(new Date())}</div>
           </div>
           <div class="bold" style="margin-bottom:10px">PRODUCT DETAILS:</div>
           <div class="item-row"><span>ID:</span> <span>${product.productID}</span></div>
@@ -160,10 +173,16 @@ const WorkerDetailView = () => {
       
       if (companyRes.data) {
           if (companyRes.data.categories?.length > 0) {
-              setCategories(companyRes.data.categories);
-              setProductData(prev => ({...prev, category: companyRes.data.categories[0].name}));
+              const activeCats = companyRes.data.categories.filter(c => c.status !== 'Inactive');
+              setCategories(activeCats);
+              if (activeCats.length > 0) {
+                  setProductData(prev => ({...prev, category: activeCats[0].name}));
+              }
           }
-          if (companyRes.data.stones) setCompanyStones(companyRes.data.stones);
+          if (companyRes.data.stones) {
+              const activeStones = companyRes.data.stones.filter(s => s.status !== 'Inactive');
+              setCompanyStones(activeStones);
+          }
       }
 
       // Sync edit data
@@ -171,8 +190,7 @@ const WorkerDetailView = () => {
         name: workerRes.data.name,
         contact: workerRes.data.contact || '',
         specialization: workerRes.data.specialization || '',
-        labourRateType: workerRes.data.labourRateType || 'perGram',
-        baseRate: workerRes.data.baseRate || ''
+        identityNumber: workerRes.data.identityNumber || ''
       });
     } catch (err) {
       console.error(err);
@@ -199,6 +217,21 @@ const WorkerDetailView = () => {
       setGoldData({ weight: '', purity: '22k', expectedWastage: '0', deliveryDate: '', notes: '', stones: [] });
       fetchData();
     } catch (err) { alert('Error issuing gold'); }
+  };
+
+  const handleAdjustmentSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/mgmt/transactions', {
+        ...adjustmentData,
+        workerId: id,
+        amount: parseFloat(adjustmentData.amount) || 0,
+        goldAmount: parseFloat(adjustmentData.goldAmount) || 0
+      });
+      setShowAdjustmentModal(false);
+      alert('Adjustment applied');
+      fetchData();
+    } catch (err) { alert('Error applying adjustment'); }
   };
 
   const addGoldStone = () => {
@@ -270,21 +303,25 @@ const WorkerDetailView = () => {
                     {worker.workerID || 'N/A'}
                 </span>
                 <h3 style={{ marginTop: '10px' }}>{worker.name}</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{worker.specialization}</p>
 
                 <div style={{ marginTop: '20px', padding: '15px', background: 'var(--card-bg)', borderRadius: '12px', fontSize: '0.85rem', textAlign: 'left' }}>
                     <p style={{ color: 'var(--text-muted)', marginBottom: '5px' }}>Contact</p>
                     <p style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Phone size={14} color="var(--primary-gold)"/> {worker.contact || 'Not provided'}
                     </p>
-                    <p style={{ color: 'var(--text-muted)', margin: '10px 0 5px' }}>Labour Rate</p>
-                    <p>{worker.labourRateType === 'perGram' ? `₹${worker.baseRate}/g` : worker.labourRateType === 'perPiece' ? `₹${worker.baseRate}/pc` : `₹${worker.baseRate} Fixed`}</p>
+                    <p style={{ color: 'var(--text-muted)', margin: '10px 0 5px' }}>Identity Number</p>
+                    <p>{worker.identityNumber || '—'}</p>
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
                     <button className="glass" onClick={() => setShowEditModal(true)} style={{ flex: 1, padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--accent-blue)', border: '1px solid rgba(52,152,219,0.3)' }}>
                         <Edit2 size={14}/> Edit Profile
                     </button>
+                    {user?.role === 'admin' && (
+                        <button className="glass" onClick={() => setShowAdjustmentModal(true)} style={{ flex: 1, padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--primary-gold)', border: '1px solid rgba(212,175,55,0.3)' }}>
+                            <Settings2 size={14}/> Adjustments
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -304,7 +341,7 @@ const WorkerDetailView = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* Stats */}
             <div className="responsive-grid">
-                <MetricCard icon={<Coins size={20} color="var(--primary-gold)"/>} title="Gold Bal." value={`${((stats?.goldIssued || 0) - (stats?.goldReturned || 0)).toFixed(2)}g`} />
+                <MetricCard icon={<Coins size={20} color="var(--primary-gold)"/>} title="Gold Bal." value={`${((stats?.goldIssued || 0) - (stats?.goldReturned || 0) + (stats?.goldAdjustment || 0)).toFixed(3)}g`} />
                 <MetricCard icon={<Package size={20} color="var(--accent-blue)"/>} title="Done" value={stats?.completedProducts || 0} />
                 <MetricCard icon={<CreditCard size={20} color="var(--success)"/>} title="Earnings" value={`₹ ${(stats?.totalEarnings || 0).toLocaleString()}`} />
             </div>
@@ -345,21 +382,40 @@ const WorkerDetailView = () => {
                   <form onSubmit={handleEditSubmit}>
                       <div className="input-group"><label>Full Name</label><input required value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} /></div>
                       <div className="input-group"><label>Contact</label><input value={editData.contact} onChange={e => setEditData({...editData, contact: e.target.value})} /></div>
-                      <div className="input-group"><label>Specialization</label><input value={editData.specialization} onChange={e => setEditData({...editData, specialization: e.target.value})} /></div>
-                      <div className="responsive-grid" style={{ gap: '15px' }}>
-                        <div className="input-group">
-                            <label>Rate Type</label>
-                            <select value={editData.labourRateType} onChange={e => setEditData({...editData, labourRateType: e.target.value})} style={{ width: '100%', background: 'var(--surface-bg)', color: 'var(--text-main)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                                <option value="perGram">Per Gram</option>
-                                <option value="perPiece">Per Piece</option>
-                                <option value="fixed">Fixed</option>
-                            </select>
-                        </div>
-                        <div className="input-group"><label>Base Rate (₹)</label><input type="number" required value={editData.baseRate} onChange={e => setEditData({...editData, baseRate: e.target.value})} /></div>
-                      </div>
+                      <div className="input-group"><label>Identity Proof Number</label><input value={editData.identityNumber} onChange={e => setEditData({...editData, identityNumber: e.target.value})} /></div>
                       <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                           <button type="button" className="glass" onClick={() => setShowEditModal(false)} style={{ flex: 1, padding: '12px', color: 'var(--text-main)' }}>Cancel</button>
                           <button type="submit" className="btn-primary" style={{ flex: 1 }}>Update</button>
+                      </div>
+                  </form>
+              </div>
+          </div>
+      )}
+
+      {showAdjustmentModal && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div className="glass" style={{ width: '90%', maxWidth: '480px', padding: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3 className="gold-gradient">History Adjustment</h3>
+                    <X size={20} onClick={() => setShowAdjustmentModal(false)} style={{ cursor: 'pointer' }}/>
+                  </div>
+                  <form onSubmit={handleAdjustmentSubmit}>
+                      <div className="input-group">
+                          <label>Adjustment Type</label>
+                          <select value={adjustmentData.type} onChange={e => setAdjustmentData({...adjustmentData, type: e.target.value})} style={{ width: '100%', background: 'var(--surface-bg)', color: 'var(--text-main)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                              <option value="payment">Debit (Give/Subtract from worker)</option>
+                              <option value="earning">Credit (Add to worker balance)</option>
+                          </select>
+                      </div>
+                      <div className="responsive-grid" style={{ gap: '15px' }}>
+                          <div className="input-group"><label>Cash Amount (₹)</label><input type="number" value={adjustmentData.amount} onChange={e => setAdjustmentData({...adjustmentData, amount: e.target.value})} placeholder="0" /></div>
+                          <div className="input-group"><label>Gold Weight (g)</label><input type="number" step="0.001" value={adjustmentData.goldAmount} onChange={e => setAdjustmentData({...adjustmentData, goldAmount: e.target.value})} placeholder="0.000" /></div>
+                      </div>
+                      <div className="input-group"><label>Notes / Reason</label><input required value={adjustmentData.notes} onChange={e => setAdjustmentData({...adjustmentData, notes: e.target.value})} /></div>
+                      
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                          <button type="button" className="glass" onClick={() => setShowAdjustmentModal(false)} style={{ flex: 1, padding: '12px', color: 'var(--text-main)' }}>Cancel</button>
+                          <button type="submit" className="btn-primary" style={{ flex: 1 }}>Apply Adjustment</button>
                       </div>
                   </form>
               </div>
@@ -541,7 +597,7 @@ const OverviewTab = ({ stats, goldIssues }) => (
                     <span style={{ color: g.status === 'issued' ? 'var(--primary-gold)' : g.status === 'completed' ? 'var(--success)' : 'var(--accent-blue)', textTransform: 'uppercase', fontSize: '0.7rem', fontWeight: 600 }}>
                         {g.status}
                     </span>
-                    <span style={{ color: 'var(--text-muted)' }}>{new Date(g.createdAt).toLocaleDateString()}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>{formatDate(g.createdAt)}</span>
                 </div>
             )) : <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No gold requests yet.</p>}
         </div>
@@ -590,7 +646,7 @@ const ProductsTab = ({ products, setShowProductModal }) => (
                                 </span>
                             </td>
                             <td style={{ padding: '12px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <span style={{ color: 'var(--text-muted)' }}>{new Date(p.createdAt).toLocaleDateString()}</span>
+                                <span style={{ color: 'var(--text-muted)' }}>{formatDate(p.createdAt)}</span>
                                 <button 
                                     onClick={() => handlePrintReceipt(p)}
                                     style={{ border: 'none', background: 'transparent', color: 'var(--primary-gold)', cursor: 'pointer', padding: '4px' }}
@@ -639,7 +695,7 @@ const GoldHistoryTab = ({ goldIssues, setShowGoldModal }) => (
                 <tbody>
                     {goldIssues.map(g => (
                         <tr key={g._id} style={{ borderTop: '1px solid var(--glass-border)', fontSize: '0.85rem' }}>
-                            <td style={{ padding: '12px 10px' }}>{new Date(g.createdAt).toLocaleDateString()}</td>
+                            <td style={{ padding: '12px 10px' }}>{formatDate(g.createdAt)}</td>
                             <td style={{ padding: '12px 10px', fontWeight: 600 }}>{g.weight}g ({g.purity})</td>
                             <td style={{ padding: '12px 10px' }}>{g.stones?.length || 0} attached</td>
                             <td style={{ padding: '12px 10px' }}>
@@ -689,14 +745,21 @@ const TransactionsTab = ({ transactions }) => (
                 <tbody>
                     {transactions.map(t => (
                         <tr key={t._id} style={{ borderTop: '1px solid var(--glass-border)', fontSize: '0.85rem' }}>
-                            <td style={{ padding: '12px 10px' }}>{new Date(t.createdAt).toLocaleDateString()}</td>
+                            <td style={{ padding: '12px 10px' }}>{formatDate(t.createdAt)}</td>
                             <td style={{ padding: '12px 10px' }}>
                                 <span style={{ color: t.type === 'earning' ? 'var(--accent-blue)' : 'var(--success)', fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 600 }}>
                                     {t.type}
                                 </span>
                             </td>
                             <td style={{ padding: '12px 10px', fontWeight: 600 }}>
-                                {t.type === 'payment' ? '-' : '+'} ₹ {t.amount?.toLocaleString()}
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span>{t.type === 'payment' ? '-' : '+'} ₹ {t.amount?.toLocaleString()}</span>
+                                    {t.goldAmount !== 0 && (
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--primary-gold)' }}>
+                                            {t.goldAmount > 0 ? '+' : ''}{t.goldAmount}g Gold
+                                        </span>
+                                    )}
+                                </div>
                             </td>
                             <td style={{ padding: '12px 10px', color: 'var(--text-muted)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {t.notes || '—'}

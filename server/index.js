@@ -6,6 +6,7 @@ const connectDB = require('./config/db');
 dotenv.config();
 connectDB();
 
+// Jewellery Management System API
 const app = express();
 
 app.use(express.json());

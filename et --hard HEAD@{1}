@@ -1,0 +1,13 @@
+[33m0927fe9[m[33m ([m[1;36mHEAD -> [m[1;32mdev[m[33m)[m HEAD@{0}: commit: style(ui): redesign worker modal layout & fix(auth): protect against null user role crash
+[33mc6f5992[m HEAD@{1}: commit: fix: resolve duplicate onBlur attribute in Products.jsx input fields
+[33mcc6fdb7[m HEAD@{2}: reset: moving to HEAD
+[33mcc6fdb7[m HEAD@{3}: commit: Added Received Weight input to Receive Work workflow
+[33mafec259[m HEAD@{4}: commit: Implemented tabbed Production Flow with 'Receive Now/Later' decision workflow
+[33m1bb85a6[m HEAD@{5}: commit: Set Percentage (92%) as default purity for new assignments
+[33m1cceae8[m HEAD@{6}: commit: Applied global date formatting (DD - Mon - YYYY) across all major screens
+[33mdac7030[m HEAD@{7}: commit: Refined pure weight logic, added DD-Mon-YYYY date format, and polished stone issuance UI
+[33m1576796[m HEAD@{8}: commit: Added Pure Weight and Issuance Date to display views and database schema
+[33m58ea113[m HEAD@{9}: commit: Matched New Assignment modal to reference sketch with Pure Wt and reordered fields
+[33m5200e2e[m HEAD@{10}: commit: Comprehensive UI overhaul for Production Flow with Card/List views and refined assignment form
+[33m19bed0c[m HEAD@{11}: commit: Integrated design notes into Product model, UI receipt view, and sample seeder data
+[33m05f6996[m HEAD@{12}: commit: Refined Gold Issuance modal with correct field order, design notes, and auto-calculating stone weights

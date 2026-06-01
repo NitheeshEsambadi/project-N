@@ -13,17 +13,18 @@ import {
   X,
   ShieldCheck,
   Briefcase,
-  ShoppingCart
+  ShoppingCart,
+  Receipt
 } from 'lucide-react';
 
 const Sidebar = ({ user, logout, closeSidebar, company }) => {
   const links = [
     { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20}/>, roles: ['admin', 'accountant', 'worker'] },
     { name: 'Workers', path: '/workers', icon: <Users size={20}/>, roles: ['admin', 'accountant'] },
-    { name: 'Gold Issue', path: '/gold', icon: <Coins size={20}/>, roles: ['admin', 'accountant'] },
-    { name: 'Products', path: '/products', icon: <Package size={20}/>, roles: ['admin', 'accountant', 'worker'] },
-    { name: 'Inventory', path: '/inventory', icon: <ShieldCheck size={20}/>, roles: ['admin', 'accountant'] },
+    { name: 'Production', path: '/products', icon: <Briefcase size={20}/>, roles: ['admin', 'accountant', 'worker'] },
+    { name: 'Inventory', path: '/inventory', icon: <Package size={20}/>, roles: ['admin', 'accountant', 'worker'] },
     { name: 'Sales', path: '/sales', icon: <ShoppingCart size={20}/>, roles: ['admin', 'accountant'] },
+    { name: 'Billing', path: '/billing', icon: <Receipt size={20}/>, roles: ['admin', 'accountant', 'worker'] },
     { name: 'Wastage', path: '/wastage', icon: <TrendingUp size={20}/>, roles: ['admin', 'accountant'] },
     { name: 'Payments', path: '/payments', icon: <CreditCard size={20}/>, roles: ['admin', 'accountant'] },
     { name: 'Reports', path: '/reports', icon: <BarChart3 size={20}/>, roles: ['admin', 'accountant'] },
@@ -31,7 +32,7 @@ const Sidebar = ({ user, logout, closeSidebar, company }) => {
   ];
 
   return (
-    <div className="glass" style={{ 
+    <div className="glass-card" style={{ 
       width: '100%', 
       height: '100%', 
       display: 'flex',

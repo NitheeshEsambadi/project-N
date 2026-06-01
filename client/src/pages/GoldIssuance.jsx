@@ -50,7 +50,10 @@ const GoldIssuance = () => {
     try {
       const { data } = await api.get('/company');
       if (data) {
-          if (data.stones) setCompanyStones(data.stones);
+          if (data.stones) {
+              const activeStones = data.stones.filter(s => s.status !== 'Inactive');
+              setCompanyStones(activeStones);
+          }
           if (data.purityStandards) setPurityStandards(data.purityStandards);
       }
     } catch (err) {

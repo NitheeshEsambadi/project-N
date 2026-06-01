@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { ShoppingBag, Search, Tag, User, DollarSign, CheckCircle, X, Printer, Filter } from 'lucide-react';
 
 const Sales = () => {
+    const navigate = useNavigate();
     const [products, setProducts] = useState([]);
     const [sales, setSales] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -48,7 +50,7 @@ const Sales = () => {
             const currentRate = parseFloat(sObj.goldRate) || 0;
             setGoldRate(currentRate);
             setCurrency(compRes.data?.currency || '₹');
-            setAllCategories(compRes.data?.categories || []);
+            setAllCategories((compRes.data?.categories || []).filter(c => c.status !== 'Inactive'));
             
             // Initial form data with current rate
             setSaleData(prev => ({ ...prev, metalRateUsed: currentRate }));
@@ -120,6 +122,7 @@ const Sales = () => {
                 <div style={{ display: 'flex', gap: '10px', background: 'var(--dark-bg)', padding: '5px', borderRadius: '10px' }}>
                     <button onClick={() => setView('inventory')} style={{ border: 'none', padding: '8px 20px', borderRadius: '8px', cursor: 'pointer', background: view === 'inventory' ? 'var(--primary-gold)' : 'transparent', color: view === 'inventory' ? 'white' : 'var(--text-muted)', fontWeight: 600 }}>Active Inventory</button>
                     <button onClick={() => setView('history')} style={{ border: 'none', padding: '8px 20px', borderRadius: '8px', cursor: 'pointer', background: view === 'history' ? 'var(--primary-gold)' : 'transparent', color: view === 'history' ? 'white' : 'var(--text-muted)', fontWeight: 600 }}>Sales History</button>
+                    <button onClick={() => navigate('/billing')} style={{ border: 'none', padding: '8px 20px', borderRadius: '8px', cursor: 'pointer', background: 'var(--secondary-gold)', color: 'white', fontWeight: 600 }}>Billing</button>
                 </div>
             </div>
 

@@ -6,6 +6,10 @@ const productSchema = new mongoose.Schema({
     designName: { type: String },
     expectedWeight: { type: Number },
     purity: { type: String },
+    purityType: { type: String, enum: ['Carat', 'Percentage'], default: 'Carat' },
+    pureWeight: { type: Number },
+    issuanceDate: { type: Date, default: Date.now },
+    dueDate: { type: Date },
     stones: [
         {
             stoneName: { type: String },
@@ -16,14 +20,16 @@ const productSchema = new mongoose.Schema({
     workerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Worker' },
     status: { 
         type: String, 
-        enum: ['pending', 'in-progress', 'completed'], 
+        enum: ['pending', 'in-progress', 'received', 'completed'], 
         default: 'pending' 
     },
     grossWeight: { type: Number }, // Received weight
     netWeight: { type: Number },
     actualWastage: { type: Number },
     qualityCheck: { type: String, enum: ['passed', 'failed', 'pending'], default: 'pending' },
-    totalStoneWeight: { type: Number, default: 0 } // Simplified gross stone weight
+    totalStoneWeight: { type: Number, default: 0 }, // Simplified gross stone weight
+    notes: { type: String }, // Design notes or instructions
+    draftList: { type: [mongoose.Schema.Types.Mixed], default: [] } // Stores the UI drafted items
 }, { timestamps: true });
 
 module.exports = mongoose.model('Product', productSchema);

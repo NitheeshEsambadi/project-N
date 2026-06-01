@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Package, ShieldCheck, Search, Download, Printer, X, Tag, LayoutGrid, List, Edit2, Trash2, Eye } from 'lucide-react';
+import { Package, ShieldCheck, Search, Download, Printer, X, Tag, Edit2, Trash2, Eye } from 'lucide-react';
 
 const Inventory = () => {
   const [products, setProducts] = useState([]);
@@ -9,9 +9,11 @@ const Inventory = () => {
   const [loading, setLoading] = useState(true);
   
   // View & Modal State
-  const [viewMode, setViewMode] = useState('grid');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
+  const [sortBy, setSortBy] = useState('date');
   const [editFormData, setEditFormData] = useState({ designName: '', netWeight: '', stones: [] });
   const [goldRate, setGoldRate] = useState(0);
 
@@ -27,8 +29,10 @@ const Inventory = () => {
           api.get('/company'),
           api.get('/settings')
       ]);
-      setProducts(productRes.data.filter(p => p.status === 'completed'));
-      if (companyRes.data) setCompanySettings(companyRes.data);
+      setProducts(productRes.data.filter(p => p.status === 'completed') || []);
+      if (companyRes.data) {
+          setCompanySettings(companyRes.data);
+      }
       if (settingsRes.data) {
           const sObj = settingsRes.data.reduce((acc, c) => ({ ...acc, [c.key]: c.value }), {});
           setGoldRate(parseFloat(sObj.goldRate) || 0);
@@ -72,11 +76,38 @@ const Inventory = () => {
     setEditFormData({ ...editFormData, stones: newStones });
   };
 
-  const filtered = products.filter(p => 
-    p.designName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.productId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.workerId?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filter & Search Logic
+  let displayProducts = products.filter(p => 
+    (p.designName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.productId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.workerId?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (showSelectedOnly) {
+    displayProducts = displayProducts.filter(p => selectedItems.includes(p._id));
+  }
+
+  displayProducts.sort((a, b) => {
+    if (sortBy === 'name') return (a.designName || '').localeCompare(b.designName || '');
+    if (sortBy === 'weight') return (b.netWeight || 0) - (a.netWeight || 0);
+    return new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0);
+  });
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedItems(displayProducts.map(p => p._id));
+    } else {
+      setSelectedItems([]);
+    }
+  };
+
+  const handleSelectItem = (id) => {
+    if (selectedItems.includes(id)) {
+      setSelectedItems(selectedItems.filter(itemId => itemId !== id));
+    } else {
+      setSelectedItems([...selectedItems, id]);
+    }
+  };
 
   const calculateTotalStoneWeight = (stones) => {
       if (!stones || stones.length === 0) return 0;
@@ -87,161 +118,109 @@ const Inventory = () => {
 
   return (
     <div className="glass" style={{ padding: '24px', background: 'var(--surface-bg)' }}>
-      <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
-        <div>
-          <h2 className="gold-gradient" style={{ fontSize: '1.8rem' }}>INVENTORY</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Ready stock and completed jewellery items</p>
-        </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-             <div style={{ display: 'flex', background: 'var(--dark-bg)', padding: '4px', borderRadius: '10px' }}>
-                <button 
-                    onClick={() => setViewMode('grid')} 
-                    style={{ padding: '8px', background: viewMode === 'grid' ? 'var(--surface-bg)' : 'transparent', border: 'none', borderRadius: '8px', cursor: 'pointer', color: viewMode === 'grid' ? 'var(--primary-gold)' : 'var(--text-muted)', boxShadow: viewMode === 'grid' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'var(--transition)' }}
-                >
-                    <LayoutGrid size={20} />
-                </button>
-                <button 
-                    onClick={() => setViewMode('list')} 
-                    style={{ padding: '8px', background: viewMode === 'list' ? 'var(--surface-bg)' : 'transparent', border: 'none', borderRadius: '8px', cursor: 'pointer', color: viewMode === 'list' ? 'var(--primary-gold)' : 'var(--text-muted)', boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'var(--transition)' }}
-                >
-                    <List size={20} />
-                </button>
-            </div>
-            <button className="glass" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--success)', border: '1px solid var(--success)', padding: '10px 20px', borderRadius: '10px', fontWeight: 600 }}>
-                <Download size={18} /> Export
-            </button>
-        </div>
-      </div>
-
-      {/* Summary Row */}
-      <div className="responsive-grid" style={{ marginBottom: '30px', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-          <div className="glass" style={{ padding: '20px', background: 'var(--dark-bg)' }}>
-              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>TOTAL STOCK WEIGHT</p>
-              <h3 style={{ margin: '5px 0 0', fontSize: '1.5rem' }}>{products.reduce((acc, p) => acc + (p.netWeight || 0), 0).toFixed(2)}g</h3>
+      <div className="no-print" style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+          <div>
+              <h2 className="gold-gradient" style={{ fontSize: '1.8rem', margin: 0 }}>INVENTORY</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '5px' }}>Manage and view your completed inventory items</p>
           </div>
-          <div className="glass" style={{ padding: '20px', background: 'var(--dark-bg)' }}>
-              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>ESTIMATED ASSET VALUE</p>
-              <h3 style={{ margin: '5px 0 0', fontSize: '1.5rem', color: 'var(--primary-gold)' }}>{companySettings?.currency || '₹'} {(products.reduce((acc, p) => acc + (p.netWeight || 0), 0) * goldRate).toLocaleString()}</h3>
-          </div>
-          <div className="glass" style={{ padding: '20px', background: 'var(--dark-bg)' }}>
-              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>ITEM COUNT</p>
-              <h3 style={{ margin: '5px 0 0', fontSize: '1.5rem' }}>{products.length} Units</h3>
+          <div style={{ display: 'flex', gap: '10px' }}>
+              <button className="glass" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--success)', border: '1px solid var(--success)', padding: '10px 20px', borderRadius: '10px', fontWeight: 600 }}>
+                  <Download size={18} /> Export
+              </button>
           </div>
       </div>
 
-      <div className="no-print" style={{ marginBottom: '25px', position: 'relative' }}>
-        <Search style={{ position: 'absolute', left: '15px', top: '15px', color: 'var(--text-muted)' }} size={20}/>
-        <input 
-            type="text" 
-            placeholder="Search inventory by ID, design or worker..." 
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            style={{ width: '100%', padding: '15px 15px 15px 50px', background: 'var(--dark-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px', color: 'var(--text-main)', fontSize: '1rem' }}
-        />
+      <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: '250px' }}>
+          <Search style={{ position: 'absolute', left: '15px', top: '14px', color: 'var(--primary-gold)' }} size={20}/>
+          <input 
+              type="text" 
+              placeholder="Search by ID, name or worker..." 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              style={{ width: '100%', padding: '12px 15px 12px 45px', background: 'transparent', border: '2px solid var(--primary-gold)', borderRadius: '8px', color: 'var(--text-main)', fontSize: '1rem', outline: 'none' }}
+          />
+        </div>
+        
+        <button 
+          onClick={() => setShowSelectedOnly(!showSelectedOnly)}
+          style={{ padding: '12px 20px', borderRadius: '8px', border: '2px solid var(--primary-gold)', color: showSelectedOnly ? 'var(--dark-bg)' : 'var(--primary-gold)', background: showSelectedOnly ? 'var(--primary-gold)' : 'transparent', cursor: 'pointer', fontWeight: 600, transition: 'var(--transition)' }}
+        >
+          {showSelectedOnly ? 'Show All' : 'Show selected |'}
+        </button>
+
+        <select 
+          value={sortBy} 
+          onChange={(e) => setSortBy(e.target.value)}
+          style={{ padding: '12px 20px', borderRadius: '8px', border: '2px solid var(--primary-gold)', background: 'transparent', color: 'var(--primary-gold)', cursor: 'pointer', fontWeight: 600, outline: 'none' }}
+        >
+          <option value="date" style={{background: 'var(--dark-bg)'}}>Sorted by Date</option>
+          <option value="name" style={{background: 'var(--dark-bg)'}}>Sorted by Name</option>
+          <option value="weight" style={{background: 'var(--dark-bg)'}}>Sorted by Weight</option>
+        </select>
       </div>
 
-      {viewMode === 'grid' ? (
-        <div className="responsive-grid no-print">
-            {filtered.map(product => (
-            <div key={product._id} className="glass" style={{ padding: '20px', borderTop: '5px solid var(--success)', position: 'relative' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
-                    <div>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>{product.productId}</span>
-                        <h3 style={{ fontSize: '1.25rem', margin: '4px 0' }}>{product.designName}</h3>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{product.category}</p>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                        <div style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(202, 255, 191, 0.2)', padding: '4px 8px', borderRadius: '20px' }}>
-                            <ShieldCheck size={16} /> <span style={{ fontSize: '0.7rem', fontWeight: 700 }}>QC OK</span>
-                        </div>
-                        <button onClick={() => handleEditClick(product)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '5px' }}>
-                            <Edit2 size={16} />
-                        </button>
-                    </div>
-                </div>
-
-                <div style={{ background: 'var(--dark-bg)', borderRadius: '12px', padding: '15px', marginBottom: '15px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Craftsman</span>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{product.workerId?.name}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Net Weight</span>
-                        <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>{product.netWeight}g</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Stones</span>
-                        <span style={{ fontSize: '0.85rem' }}>{product.stones?.length || 0} items</span>
-                    </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <button 
-                        onClick={() => setSelectedProduct(product)}
-                        className="glass" 
-                        style={{ flex: 2, padding: '10px', fontSize: '0.85rem', color: 'var(--secondary-gold)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                    >
-                        <Eye size={16}/> Details
-                    </button>
-                    <button 
-                        onClick={() => handlePrint(product)}
-                        className="glass" 
-                        style={{ flex: 1, padding: '10px', fontSize: '0.85rem', color: 'var(--text-main)', display: 'flex', justifyContent: 'center', alignItems: 'center', transition: 'var(--transition)' }}
-                        title="Print QR"
-                    >
-                        <Printer size={18} />
-                    </button>
-                </div>
-            </div>
-            ))}
-        </div>
-      ) : (
-        <div className="glass no-print" style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                    <tr style={{ textAlign: 'left', background: 'var(--dark-bg)', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                        <th style={{ padding: '18px' }}>Product Information</th>
-                        <th style={{ padding: '18px' }}>Category</th>
-                        <th style={{ padding: '18px' }}>Weight</th>
-                        <th style={{ padding: '18px' }}>Worker</th>
-                        <th style={{ padding: '18px' }}>Finishing Date</th>
-                        <th style={{ padding: '18px' }}>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {filtered.map(product => (
-                        <tr key={product._id} style={{ borderBottom: '1px solid var(--glass-border)', fontSize: '0.9rem', transition: 'var(--transition)' }}>
-                            <td style={{ padding: '18px' }}>
-                                <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{product.designName}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{product.productId}</div>
-                            </td>
-                            <td style={{ padding: '18px' }}>
-                                <span style={{ background: 'var(--dark-bg)', padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem' }}>{product.category}</span>
-                            </td>
-                            <td style={{ padding: '18px', fontWeight: 700 }}>{product.netWeight}g</td>
-                            <td style={{ padding: '18px' }}>{product.workerId?.name}</td>
-                            <td style={{ padding: '18px', color: 'var(--text-muted)' }}>{new Date(product.updatedAt).toLocaleDateString()}</td>
-                            <td style={{ padding: '18px' }}>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <button onClick={() => setSelectedProduct(product)} className="glass" style={{ padding: '6px', color: 'var(--secondary-gold)' }} title="View details"><Eye size={18}/></button>
-                                    <button onClick={() => handleEditClick(product)} className="glass" style={{ padding: '6px', color: 'var(--text-muted)' }} title="Edit"><Edit2 size={18}/></button>
-                                    <button onClick={() => handlePrint(product)} className="glass" style={{ padding: '6px', color: 'var(--text-main)' }} title="Print"><Printer size={18}/></button>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-      )}
-
-      {filtered.length === 0 && (
-        <div className="no-print" style={{ textAlign: 'center', padding: '100px 20px', color: 'var(--text-muted)' }}>
-          <Package size={64} style={{ marginBottom: '20px', opacity: 0.1 }} />
-          <h3 style={{ fontWeight: 400 }}>No matching inventory found</h3>
-          <p style={{ fontSize: '0.9rem' }}>Try searching by different keywords or worker names</p>
-        </div>
-      )}
+      <div className="glass no-print" style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+              <thead>
+                  <tr style={{ textAlign: 'left', background: 'var(--dark-bg)', borderBottom: '2px solid var(--primary-gold)', color: 'var(--primary-gold)', fontSize: '0.85rem' }}>
+                      <th style={{ padding: '15px 10px', textAlign: 'center', width: '50px' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={displayProducts.length > 0 && selectedItems.length === displayProducts.length}
+                            onChange={handleSelectAll}
+                            style={{ cursor: 'pointer', width: '18px', height: '18px', accentColor: 'var(--primary-gold)' }}
+                            title="select all"
+                          />
+                      </th>
+                      <th style={{ padding: '15px 10px', fontWeight: 600 }}>S.no</th>
+                      <th style={{ padding: '15px', fontWeight: 600 }}>Product Code</th>
+                      <th style={{ padding: '15px', fontWeight: 600 }}>Product name</th>
+                      <th style={{ padding: '15px', fontWeight: 600 }}>Net Wt</th>
+                      <th style={{ padding: '15px', fontWeight: 600 }}>Gross Wt</th>
+                      <th style={{ padding: '15px', fontWeight: 600 }}>Stone Wt</th>
+                      <th style={{ padding: '15px', fontWeight: 600 }}>Worker</th>
+                      <th style={{ padding: '15px', textAlign: 'center', fontWeight: 600 }}>Actions</th>
+                  </tr>
+              </thead>
+              <tbody>
+                  {displayProducts.map((product, index) => (
+                      <tr key={product._id} style={{ borderBottom: '1px solid var(--glass-border)', fontSize: '0.9rem', transition: 'var(--transition)', background: selectedItems.includes(product._id) ? 'rgba(212, 175, 55, 0.05)' : 'transparent' }}>
+                          <td style={{ padding: '15px 10px', textAlign: 'center' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={selectedItems.includes(product._id)}
+                                onChange={() => handleSelectItem(product._id)}
+                                style={{ cursor: 'pointer', width: '18px', height: '18px', accentColor: 'var(--primary-gold)' }}
+                              />
+                          </td>
+                          <td style={{ padding: '15px 10px' }}>{index + 1}</td>
+                          <td style={{ padding: '15px', fontFamily: 'monospace', color: 'var(--text-muted)' }}>{product.productId}</td>
+                          <td style={{ padding: '15px', fontWeight: 600, color: 'var(--text-main)' }}>{product.designName}</td>
+                          <td style={{ padding: '15px' }}>{product.netWeight}g</td>
+                          <td style={{ padding: '15px' }}>{product.grossWeight}g</td>
+                          <td style={{ padding: '15px' }}>{calculateTotalStoneWeight(product.stones).toFixed(2)}</td>
+                          <td style={{ padding: '15px' }}>{product.workerId?.name || 'Unassigned'}</td>
+                          <td style={{ padding: '15px', textAlign: 'center' }}>
+                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                  <button onClick={() => setSelectedProduct(product)} className="glass" style={{ padding: '6px', color: 'var(--secondary-gold)' }} title="View details"><Eye size={18}/></button>
+                                  <button onClick={() => handleEditClick(product)} className="glass" style={{ padding: '6px', color: 'var(--text-muted)' }} title="Edit"><Edit2 size={18}/></button>
+                                  <button onClick={() => handlePrint(product)} className="glass" style={{ padding: '6px', color: 'var(--text-main)' }} title="Print"><Printer size={18}/></button>
+                              </div>
+                          </td>
+                      </tr>
+                  ))}
+                  {displayProducts.length === 0 && (
+                      <tr>
+                          <td colSpan="9" style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--text-muted)' }}>
+                              <Package size={48} style={{ marginBottom: '15px', opacity: 0.2 }} />
+                              <p>No inventory items found.</p>
+                          </td>
+                      </tr>
+                  )}
+              </tbody>
+          </table>
+      </div>
 
       {/* --- DETAILS MODAL --- */}
       {selectedProduct && (
@@ -265,7 +244,7 @@ const Inventory = () => {
                       <div style={{ padding: '20px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
                           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '15px', textTransform: 'uppercase' }}>Crafting History</p>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Worker</span><span style={{ fontWeight: 600 }}>{selectedProduct.workerId?.name}</span></div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Worker</span><span style={{ fontWeight: 600 }}>{selectedProduct.workerId?.name || 'Unassigned'}</span></div>
                               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Assigned</span><span>{new Date(selectedProduct.createdAt).toLocaleDateString()}</span></div>
                               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Finished</span><span style={{ color: 'var(--success)', fontWeight: 600 }}>{new Date(selectedProduct.updatedAt).toLocaleDateString()}</span></div>
                           </div>
@@ -364,6 +343,7 @@ const Inventory = () => {
               </div>
           </div>
       )}
+
     </div>
   );
 };

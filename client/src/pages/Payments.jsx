@@ -91,7 +91,7 @@ const Payments = () => {
                 <td style={{ padding: '16px 12px', fontSize: '0.85rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <Calendar size={14} color="var(--text-muted)"/>
-                        {new Date(t.createdAt).toLocaleDateString()}
+                        {new Date(t.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).split(' ').join(' - ')}
                     </div>
                 </td>
                 <td style={{ padding: '16px 12px' }}>

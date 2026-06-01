@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import { 
     Coins, TrendingUp, Users, Save, ToggleLeft, ToggleRight, 
@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 
 const Settings = () => {
+    const prodNameRef = useRef(null);
+    const stoneNameRef = useRef(null);
     // Basic Settings
     const [settings, setSettings] = useState({});
     const [saveStatus, setSaveStatus] = useState('');
@@ -36,11 +38,153 @@ const Settings = () => {
     const [auditLogs, setAuditLogs] = useState([]);
     const [currency, setCurrency] = useState('₹');
 
+    // Products and Stones states
+    const [prodForm, setProdForm] = useState({ name: '', code: '' });
+    const [editProdIdx, setEditProdIdx] = useState(null);
+    const [prodSearch, setProdSearch] = useState('');
+
+    const [stoneForm, setStoneForm] = useState({ stoneName: '', code: '', pricePerUnit: 0, unit: 'carat', pieceWeight: 0 });
+    const [editStoneIdx, setEditStoneIdx] = useState(null);
+    const [stoneSearch, setStoneSearch] = useState('');
+
     const toggleTheme = () => {
         const newTheme = !isDark;
         setIsDark(newTheme);
         document.body.classList.toggle('dark-theme', newTheme);
         localStorage.setItem('theme', newTheme ? 'dark' : 'light');
+    };
+
+    // Product Master CRUD
+    const handleSaveProduct = (e) => {
+        e.preventDefault();
+        const nameVal = prodForm.name.trim();
+        const codeVal = prodForm.code.trim().toUpperCase();
+
+        if (!nameVal || !codeVal) {
+            alert('Product Name and Code are required!');
+            return;
+        }
+
+        // Validate duplicates
+        const dupName = categories.find((c, idx) => c.name.toLowerCase() === nameVal.toLowerCase() && idx !== editProdIdx);
+        if (dupName) {
+            alert('A product with this duplicate name already exists!');
+            return;
+        }
+
+        const dupCode = categories.find((c, idx) => c.code === codeVal && idx !== editProdIdx);
+        if (dupCode) {
+            alert('A product with this duplicate code already exists!');
+            return;
+        }
+
+        const updatedCategories = [...categories];
+        if (editProdIdx !== null) {
+            updatedCategories[editProdIdx] = {
+                ...updatedCategories[editProdIdx],
+                name: nameVal,
+                code: codeVal
+            };
+            setEditProdIdx(null);
+        } else {
+            updatedCategories.push({
+                name: nameVal,
+                code: codeVal,
+                status: 'Active',
+                createdAt: new Date(),
+                defaultLabourRate: 0
+            });
+        }
+
+        setCategories(updatedCategories);
+        setProdForm({ name: '', code: '' });
+        setTimeout(() => {
+            prodNameRef.current?.focus();
+        }, 50);
+    };
+
+    const handleToggleProductStatus = (idx) => {
+        const updated = [...categories];
+        updated[idx].status = updated[idx].status === 'Active' ? 'Inactive' : 'Active';
+        setCategories(updated);
+    };
+
+    const handleDeleteProduct = (idx) => {
+        if (window.confirm('Are you sure you want to deactivate/soft delete this product?')) {
+            const updated = [...categories];
+            updated[idx].status = 'Inactive';
+            setCategories(updated);
+        }
+    };
+
+    // Stone Master CRUD
+    const handleSaveStone = (e) => {
+        e.preventDefault();
+        const nameVal = stoneForm.stoneName.trim();
+        const codeVal = stoneForm.code.trim().toUpperCase();
+
+        if (!nameVal || !codeVal) {
+            alert('Stone Name and Code are required!');
+            return;
+        }
+
+        // Validate duplicates
+        const dupName = stones.find((s, idx) => s.stoneName.toLowerCase() === nameVal.toLowerCase() && idx !== editStoneIdx);
+        if (dupName) {
+            alert('A stone with this duplicate name already exists!');
+            return;
+        }
+
+        const dupCode = stones.find((s, idx) => s.code === codeVal && idx !== editStoneIdx);
+        if (dupCode) {
+            alert('A stone with this duplicate code already exists!');
+            return;
+        }
+
+        const updatedStones = [...stones];
+        const pieceWeightVal = stoneForm.unit === 'piece' ? (parseFloat(stoneForm.pieceWeight) || 0) : 0;
+        if (editStoneIdx !== null) {
+            updatedStones[editStoneIdx] = {
+                ...updatedStones[editStoneIdx],
+                stoneName: nameVal,
+                code: codeVal,
+                pricePerUnit: parseFloat(stoneForm.pricePerUnit) || 0,
+                unit: stoneForm.unit,
+                pieceWeight: pieceWeightVal
+            };
+            setEditStoneIdx(null);
+        } else {
+            updatedStones.push({
+                stoneName: nameVal,
+                code: codeVal,
+                pricePerUnit: parseFloat(stoneForm.pricePerUnit) || 0,
+                unit: stoneForm.unit,
+                pieceWeight: pieceWeightVal,
+                status: 'Active',
+                createdAt: new Date(),
+                stoneType: 'Precious'
+            });
+        }
+
+        setStones(updatedStones);
+        setStoneForm({ stoneName: '', code: '', pricePerUnit: 0, unit: 'carat', pieceWeight: 0 });
+        setTimeout(() => {
+            stoneNameRef.current?.focus();
+        }, 50);
+    };
+
+    const handleToggleStoneStatus = (idx) => {
+        const updated = [...stones];
+        updated[idx].status = updated[idx].status === 'Active' ? 'Inactive' : 'Active';
+        setStones(updated);
+    };
+
+    const handleDeleteStone = (idx) => {
+        if (window.confirm('Are you sure you want to deactivate/soft delete this stone?')) {
+            const updated = [...stones];
+            updated[idx].status = 'Inactive';
+            setStones(updated);
+        }
     };
 
     useEffect(() => {
@@ -255,55 +399,277 @@ const Settings = () => {
                 </div>
             )}
 
-            {/* Categories & Stones - HORIZONTAL LISTS requested */}
-            {(activeTab === 'categories' || activeTab === 'stones') && (
-                <div className="fade-in">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <h3>{activeTab === 'categories' ? 'Product Categories' : 'Stone Catalog'}</h3>
-                        <button className="glass" onClick={() => activeTab === 'categories' ? setCategories([...categories, {name: '', code: '', defaultLabourRate: 0}]) : setStones([...stones, {stoneName: '', stoneType: 'Precious', pricePerUnit: 0, unit: 'carat'}])} style={{ padding: '8px 15px', color: 'var(--primary-gold)', borderRadius: '8px' }}>+ Add Row</button>
-                    </div>
-                    
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
-                        {(activeTab === 'categories' ? categories : stones).map((item, idx) => (
-                            <div key={idx} style={{ background: 'var(--dark-bg)', padding: '15px 25px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '15px', border: '1px solid var(--glass-border)' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <input 
-                                        className="invisible-input"
-                                        placeholder={activeTab === 'categories' ? 'Category' : 'Stone Name'}
-                                        value={activeTab === 'categories' ? item.name : item.stoneName}
-                                        onChange={e => {
-                                            const newArr = activeTab === 'categories' ? [...categories] : [...stones];
-                                            if (activeTab === 'categories') newArr[idx].name = e.target.value;
-                                            else newArr[idx].stoneName = e.target.value;
-                                            activeTab === 'categories' ? setCategories(newArr) : setStones(newArr);
-                                        }}
-                                        style={{ width: '150px', fontWeight: 600, fontSize: '1rem' }}
-                                    />
-                                    {activeTab === 'categories' ? (
-                                        <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
-                                            <input value={item.code} onChange={e => { const a = [...categories]; a[idx].code = e.target.value.toUpperCase(); setCategories(a); }} style={{ width: '40px', fontSize: '0.7rem', color: 'var(--primary-gold)', border: 'none', background: 'transparent' }} placeholder="CODE" />
-                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Base Labour: ₹</span>
-                                            <input type="number" value={item.defaultLabourRate} onChange={e => { const a = [...categories]; a[idx].defaultLabourRate = e.target.value; setCategories(a); }} style={{ width: '50px', fontSize: '0.7rem', border: 'none', background: 'transparent', color: 'var(--text-main)' }} />
-                                        </div>
-                                    ) : (
-                                        <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
-                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Price/Unit: ₹</span>
-                                            <input type="number" value={item.pricePerUnit} onChange={e => { const a = [...stones]; a[idx].pricePerUnit = e.target.value; setStones(a); }} style={{ width: '50px', fontSize: '0.7rem', border: 'none', background: 'transparent', color: 'var(--text-main)' }} />
-                                            <select value={item.unit} onChange={e => { const a = [...stones]; a[idx].unit = e.target.value; setStones(a); }} style={{ fontSize: '0.65rem', border: 'none', background: 'transparent', color: 'var(--primary-gold)' }}>
-                                                <option value="carat">Carat</option>
-                                                <option value="gram">Grams</option>
-                                                <option value="piece">Piece</option>
-                                            </select>
-                                        </div>
-                                    )}
-                                </div>
-                                <Trash2 size={16} color="var(--danger)" cursor="pointer" onClick={() => {
-                                    const newArr = activeTab === 'categories' ? [...categories] : [...stones];
-                                    newArr.splice(idx, 1);
-                                    activeTab === 'categories' ? setCategories(newArr) : setStones(newArr);
-                                }}/>
+            {/* Products Tab */}
+            {activeTab === 'categories' && (
+                <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+                    {/* Add/Edit Product Form */}
+                    <div className="glass" style={{ padding: '24px', background: 'var(--dark-bg)', borderRadius: '16px' }}>
+                        <h4 style={{ margin: '0 0 20px 0', color: 'var(--primary-gold)', fontSize: '1.1rem' }}>
+                            {editProdIdx !== null ? '📝 Edit Product' : '➕ Add Product'}
+                        </h4>
+                        <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'flex-end' }}>
+                            <div style={{ width: '250px' }} className="input-group">
+                                <label>Product Name *</label>
+                                <input 
+                                    ref={prodNameRef}
+                                    required 
+                                    placeholder="e.g. Bridal Necklace" 
+                                    value={prodForm.name} 
+                                    onChange={e => setProdForm({ ...prodForm, name: e.target.value })} 
+                                />
                             </div>
-                        ))}
+                            <div style={{ width: '150px' }} className="input-group">
+                                <label>Product Code *</label>
+                                <input 
+                                    required 
+                                    placeholder="e.g. NE" 
+                                    value={prodForm.code} 
+                                    onChange={e => setProdForm({ ...prodForm, code: e.target.value })} 
+                                />
+                            </div>
+                            <button type="submit" className="btn-primary" style={{ height: '45px', marginBottom: '20px', borderRadius: '8px' }}>
+                                {editProdIdx !== null ? 'Update Product' : 'Create Product'}
+                            </button>
+                            {editProdIdx !== null && (
+                                <button type="button" className="glass" onClick={() => { setEditProdIdx(null); setProdForm({ name: '', code: '' }); }} style={{ height: '45px', marginBottom: '20px', padding: '0 20px', borderRadius: '8px', color: 'var(--text-main)' }}>
+                                    Cancel
+                                </button>
+                            )}
+                        </form>
+                    </div>
+
+                    {/* Search & Grid list */}
+                    <div className="glass" style={{ padding: '24px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+                            <h4 style={{ margin: 0 }}>Product Master Grid</h4>
+                            <input 
+                                type="text" 
+                                placeholder="Search by name or code..." 
+                                value={prodSearch} 
+                                onChange={e => setProdSearch(e.target.value)} 
+                                style={{ padding: '8px 15px', background: 'var(--dark-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', width: '250px' }}
+                            />
+                        </div>
+
+                        <div className="table-container" style={{ border: '1px solid var(--glass-border)' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead style={{ background: 'var(--dark-bg)' }}>
+                                    <tr style={{ textAlign: 'left', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        <th style={{ padding: '12px' }}>#</th>
+                                        <th style={{ padding: '12px' }}>Product Name</th>
+                                        <th style={{ padding: '12px' }}>Product Code</th>
+                                        <th style={{ padding: '12px' }}>Status</th>
+                                        <th style={{ padding: '12px' }}>Created Date</th>
+                                        <th style={{ padding: '12px', textAlign: 'right' }}>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {categories
+                                        .map((c, originalIdx) => ({ ...c, originalIdx }))
+                                        .filter(c => c.name.toLowerCase().includes(prodSearch.toLowerCase()) || c.code.toLowerCase().includes(prodSearch.toLowerCase()))
+                                        .map((c, idx) => (
+                                            <tr key={idx} style={{ borderTop: '1px solid var(--glass-border)', fontSize: '0.85rem' }}>
+                                                <td style={{ padding: '12px' }}>{idx + 1}</td>
+                                                <td style={{ padding: '12px', fontWeight: 600 }}>{c.name}</td>
+                                                <td style={{ padding: '12px', fontFamily: 'monospace', color: 'var(--primary-gold)', fontWeight: 700 }}>{c.code}</td>
+                                                <td style={{ padding: '12px' }}>
+                                                    <span 
+                                                        onClick={() => handleToggleProductStatus(c.originalIdx)}
+                                                        style={{ 
+                                                            padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer',
+                                                            background: c.status !== 'Inactive' ? 'rgba(52, 204, 113, 0.1)' : 'rgba(231, 76, 60, 0.1)',
+                                                            color: c.status !== 'Inactive' ? 'var(--success)' : 'var(--danger)'
+                                                        }}
+                                                        title="Click to toggle status"
+                                                    >
+                                                        {c.status || 'Active'}
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: '12px', color: 'var(--text-muted)' }}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'}</td>
+                                                <td style={{ padding: '12px', textAlign: 'right' }}>
+                                                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                                                        <button 
+                                                            onClick={() => { setEditProdIdx(c.originalIdx); setProdForm({ name: c.name, code: c.code }); }}
+                                                            style={{ background: 'transparent', border: 'none', color: 'var(--accent-blue)', cursor: 'pointer' }}
+                                                            title="Edit Product"
+                                                        >
+                                                            <ToggleLeft size={16} /> Edit
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDeleteProduct(c.originalIdx)}
+                                                            style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}
+                                                            title="Delete Product"
+                                                        >
+                                                            <Trash2 size={16} /> Delete
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    {categories.length === 0 && (
+                                        <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No products registered.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Stones Tab */}
+            {activeTab === 'stones' && (
+                <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+                    {/* Add/Edit Stone Form */}
+                    <div className="glass" style={{ padding: '24px', background: 'var(--dark-bg)', borderRadius: '16px' }}>
+                        <h4 style={{ margin: '0 0 20px 0', color: 'var(--primary-gold)', fontSize: '1.1rem' }}>
+                            {editStoneIdx !== null ? '📝 Edit Stone' : '➕ Add Stone'}
+                        </h4>
+                        <form onSubmit={handleSaveStone} style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'flex-end' }}>
+                            <div style={{ width: '250px' }} className="input-group">
+                                <label>Stone Name *</label>
+                                <input 
+                                    ref={stoneNameRef}
+                                    required 
+                                    placeholder="e.g. Ruby" 
+                                    value={stoneForm.stoneName} 
+                                    onChange={e => setStoneForm({ ...stoneForm, stoneName: e.target.value })} 
+                                />
+                            </div>
+                            <div style={{ width: '120px' }} className="input-group">
+                                <label>Stone Code *</label>
+                                <input 
+                                    required 
+                                    placeholder="e.g. RU" 
+                                    value={stoneForm.code} 
+                                    onChange={e => setStoneForm({ ...stoneForm, code: e.target.value })} 
+                                />
+                            </div>
+                            <div style={{ width: '120px' }} className="input-group">
+                                <label>Price per Unit (₹)</label>
+                                <input 
+                                    type="number"
+                                    placeholder="Price" 
+                                    value={stoneForm.pricePerUnit || ''} 
+                                    onChange={e => setStoneForm({ ...stoneForm, pricePerUnit: e.target.value })} 
+                                />
+                            </div>
+                            <div style={{ width: '120px' }} className="input-group">
+                                <label>Unit</label>
+                                <select 
+                                    value={stoneForm.unit} 
+                                    onChange={e => setStoneForm({ ...stoneForm, unit: e.target.value, pieceWeight: e.target.value === 'piece' ? stoneForm.pieceWeight || 0 : 0 })}
+                                    style={{ width: '100%', padding: '12px', background: 'var(--surface-bg)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}
+                                >
+                                    <option value="carat">Carat</option>
+                                    <option value="gram">Grams</option>
+                                    <option value="piece">Piece</option>
+                                </select>
+                            </div>
+                            {stoneForm.unit === 'piece' && (
+                                <div style={{ width: '120px' }} className="input-group">
+                                    <label>Piece Weight (g) *</label>
+                                    <input 
+                                        required
+                                        type="number"
+                                        step="0.001"
+                                        placeholder="Weight" 
+                                        value={stoneForm.pieceWeight || ''} 
+                                        onChange={e => setStoneForm({ ...stoneForm, pieceWeight: e.target.value })}
+                                        style={{ width: '100%', padding: '12px', background: 'var(--surface-bg)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}
+                                    />
+                                </div>
+                            )}
+                            <button type="submit" className="btn-primary" style={{ height: '45px', marginBottom: '20px', borderRadius: '8px' }}>
+                                {editStoneIdx !== null ? 'Update Stone' : 'Create Stone'}
+                            </button>
+                            {editStoneIdx !== null && (
+                                <button type="button" className="glass" onClick={() => { setEditStoneIdx(null); setStoneForm({ stoneName: '', code: '', pricePerUnit: 0, unit: 'carat', pieceWeight: 0 }); }} style={{ height: '45px', marginBottom: '20px', padding: '0 20px', borderRadius: '8px', color: 'var(--text-main)' }}>
+                                    Cancel
+                                </button>
+                            )}
+                        </form>
+                    </div>
+
+                    {/* Search & Grid list */}
+                    <div className="glass" style={{ padding: '24px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+                            <h4 style={{ margin: 0 }}>Stone Catalog Grid</h4>
+                            <input 
+                                type="text" 
+                                placeholder="Search by name or code..." 
+                                value={stoneSearch} 
+                                onChange={e => setStoneSearch(e.target.value)} 
+                                style={{ padding: '8px 15px', background: 'var(--dark-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', width: '250px' }}
+                            />
+                        </div>
+
+                        <div className="table-container" style={{ border: '1px solid var(--glass-border)' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead style={{ background: 'var(--dark-bg)' }}>
+                                    <tr style={{ textAlign: 'left', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        <th style={{ padding: '12px' }}>#</th>
+                                        <th style={{ padding: '12px' }}>Stone Name</th>
+                                        <th style={{ padding: '12px' }}>Stone Code</th>
+                                        <th style={{ padding: '12px' }}>Price / Unit</th>
+                                        <th style={{ padding: '12px' }}>Unit</th>
+                                        <th style={{ padding: '12px' }}>Status</th>
+                                        <th style={{ padding: '12px' }}>Created Date</th>
+                                        <th style={{ padding: '12px', textAlign: 'right' }}>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {stones
+                                        .map((s, originalIdx) => ({ ...s, originalIdx }))
+                                        .filter(s => s.stoneName.toLowerCase().includes(stoneSearch.toLowerCase()) || (s.code || '').toLowerCase().includes(stoneSearch.toLowerCase()))
+                                        .map((s, idx) => (
+                                            <tr key={idx} style={{ borderTop: '1px solid var(--glass-border)', fontSize: '0.85rem' }}>
+                                                <td style={{ padding: '12px' }}>{idx + 1}</td>
+                                                <td style={{ padding: '12px', fontWeight: 600 }}>{s.stoneName}</td>
+                                                <td style={{ padding: '12px', fontFamily: 'monospace', color: 'var(--primary-gold)', fontWeight: 700 }}>{s.code || '—'}</td>
+                                                <td style={{ padding: '12px' }}>₹{s.pricePerUnit || 0}</td>
+                                                <td style={{ padding: '12px', textTransform: 'capitalize' }}>
+                                                    {s.unit}{s.unit === 'piece' && s.pieceWeight ? ` (${s.pieceWeight}g)` : ''}
+                                                </td>
+                                                <td style={{ padding: '12px' }}>
+                                                    <span 
+                                                        onClick={() => handleToggleStoneStatus(s.originalIdx)}
+                                                        style={{ 
+                                                            padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer',
+                                                            background: s.status !== 'Inactive' ? 'rgba(52, 204, 113, 0.1)' : 'rgba(231, 76, 60, 0.1)',
+                                                            color: s.status !== 'Inactive' ? 'var(--success)' : 'var(--danger)'
+                                                        }}
+                                                        title="Click to toggle status"
+                                                    >
+                                                        {s.status || 'Active'}
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: '12px', color: 'var(--text-muted)' }}>{s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '—'}</td>
+                                                <td style={{ padding: '12px', textAlign: 'right' }}>
+                                                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                                                        <button 
+                                                            onClick={() => { setEditStoneIdx(s.originalIdx); setStoneForm({ stoneName: s.stoneName, code: s.code || '', pricePerUnit: s.pricePerUnit || 0, unit: s.unit, pieceWeight: s.pieceWeight || 0 }); }}
+                                                            style={{ background: 'transparent', border: 'none', color: 'var(--accent-blue)', cursor: 'pointer' }}
+                                                            title="Edit Stone"
+                                                        >
+                                                            <ToggleLeft size={16} /> Edit
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDeleteStone(s.originalIdx)}
+                                                            style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}
+                                                            title="Delete Stone"
+                                                        >
+                                                            <Trash2 size={16} /> Delete
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    {stones.length === 0 && (
+                                        <tr><td colSpan="8" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No stones registered.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             )}
@@ -323,6 +689,48 @@ const Settings = () => {
                                 <Trash2 size={14} color="var(--danger)" cursor="pointer" onClick={() => { const a = [...purityStandards]; a.splice(idx,1); setPurityStandards(a); }} />
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+            {/* Print/QR Tab */}
+            {activeTab === 'qr' && (
+                <div className="fade-in">
+                    <h3 style={{ marginBottom: '20px' }}>Print Label & Tag Configuration</h3>
+                    <div className="glass" style={{ padding: '24px', background: 'var(--dark-bg)' }}>
+                        <div className="input-group" style={{ marginBottom: '20px' }}>
+                            <label>Label Format Strategy</label>
+                            <select 
+                                value={qrFormat} 
+                                onChange={e => setQrFormat(e.target.value)} 
+                                style={{ background: 'var(--surface-bg)', padding: '12px', width: '100%', maxWidth: '400px' }}
+                            >
+                                <option value="qr">Standard QR Code (ID Only)</option>
+                                <option value="qr_name_wt">QR + Name & Net Wt</option>
+                                <option value="qr_name_wt_stone">QR + Name, Gross/Net & Stone Wt</option>
+                                <option value="qr_name_wt_stonewt_details">QR + Full Details (Includes individual stones)</option>
+                                <option value="barcode_128">Standard Barcode (CODE128)</option>
+                            </select>
+                            <p style={{ marginTop: '10px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                Choose whether to print a standard QR Code or a Barcode (CODE128), and select the level of detail to print alongside it.
+                            </p>
+                        </div>
+
+                        <div style={{ padding: '20px', background: 'var(--surface-bg)', borderRadius: '12px', border: '1px dashed var(--glass-border)', display: 'inline-block' }}>
+                            <p style={{ margin: '0 0 10px 0', fontSize: '0.8rem', color: 'var(--primary-gold)', fontWeight: 600 }}>PREVIEW</p>
+                            <div style={{ width: '200px', height: '100px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }}>
+                                {qrFormat === 'barcode_128' ? (
+                                    <div style={{ color: 'black', textAlign: 'center', fontFamily: 'monospace', fontWeight: 'bold' }}>
+                                        ||||| |||| |||<br/>
+                                        <span style={{ fontSize: '10px' }}>PROD-12345</span>
+                                    </div>
+                                ) : (
+                                    <div style={{ color: 'black', textAlign: 'center', fontWeight: 'bold' }}>
+                                        [ QR ]<br/>
+                                        {qrFormat !== 'qr' && <span style={{ fontSize: '10px' }}>Details...</span>}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

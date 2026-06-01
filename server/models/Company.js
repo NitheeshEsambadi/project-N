@@ -6,15 +6,21 @@ const companySchema = new mongoose.Schema({
         {
             name: { type: String, required: true },
             code: { type: String, required: true },
-            defaultLabourRate: { type: Number, default: 0 }
+            defaultLabourRate: { type: Number, default: 0 },
+            status: { type: String, default: 'Active', enum: ['Active', 'Inactive'] },
+            createdAt: { type: Date, default: Date.now }
         }
     ],
     stones: [
         {
             stoneName: { type: String, required: true },
-            stoneType: { type: String },
+            code: { type: String, default: '' },
+            stoneType: { type: String, default: 'Precious' },
             pricePerUnit: { type: Number, default: 0 },
-            unit: { type: String, enum: ['carat', 'gram', 'piece'], default: 'carat' }
+            unit: { type: String, enum: ['carat', 'gram', 'piece'], default: 'carat' },
+            pieceWeight: { type: Number, default: 0 },
+            status: { type: String, default: 'Active', enum: ['Active', 'Inactive'] },
+            createdAt: { type: Date, default: Date.now }
         }
     ],
     purityStandards: [

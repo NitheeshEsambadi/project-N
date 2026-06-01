@@ -28,15 +28,14 @@ const getWorkerById = async (req, res) => {
 // @route   POST /api/workers
 // @access  Private (Admin)
 const createWorker = async (req, res) => {
-    const { name, contact, specialization, labourRateType, baseRate } = req.body;
+    const { name, contact, specialization, identityNumber } = req.body;
 
     try {
         const worker = await Worker.create({
             name,
             contact,
             specialization,
-            labourRateType,
-            baseRate
+            identityNumber
         });
 
         res.status(201).json(worker);
@@ -60,8 +59,7 @@ const updateWorker = async (req, res) => {
         if (req.body.name !== undefined) worker.name = req.body.name;
         if (req.body.contact !== undefined) worker.contact = req.body.contact;
         if (req.body.specialization !== undefined) worker.specialization = req.body.specialization;
-        if (req.body.labourRateType !== undefined) worker.labourRateType = req.body.labourRateType;
-        if (req.body.baseRate !== undefined) worker.baseRate = req.body.baseRate;
+        if (req.body.identityNumber !== undefined) worker.identityNumber = req.body.identityNumber;
 
         const updatedWorker = await worker.save();
         res.json(updatedWorker);
