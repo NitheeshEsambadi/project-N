@@ -23,7 +23,7 @@ const Dashboard = () => {
   const [recentActivity, setRecentActivity] = useState([]);
   const [appSettings, setAppSettings] = useState({});
   const [company, setCompany] = useState({});
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 1024);
   const [dashboardAdditions, setDashboardAdditions] = useState({ totalSales: 0, inventoryValue: 0, inventoryWeight: 0 });
 
   useEffect(() => {
@@ -77,9 +77,11 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  // Close sidebar on route change
+  // Close sidebar on route change (only on mobile)
   useEffect(() => {
-    setSidebarOpen(false);
+    if (window.innerWidth <= 1024) {
+      setSidebarOpen(false);
+    }
   }, [window.location.pathname]);
 
   const showGold = appSettings.showGoldRate !== false;
@@ -93,19 +95,19 @@ const Dashboard = () => {
         <Sidebar user={user} logout={logout} closeSidebar={() => setSidebarOpen(false)} company={company} />
       </div>
 
-      <main style={{ flex: 1, padding: '24px', height: '100vh', overflowY: 'auto', position: 'relative' }}>
+      <main className={sidebarOpen ? 'sidebar-open' : ''} style={{ flex: 1, padding: '24px', height: '100vh', overflowY: 'auto', position: 'relative' }}>
         <header style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button 
-              className="mobile-only glass" 
-              onClick={() => setSidebarOpen(true)}
+              className="glass" 
+              onClick={() => setSidebarOpen(!sidebarOpen)}
               style={{ padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', color: 'var(--primary-gold)' }}
             >
               <Menu size={24} />
             </button>
             <div>
               <h1 style={{ fontSize: '1.8rem', lineHeight: '1.2' }}>Welcome, <span className="gold-gradient">{user?.username}</span></h1>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }} className="desktop-only">Jewellery Worker Management System</p>
+              {/* <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }} className="desktop-only">Jewellery Worker Management System</p> */}
             </div>
           </div>
           

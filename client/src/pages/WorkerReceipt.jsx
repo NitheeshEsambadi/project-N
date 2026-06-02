@@ -26,8 +26,12 @@ const WorkerReceipt = () => {
     const [tempStone, setTempStone] = useState({ stoneName: '', weight: '' });
     
     // Form States
-    const [selectedWorker, setSelectedWorker] = useState('');
-    const [receiptDate, setReceiptDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedWorker, setSelectedWorker] = useState(() => {
+        return localStorage.getItem('worker_receipt_worker') || '';
+    });
+    const [receiptDate, setReceiptDate] = useState(() => {
+        return localStorage.getItem('worker_receipt_date') || new Date().toISOString().split('T')[0];
+    });
     
     // Ornament Form State
     const [ornament, setOrnament] = useState({
@@ -41,7 +45,32 @@ const WorkerReceipt = () => {
     });
     
     // Added Ornaments Grid State
-    const [items, setItems] = useState([]);
+    const [items, setItems] = useState(() => {
+        try {
+            const saved = localStorage.getItem('worker_receipt_items');
+            return saved ? JSON.parse(saved) : [];
+        } catch (err) {
+            console.error('Failed to load worker_receipt_items from localStorage', err);
+            return [];
+        }
+    });
+
+    // Sync to LocalStorage
+    useEffect(() => {
+        try {
+            localStorage.setItem('worker_receipt_items', JSON.stringify(items));
+        } catch (err) {
+            console.error('Failed to save worker_receipt_items to localStorage', err);
+        }
+    }, [items]);
+
+    useEffect(() => {
+        localStorage.setItem('worker_receipt_worker', selectedWorker);
+    }, [selectedWorker]);
+
+    useEffect(() => {
+        localStorage.setItem('worker_receipt_date', receiptDate);
+    }, [receiptDate]);
 
     // Focus Refs
     const purityInputRef = useRef(null);
@@ -119,6 +148,13 @@ const WorkerReceipt = () => {
         }
         if (!ornament.purity) {
             alert('Please enter purity.');
+            return;
+        }
+
+        const gross = parseFloat(ornament.grossWeight) || 0;
+        const stone = parseFloat(ornament.stoneWeight) || 0;
+        if (stone > gross) {
+            alert('Stone weight cannot exceed the gross weight.');
             return;
         }
 
@@ -251,15 +287,16 @@ const WorkerReceipt = () => {
         const data = receiptData || {
             receiptNumber: 'WR-TEMP-' + receiptDate,
             date: receiptDate,
-            workerId: workers.find(w => w._id === selectedWorker) || { name: 'Walk-in Worker', workerID: '—' },
+            workerId: workers.find(w => w._id === selectedWorker) || { name: 'Walk-in Worker', workerID: '—', contact: '—' },
             items,
             totalWeight,
             totalStoneWeight,
             totalItems
         };
 
-        const workerName = data.workerId?.name || workers.find(w => w._id === selectedWorker)?.name || 'N/A';
-        const workerID = data.workerId?.workerID || workers.find(w => w._id === selectedWorker)?.workerID || 'N/A';
+        const workerName = data.workerId?.name || workers.find(w => w._id === selectedWorker)?.name || 'Walk-in Worker';
+        const workerID = data.workerId?.workerID || workers.find(w => w._id === selectedWorker)?.workerID || '—';
+        const workerPhone = data.workerId?.contact || workers.find(w => w._id === selectedWorker)?.contact || '9876543210';
 
         const printWindow = window.open('', '_blank', 'width=800,height=900');
 
@@ -267,7 +304,7 @@ const WorkerReceipt = () => {
             day: '2-digit',
             month: 'short',
             year: 'numeric'
-        }).split(' ').join(' - ');
+        }).replace(/\s+/g, '-');
 
         const activeStones = companyStones.length > 0 ? companyStones : [{ stoneName: 'AD' }, { stoneName: 'RUBY' }, { stoneName: 'EMERALD' }, { stoneName: 'SAPPHIRE' }, { stoneName: 'PEARL' }];
 
@@ -302,18 +339,10 @@ const WorkerReceipt = () => {
                     <title>Worker Receipt - ${data.receiptNumber}</title>
                     <style>
                         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 40px; }
-                        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-                        .company-name { font-size: 24px; font-weight: 800; color: #6405FF; letter-spacing: -0.5px; }
-                        .receipt-title { font-size: 20px; font-weight: 700; text-align: right; color: #333; }
-                        .info-grid { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-                        .info-cell { padding: 10px; background: #f9f9f9; border: 1px solid #eee; border-radius: 8px; font-size: 14px; }
+                        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+                        .company-name { font-size: 26px; font-weight: 800; color: #6405FF; letter-spacing: -0.5px; }
                         .items-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
                         .items-th { background: #6405FF; color: white; padding: 12px 10px; font-weight: 600; text-align: left; font-size: 13px; }
-                        .summary-box { width: 100%; border-collapse: collapse; margin-top: 30px; }
-                        .summary-label { text-align: right; padding: 10px; font-size: 14px; color: #666; }
-                        .summary-value { text-align: right; padding: 10px; font-size: 16px; font-weight: 700; width: 150px; border-bottom: 2px double #333; }
-                        .signature-section { margin-top: 60px; width: 100%; }
-                        .sig-line { border-top: 1px solid #ccc; width: 200px; margin-top: 40px; text-align: center; font-size: 13px; color: #666; }
                         @media print {
                             body { margin: 20px; }
                             .items-th { background: #f2f2f2 !important; color: #000 !important; border: 1px solid #ccc !important; }
@@ -324,26 +353,38 @@ const WorkerReceipt = () => {
                     <table class="header-table">
                         <tr>
                             <td class="company-name">MAHALAKSHMI JEWELLERY</td>
-                            <td class="receipt-title">WORKER RECEIPT</td>
+                            <td style="text-align: right; font-size: 14px; color: #333; line-height: 1.6;">
+                                <strong>Date:</strong> ${dateStr}<br />
+                                <strong>Receipt No:</strong> <span style="color: #6405FF; font-weight: 700;">${data.receiptNumber}</span>
+                            </td>
                         </tr>
                     </table>
                     
-                    <hr style="border: none; border-top: 1px solid #ddd; margin-bottom: 20px;" />
+                    <div style="display: flex; align-items: center; margin-top: 15px; margin-bottom: 25px;">
+                        <div style="flex-grow: 1; height: 2px; background-color: #6405FF; margin-right: 15px;"></div>
+                        <div style="font-weight: 700; font-size: 13px; letter-spacing: 1px; color: #333; text-transform: uppercase;">WORKER RECEIPT</div>
+                    </div>
 
-                    <table class="info-grid">
-                        <tr>
-                            <td class="info-cell" style="width: 50%;">
-                                <strong>Craftsman / Worker Details:</strong><br />
-                                Name: ${workerName}<br />
-                                ID: ${workerID}
-                            </td>
-                            <td class="info-cell" style="width: 50%; text-align: right;">
-                                <strong>Receipt Info:</strong><br />
-                                Receipt #: ${data.receiptNumber}<br />
-                                Date: ${dateStr}
-                            </td>
-                        </tr>
-                    </table>
+                    <div style="border: 1px solid #ddd; border-radius: 6px; padding: 15px; margin-bottom: 30px;">
+                        <div style="color: #6405FF; font-weight: 700; font-size: 13px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">WORKER DETAILS</div>
+                        <table style="border-collapse: collapse; font-size: 14px; color: #333; width: auto;">
+                            <tr>
+                                <td style="font-weight: bold; width: 90px; padding: 4px 0;">Name</td>
+                                <td style="padding: 4px 10px;">:</td>
+                                <td style="padding: 4px 0;">${workerName}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold; padding: 4px 0;">Phone No</td>
+                                <td style="padding: 4px 10px;">:</td>
+                                <td style="padding: 4px 0;">${workerPhone}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold; padding: 4px 0;">Worker ID</td>
+                                <td style="padding: 4px 10px;">:</td>
+                                <td style="padding: 4px 0;">${workerID}</td>
+                            </tr>
+                        </table>
+                    </div>
 
                     <table class="items-table">
                         <thead>
@@ -368,35 +409,32 @@ const WorkerReceipt = () => {
                         </tbody>
                     </table>
 
-                    <table class="summary-box">
-                        <tr>
-                            <td class="summary-label">Total Ornaments:</td>
-                            <td class="summary-value" style="border-bottom: 1px solid #eee;">${data.totalItems}</td>
-                        </tr>
-                        <tr>
-                            <td class="summary-label">Total Stone Weight:</td>
-                            <td class="summary-value" style="border-bottom: 1px solid #eee;">${data.totalStoneWeight.toFixed(3)}g</td>
-                        </tr>
-                        <tr>
-                            <td class="summary-label" style="font-size: 16px; font-weight: bold; color: #000;">Total Net Weight:</td>
-                            <td class="summary-value" style="font-size: 18px; color: #6405FF;">${(data.totalWeight - data.totalStoneWeight).toFixed(3)}g</td>
-                        </tr>
-                        <tr>
-                            <td class="summary-label" style="font-size: 16px; font-weight: bold; color: #000;">Total Gross Weight:</td>
-                            <td class="summary-value" style="font-size: 18px; color: #000; border-bottom: 3px double #333;">${data.totalWeight.toFixed(3)}g</td>
-                        </tr>
-                    </table>
-
-                    <table class="signature-section">
-                        <tr>
-                            <td>
-                                <div class="sig-line">Worker's Signature</div>
-                            </td>
-                            <td style="text-align: right;">
-                                <div class="sig-line" style="margin-left: auto;">Authorized Signature</div>
-                            </td>
-                        </tr>
-                    </table>
+                    <div style="display: flex; justify-content: flex-end; margin-top: 30px; margin-bottom: 30px;">
+                        <div style="width: 300px;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #333; margin: 10px 0;">
+                                <tr>
+                                    <td style="padding: 6px 15px; width: 140px;">Total Items</td>
+                                    <td style="padding: 6px 5px; width: 10px;">:</td>
+                                    <td style="padding: 6px 15px; text-align: left; font-weight: bold;">${data.totalItems}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 15px;">Total Stone Weight</td>
+                                    <td style="padding: 6px 5px;">:</td>
+                                    <td style="padding: 6px 15px; text-align: left;">${data.totalStoneWeight.toFixed(3)}g</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 15px;">Total Net Weight</td>
+                                    <td style="padding: 6px 5px;">:</td>
+                                    <td style="padding: 6px 15px; text-align: left;">${(data.totalWeight - data.totalStoneWeight).toFixed(3)}g</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 15px;">Total Gross Weight</td>
+                                    <td style="padding: 6px 5px;">:</td>
+                                    <td style="padding: 6px 15px; text-align: left;">${data.totalWeight.toFixed(3)}g</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
 
                     <script>
                         window.onload = function() {
@@ -539,7 +577,7 @@ const WorkerReceipt = () => {
                 <h3 style={{ margin: '0 0 20px 0', fontSize: '1.1rem', color: 'var(--primary-gold)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}>
                     📋 ADDED ITEMS
                 </h3>
-                <div className="table-container" style={{ border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'hidden' }}>
+                <div className="table-container" style={{ border: '1px solid var(--glass-border)', borderRadius: '12px', maxHeight: '400px', overflow: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1100px' }}>
                         <thead style={{ background: 'var(--dark-bg)', color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
@@ -595,7 +633,7 @@ const WorkerReceipt = () => {
                                         <button onClick={() => handleEditItem(item)} style={{ background: 'transparent', border: 'none', color: 'var(--primary-gold)', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Edit Item">
                                             <Edit size={16} />
                                         </button>
-                                        <button onClick={() => alert(`Barcode generated & printed for ${item.product}: HN-${item.id}`)} style={{ background: 'transparent', border: 'none', color: '#2ec4b6', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Print Barcode">
+                                        <button onClick={() => alert(`Barcode generated & printed for ${item.product}: ${item.barcode}`)} style={{ background: 'transparent', border: 'none', color: '#2ec4b6', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Print Barcode">
                                             <Barcode size={16} />
                                         </button>
                                         <button onClick={() => handleRemoveItem(item.id)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Remove Item">
@@ -830,6 +868,11 @@ const WorkerReceipt = () => {
                                 className="btn-primary" 
                                 onClick={() => {
                                     const total = modalStones.reduce((sum, s) => sum + s.weight, 0);
+                                    const gross = parseFloat(ornament.grossWeight) || 0;
+                                    if (gross > 0 && total > gross) {
+                                        alert('Total stone weight cannot exceed the gross weight.');
+                                        return;
+                                    }
                                     setOrnament(prev => ({ ...prev, stoneWeight: total > 0 ? total.toFixed(3) : '' }));
                                     setShowStoneModal(false);
                                     setTimeout(() => { purityInputRef.current?.focus(); }, 50);

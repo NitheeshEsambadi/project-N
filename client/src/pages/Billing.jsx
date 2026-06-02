@@ -342,8 +342,8 @@ const Billing = ({ setSidebarOpen }) => {
             {setSidebarOpen && (
               <button 
                 type="button" 
-                className="mobile-only"
-                onClick={() => setSidebarOpen(true)}
+                className=""
+                onClick={() => setSidebarOpen(prev => !prev)}
                 style={{
                   background: 'rgba(255, 255, 255, 0.15)',
                   border: 'none',

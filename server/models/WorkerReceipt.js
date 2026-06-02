@@ -6,6 +6,7 @@ const workerReceiptSchema = new mongoose.Schema({
     workerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Worker', required: true },
     items: [
         {
+            barcode: { type: String },
             product: { type: String, required: true },
             grossWeight: { type: Number, required: true },
             stoneWeight: { type: Number, default: 0 },

@@ -29,6 +29,7 @@ const productSchema = new mongoose.Schema({
     qualityCheck: { type: String, enum: ['passed', 'failed', 'pending'], default: 'pending' },
     totalStoneWeight: { type: Number, default: 0 }, // Simplified gross stone weight
     notes: { type: String }, // Design notes or instructions
+    huid: { type: String },
     draftList: { type: [mongoose.Schema.Types.Mixed], default: [] } // Stores the UI drafted items
 }, { timestamps: true });
 

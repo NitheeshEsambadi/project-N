@@ -90,8 +90,10 @@ const receiveProduct = async (req, res) => {
 };
 
 const getProducts = async (req, res) => {
-    const { workerId } = req.query;
-    const filter = workerId ? { workerId } : {};
+    const { workerId, status } = req.query;
+    const filter = {};
+    if (workerId) filter.workerId = workerId;
+    if (status) filter.status = status;
     const products = await Product.find(filter).populate('workerId', 'name workerID').sort({ createdAt: -1 });
     res.json(products);
 };

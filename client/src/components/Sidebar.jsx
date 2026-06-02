@@ -56,7 +56,7 @@ const Sidebar = ({ user, logout, closeSidebar, company }) => {
           </div>
         </div>
         <button 
-          className="mobile-only glass" 
+          className="glass" 
           onClick={closeSidebar}
           style={{ padding: '8px', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
         >
