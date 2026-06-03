@@ -12,11 +12,14 @@ const Billing = ({ setSidebarOpen }) => {
   const [purity, setPurity] = useState('92'); 
   const [category, setCategory] = useState('Gold');
   const [autoSubmit, setAutoSubmit] = useState(true);
+  const [printDropdownOpen, setPrintDropdownOpen] = useState(false);
+  const [activePrintFormat, setActivePrintFormat] = useState('estimation');
 
   // Db Products & Stones
   const [availableProducts, setAvailableProducts] = useState([]);
   const [companyStones, setCompanyStones] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [company, setCompany] = useState({});
 
   // Customer & Bill
   const [customerName, setCustomerName] = useState('Mr. Arun Kumar');
@@ -44,6 +47,7 @@ const Billing = ({ setSidebarOpen }) => {
           api.get('/company').catch(() => ({ data: {} }))
         ]);
         setAvailableProducts(prodRes.data || []);
+        setCompany(companyRes.data || {});
         
         // Use stones from company or default list if empty
         const fetchedStones = (companyRes.data?.stones || []).filter(s => s.status !== 'Inactive');
@@ -198,8 +202,12 @@ const Billing = ({ setSidebarOpen }) => {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const triggerPrintFormat = (format) => {
+    setActivePrintFormat(format);
+    setPrintDropdownOpen(false);
+    setTimeout(() => {
+      window.print();
+    }, 250);
   };
 
   // Pre-populate some dummy items if empty to match the beautiful demo
@@ -286,6 +294,54 @@ const Billing = ({ setSidebarOpen }) => {
     return word + 'Rupees Only';
   };
 
+  const printSettings = company.printSettings || {
+    showHeaderLogo: true,
+    showHeaderGSTIN: true,
+    showHeaderAddress: true,
+    showHeaderContact: true,
+    showHallmarkLogo: true,
+    showBISLogo: true,
+    showItemBarcode: true,
+    showItemHUID: true,
+    showItemDescription: true,
+    showItemStoneDetails: true,
+    groupStoneDetails: true,
+    showItemProductImage: true,
+    showAmountGoldRate: true,
+    showAmountStoneCharges: true,
+    showAmountMakingCharges: true,
+    showAmountDiscount: true,
+    showAmountGST: true,
+    defaultTemplate: 'classic',
+    watermark: 'none',
+    multiCopy: { customerCopy: true, officeCopy: true, workerCopy: false },
+    defaultPageSize: 'a4',
+    qrOption: 'invoice'
+  };
+
+  const getPageSizeCSS = () => {
+    let sizeStr = 'A4 portrait';
+    let marginStr = '12mm';
+    
+    if (activePrintFormat === 'tag') {
+      sizeStr = '50mm 25mm';
+      marginStr = '0mm';
+    } else if (activePrintFormat === 'worker' || activePrintFormat === 'jobcard') {
+      sizeStr = 'A5 portrait';
+      marginStr = '8mm';
+    } else if (activePrintFormat === 'thermal') {
+      sizeStr = '80mm auto';
+      marginStr = '2mm';
+    }
+    
+    return `
+      @page {
+        size: ${sizeStr};
+        margin: ${marginStr};
+      }
+    `;
+  };
+
   return (
     <div style={{
       backgroundColor: 'var(--dark-bg)',
@@ -315,13 +371,10 @@ const Billing = ({ setSidebarOpen }) => {
             width: 100%;
             background: #ffffff !important;
             color: #000000 !important;
-            font-family: 'Inter', sans-serif !important;
+            font-family: ${printSettings.defaultTemplate === 'classic' ? 'Georgia, serif' : 'Inter, sans-serif'} !important;
             padding: 10px !important;
           }
-          @page {
-            size: A4 portrait;
-            margin: 15mm;
-          }
+          ${getPageSizeCSS()}
         }
       `}} />
 
@@ -846,236 +899,546 @@ const Billing = ({ setSidebarOpen }) => {
             >
               All Clear ✘
             </button>
-            <button 
-              onClick={handlePrint} 
-              style={{ 
-                padding: '10px 24px', 
-                background: '#0059a8', 
-                color: '#ffffff', 
-                border: 'none', 
-                borderRadius: '4px', 
-                fontWeight: '700', 
-                fontSize: '12px',
-                cursor: 'pointer',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <Printer size={14} /> Print Bill
-            </button>
+            <div style={{ position: 'relative' }}>
+              <button 
+                onClick={() => setPrintDropdownOpen(!printDropdownOpen)} 
+                style={{ 
+                  padding: '10px 24px', 
+                  background: '#0059a8', 
+                  color: '#ffffff', 
+                  border: 'none', 
+                  borderRadius: '4px', 
+                  fontWeight: '700', 
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Printer size={14} /> Print Options ▼
+              </button>
+              {printDropdownOpen && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  right: 0,
+                  marginBottom: '8px',
+                  backgroundColor: 'var(--surface-bg)',
+                  border: '1px solid var(--glass-border)',
+                  borderRadius: '8px',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+                  zIndex: 999,
+                  minWidth: '220px',
+                  padding: '8px 0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px'
+                }}>
+                  <div style={{ padding: '6px 12px', fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid var(--glass-border)' }}>ERP Print Center</div>
+                  {[
+                    { key: 'estimation', label: '🧾 Estimation Bill' },
+                    { key: 'invoice', label: '📄 Tax Invoice' },
+                    { key: 'tag', label: '🏷 Product Tag' },
+                    { key: 'worker', label: '👷 Worker Receipt' },
+                    { key: 'delivery', label: '📦 Delivery Note' },
+                    { key: 'jobcard', label: '📋 Job Card' },
+                    { key: 'order', label: '📑 Order Receipt' }
+                  ].map(opt => (
+                    <button
+                      key={opt.key}
+                      onClick={() => triggerPrintFormat(opt.key)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        textAlign: 'left',
+                        padding: '10px 16px',
+                        fontSize: '12px',
+                        color: 'var(--text-main)',
+                        cursor: 'pointer',
+                        display: 'block',
+                        width: '100%',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={e => e.target.style.backgroundColor = 'var(--hover-bg)'}
+                      onMouseLeave={e => e.target.style.backgroundColor = 'transparent'}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                  <div style={{ height: '1px', backgroundColor: 'var(--glass-border)', margin: '4px 0' }} />
+                  <button
+                    onClick={() => { setPrintDropdownOpen(false); alert('Generating PDF and sending email to customer...'); }}
+                    style={{ background: 'transparent', border: 'none', textAlign: 'left', padding: '8px 16px', fontSize: '12px', color: 'var(--text-main)', cursor: 'pointer', width: '100%' }}
+                    onMouseEnter={e => e.target.style.backgroundColor = 'var(--hover-bg)'}
+                    onMouseLeave={e => e.target.style.backgroundColor = 'transparent'}
+                  >
+                    📧 Email PDF
+                  </button>
+                  <button
+                    onClick={() => { setPrintDropdownOpen(false); alert('Downloading PDF receipt...'); }}
+                    style={{ background: 'transparent', border: 'none', textAlign: 'left', padding: '8px 16px', fontSize: '12px', color: 'var(--text-main)', cursor: 'pointer', width: '100%' }}
+                    onMouseEnter={e => e.target.style.backgroundColor = 'var(--hover-bg)'}
+                    onMouseLeave={e => e.target.style.backgroundColor = 'transparent'}
+                  >
+                    ⬇ Download PDF
+                  </button>
+                  <button
+                    onClick={() => { setPrintDropdownOpen(false); alert('Link copied to clipboard. Share with customer!'); }}
+                    style={{ background: 'transparent', border: 'none', textAlign: 'left', padding: '8px 16px', fontSize: '12px', color: 'var(--text-main)', cursor: 'pointer', width: '100%' }}
+                    onMouseEnter={e => e.target.style.backgroundColor = 'var(--hover-bg)'}
+                    onMouseLeave={e => e.target.style.backgroundColor = 'transparent'}
+                  >
+                    🔗 Share Link
+                  </button>
+                  <button
+                    onClick={() => { setPrintDropdownOpen(false); alert('Generating tracking QR Code for customer...'); }}
+                    style={{ background: 'transparent', border: 'none', textAlign: 'left', padding: '8px 16px', fontSize: '12px', color: 'var(--text-main)', cursor: 'pointer', width: '100%' }}
+                    onMouseEnter={e => e.target.style.backgroundColor = 'var(--hover-bg)'}
+                    onMouseLeave={e => e.target.style.backgroundColor = 'transparent'}
+                  >
+                    📱 Generate QR
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
         </div>
       </div>
 
-      {/* 
-        ========================================================================
-        MAHALAKSHMI JEWELLERY PRINT ONLY INVOICE TEMPLATE (VISIBLE ONLY DURING PRINT)
-        ========================================================================
-      */}
-      <div id="print-invoice-root" style={{ display: 'none', backgroundColor: '#ffffff', color: '#000000', padding: '15px' }}>
+      <div id="print-invoice-root" style={{ display: 'none', backgroundColor: '#ffffff', color: '#000000', padding: 0 }}>
         
-        {/* Invoice Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #b45309', paddingBottom: '12px', marginBottom: '15px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <div style={{ border: '2px solid #b45309', borderRadius: '50%', width: '55px', height: '55px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '24px', color: '#b45309', fontFamily: 'Georgia, serif' }}>
-              M
-            </div>
-            <div>
-              <h1 style={{ fontFamily: 'Georgia, serif', fontSize: '26px', fontWeight: '800', color: '#0f172a', margin: '0', letterSpacing: '2px' }}>MAHALAKSHMI</h1>
-              <h4 style={{ fontFamily: 'Georgia, serif', fontSize: '13px', fontWeight: '600', color: '#b45309', margin: '0 0 4px 0', letterSpacing: '4px' }}>JEWELLERY</h4>
-              <p style={{ fontSize: '9px', color: '#475569', margin: '0 0 2px 0' }}>123, Gold Street, Coimbatore - 641 001, Tamil Nadu, India</p>
-              <p style={{ fontSize: '9px', color: '#475569', margin: '0' }}>📞 0422 123 4567 | 📱 98765 43210 | ✉ info@mahalakshmijewellery.com</p>
-              <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e293b', margin: '2px 0 0 0' }}>GSTIN : 33ABCDE1234F1Z5</p>
-            </div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ background: '#0f172a', color: '#ffffff', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '8px', display: 'inline-block' }}>
-              ESTIMATION BILL
-            </div>
-            <table style={{ fontSize: '10px', width: '200px', borderCollapse: 'collapse', textAlign: 'left', border: 'none', marginLeft: 'auto' }}>
-              <tbody>
-                <tr><td style={{ padding: '2px 0', fontWeight: 'bold', color: '#475569' }}>Bill No.</td><td style={{ padding: '2px 0', textAlign: 'right' }}>EST/31/05/2026/001</td></tr>
-                <tr><td style={{ padding: '2px 0', fontWeight: 'bold', color: '#475569' }}>Date</td><td style={{ padding: '2px 0', textAlign: 'right' }}>{new Date(billDate).toLocaleDateString('en-GB')}</td></tr>
-                <tr><td style={{ padding: '2px 0', fontWeight: 'bold', color: '#475569' }}>Estimation Date</td><td style={{ padding: '2px 0', textAlign: 'right' }}>{new Date(estimationDate).toLocaleDateString('en-GB')}</td></tr>
-                <tr><td style={{ padding: '2px 0', fontWeight: 'bold', color: '#475569' }}>Valid Till</td><td style={{ padding: '2px 0', textAlign: 'right' }}>07/06/2026</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        {(() => {
+          // Prepare copies to render
+          const copiesToPrint = [];
+          if (activePrintFormat === 'worker' || activePrintFormat === 'tag') {
+            copiesToPrint.push('ORIGINAL');
+          } else {
+            if (printSettings.multiCopy?.customerCopy) copiesToPrint.push('CUSTOMER COPY');
+            if (printSettings.multiCopy?.officeCopy) copiesToPrint.push('OFFICE COPY');
+            if (printSettings.multiCopy?.workerCopy) copiesToPrint.push('WORKER COPY');
+            if (copiesToPrint.length === 0) copiesToPrint.push('ORIGINAL');
+          }
 
-        {/* Customer & Other Details Row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-          <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '8px 12px' }}>
-            <h4 style={{ margin: '0 0 6px 0', color: '#b45309', fontSize: '11px', borderBottom: '1px solid #e2e8f0', paddingBottom: '3px' }}>CUSTOMER DETAILS</h4>
-            <table style={{ width: '100%', fontSize: '10px', borderCollapse: 'collapse' }}>
-              <tbody>
-                <tr><td style={{ width: '80px', padding: '2px 0', color: '#64748b' }}>Name</td><td style={{ padding: '2px 0', fontWeight: 'bold' }}>: {customerName}</td></tr>
-                <tr><td style={{ padding: '2px 0', color: '#64748b' }}>Mobile</td><td style={{ padding: '2px 0' }}>: {customerPhone}</td></tr>
-                <tr><td style={{ padding: '2px 0', color: '#64748b' }}>Customer Type</td><td style={{ padding: '2px 0' }}>: Retail</td></tr>
-                <tr><td style={{ padding: '2px 0', color: '#64748b' }}>Customer ID</td><td style={{ padding: '2px 0' }}>: CUST000123</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '8px 12px' }}>
-            <h4 style={{ margin: '0 0 6px 0', color: '#b45309', fontSize: '11px', borderBottom: '1px solid #e2e8f0', paddingBottom: '3px' }}>OTHER DETAILS</h4>
-            <table style={{ width: '100%', fontSize: '10px', borderCollapse: 'collapse' }}>
-              <tbody>
-                <tr><td style={{ width: '80px', padding: '2px 0', color: '#64748b' }}>Total Items</td><td style={{ padding: '2px 0', fontWeight: 'bold' }}>: {items.length}</td></tr>
-                <tr><td style={{ padding: '2px 0', color: '#64748b' }}>Description</td><td style={{ padding: '2px 0' }}>: {description}</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+          // Template themes helper
+          const getThemeStyles = (templateName) => {
+            switch(templateName) {
+              case 'luxury':
+                return {
+                  fontFamily: 'Georgia, serif',
+                  borderColor: '#b45309',
+                  headingColor: '#78350f',
+                  bgColor: '#fffcf5',
+                  accentColor: '#d97706'
+                };
+              case 'minimal':
+                return {
+                  fontFamily: 'sans-serif',
+                  borderColor: '#cbd5e1',
+                  headingColor: '#1e293b',
+                  bgColor: '#ffffff',
+                  accentColor: '#475569'
+                };
+              case 'corporate':
+                return {
+                  fontFamily: 'monospace',
+                  borderColor: '#334155',
+                  headingColor: '#0f172a',
+                  bgColor: '#f8fafc',
+                  accentColor: '#334155'
+                };
+              case 'classic':
+              default:
+                return {
+                  fontFamily: 'Georgia, serif',
+                  borderColor: '#b45309',
+                  headingColor: '#0f172a',
+                  bgColor: '#ffffff',
+                  accentColor: '#b45309'
+                };
+            }
+          };
 
-        {/* Invoice Grid Table */}
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', marginBottom: '15px' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#0f172a', color: '#ffffff', textAlign: 'left', fontWeight: 'bold' }}>
-              <th style={{ padding: '6px', border: '1px solid #334155' }}>#</th>
-              <th style={{ padding: '6px', border: '1px solid #334155' }}>PRODUCT / DESIGN</th>
-              <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'center' }}>PCS</th>
-              <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>GROSS WT (g)</th>
-              <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>STONE WT (g)</th>
-              <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>NET WT (g)</th>
-              <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'center' }}>PURITY (%)</th>
-              <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'center' }}>WASTAGE (%)</th>
-              {companyStones.map(stone => (
-                <th key={stone.stoneName} style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>{stone.stoneName}</th>
-              ))}
-              {companyStones.length === 0 && (
-                <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>Stones</th>
-              )}
-              <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>AMOUNT (₹)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item, idx) => (
-              <tr key={item.id} style={{ borderBottom: '1px solid #cbd5e1' }}>
-                <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>{idx + 1}</td>
-                <td style={{ padding: '6px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>
-                  {item.name}
-                  <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 'normal' }}>Design No: {item.barcode}</div>
-                </td>
-                <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>1</td>
-                <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{item.grossWt.toFixed(3)}</td>
-                <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{item.stoneWt.toFixed(3)}</td>
-                <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 'bold' }}>{item.netWeight.toFixed(3)}</td>
-                <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>{item.purity}</td>
-                <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>{item.wastage}</td>
-                {companyStones.map(stone => (
-                  <td key={stone.stoneName} style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
-                    {item.stoneWt > 0 ? (item.stoneWt / companyStones.length).toFixed(3) : '0.000'}
-                  </td>
-                ))}
-                {companyStones.length === 0 && (
-                  <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{item.stoneWt.toFixed(3)}</td>
-                )}
-                <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 'bold' }}>{item.amount.toLocaleString()}.00</td>
-              </tr>
-            ))}
-            {/* Total Row */}
-            <tr style={{ fontWeight: 'bold', backgroundColor: '#f8fafc' }}>
-              <td colSpan="3" style={{ padding: '6px', border: '1px solid #cbd5e1' }}>TOTAL</td>
-              <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalGross.toFixed(3)}</td>
-              <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalStone.toFixed(3)}</td>
-              <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalNet.toFixed(3)}</td>
-              <td colSpan={3 + companyStones.length} style={{ padding: '6px', border: '1px solid #cbd5e1' }}></td>
-              <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right', color: '#000' }}>{cashTotal.toLocaleString()}.00</td>
-            </tr>
-          </tbody>
-        </table>
+          const customerTheme = getThemeStyles(printSettings.customerTemplate || 'classic');
+          const workerTheme = getThemeStyles(printSettings.workerTemplate || 'corporate');
 
-        {/* Estimation Summary Blocks */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.1fr 1.3fr', gap: '15px', marginBottom: '20px' }}>
-          
-          {/* Weight Summary */}
-          <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px' }}>
-            <h4 style={{ margin: '0 0 8px 0', borderBottom: '1.5px solid #b45309', paddingBottom: '4px', color: '#1e293b', fontSize: '11px', fontWeight: '700' }}>WEIGHT SUMMARY</h4>
-            <table style={{ width: '100%', fontSize: '10px' }}>
-              <tbody>
-                <tr><td style={{ padding: '3px 0', color: '#475569' }}>Gross Total</td><td style={{ padding: '3px 0', textAlign: 'right', fontWeight: 'bold' }}>: {totalGross.toFixed(3)} g</td></tr>
-                <tr><td style={{ padding: '3px 0', color: '#475569' }}>Stone Total</td><td style={{ padding: '3px 0', textAlign: 'right', fontWeight: 'bold' }}>: {totalStone.toFixed(3)} g</td></tr>
-                <tr><td style={{ padding: '3px 0', color: '#475569' }}>Net Total</td><td style={{ padding: '3px 0', textAlign: 'right', fontWeight: 'bold' }}>: {totalNet.toFixed(3)} g</td></tr>
-                <tr><td style={{ padding: '3px 0', color: '#475569' }}>Pure Total ({purity})</td><td style={{ padding: '3px 0', textAlign: 'right', fontWeight: 'bold', color: '#15803d' }}>: {totalPure.toFixed(3)} g</td></tr>
-              </tbody>
-            </table>
-          </div>
+          return copiesToPrint.map((copyTitle, copyIdx) => {
+            const isLast = copyIdx === copiesToPrint.length - 1;
+            
+            // Format specific overrides
+            const isWorker = activePrintFormat === 'worker';
+            const isTag = activePrintFormat === 'tag';
+            const isJobCard = activePrintFormat === 'jobcard';
+            const isInvoice = activePrintFormat === 'invoice';
+            const isDelivery = activePrintFormat === 'delivery';
+            const isOrder = activePrintFormat === 'order';
+            const isEstimation = activePrintFormat === 'estimation';
 
-          {/* Rate & Value Summary */}
-          <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px' }}>
-            <h4 style={{ margin: '0 0 8px 0', borderBottom: '1.5px solid #b45309', paddingBottom: '4px', color: '#1e293b', fontSize: '11px', fontWeight: '700' }}>RATE & VALUE SUMMARY</h4>
-            <table style={{ width: '100%', fontSize: '9px' }}>
-              <tbody>
-                <tr><td style={{ padding: '2px 0', color: '#475569' }}>Gold Rate (₹/g)</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: 6,150.00</td></tr>
-                <tr><td style={{ padding: '2px 0', color: '#475569' }}>Gold Value</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {(totalNet * 6150).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>
-                <tr><td style={{ padding: '2px 0', color: '#475569' }}>Stone Charges</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {(totalStone * 1200).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>
-                <tr><td style={{ padding: '2px 0', color: '#475569' }}>Making Charges (10%)</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {(totalNet * 6150 * 0.1).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>
-                <tr><td style={{ padding: '2px 0', color: '#475569' }}>Other Charges</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {parseFloat(hallmarkCharges).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>
-                <tr style={{ borderTop: '1px solid #cbd5e1', fontWeight: 'bold' }}><td style={{ padding: '4px 0', color: '#000' }}>Sub Total</td><td style={{ padding: '4px 0', textAlign: 'right' }}>: {balanceCash.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>
-              </tbody>
-            </table>
-          </div>
+            const theme = (isWorker || isJobCard) ? workerTheme : customerTheme;
 
-          {/* Estimation Total Badge */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ border: '1px solid #b45309', borderRadius: '6px', overflow: 'hidden' }}>
-              <div style={{ background: '#b45309', color: '#ffffff', padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', letterSpacing: '1px' }}>
-                ₹ ESTIMATION TOTAL
-              </div>
-              <div style={{ padding: '10px', textAlign: 'center', background: '#fdf8f2' }}>
-                <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>₹ {balanceCash.toLocaleString()}.00</div>
-                <div style={{ fontSize: '8px', color: '#475569', marginTop: '4px', textTransform: 'capitalize', fontStyle: 'italic' }}>
-                  ({numberToWords(balanceCash)})
+            // Document Title
+            let docTitle = "ESTIMATION BILL";
+            if (isInvoice) docTitle = "TAX INVOICE";
+            if (isWorker) docTitle = "WORKER RECEIPT";
+            if (isTag) docTitle = "PRODUCT TAG";
+            if (isDelivery) docTitle = "DELIVERY RECEIPT";
+            if (isJobCard) docTitle = "JOB CARD";
+            if (isOrder) docTitle = "ORDER RECEIPT";
+
+            // 1. Tag Print Layout (Compact 50x25 / aspect ratios)
+            if (isTag) {
+              return (
+                <div key={copyIdx} style={{
+                  width: '50mm',
+                  height: '25mm',
+                  padding: '2px',
+                  fontFamily: 'sans-serif',
+                  fontSize: '8px',
+                  lineHeight: '1.2',
+                  backgroundColor: '#ffffff',
+                  color: '#000000',
+                  boxSizing: 'border-box',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  pageBreakAfter: isLast ? 'auto' : 'always',
+                  border: '1px solid #000'
+                }}>
+                  {items.map((item, i) => {
+                    if (i > 0) return null; // print first item for preview
+                    return (
+                      <div key={item.id} style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '9px', textTransform: 'uppercase', borderBottom: '1px solid #000', paddingBottom: '1px' }}>{item.name}</div>
+                        <div>
+                          <div><strong>ID:</strong> {item.barcode}</div>
+                          <div><strong>Gross:</strong> {item.grossWt.toFixed(3)}g</div>
+                          <div><strong>Net:</strong> {item.netWeight.toFixed(3)}g</div>
+                        </div>
+                        <div style={{ fontSize: '7px', fontFamily: 'monospace', textAlign: 'center', background: '#000', color: '#fff', padding: '1px 0' }}>
+                          * {item.barcode} *
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {items.length === 0 && (
+                    <div style={{ textAlign: 'center', marginTop: '5px' }}>No items in Tag draft.</div>
+                  )}
                 </div>
+              );
+            }
+
+            // 2. Worker Receipt Layout (A5 Portrait Compact)
+            if (isWorker) {
+              return (
+                <div key={copyIdx} style={{
+                  width: '148mm',
+                  minHeight: '210mm',
+                  padding: '12px',
+                  fontFamily: 'monospace',
+                  backgroundColor: '#ffffff',
+                  color: '#000000',
+                  fontSize: '11px',
+                  pageBreakAfter: isLast ? 'auto' : 'always',
+                  border: '1px solid #cbd5e1'
+                }}>
+                  <div style={{ textAlign: 'center', borderBottom: '2px dashed #000', paddingBottom: '8px', marginBottom: '10px' }}>
+                    <h3 style={{ margin: '0 0 5px 0', fontSize: '16px', fontWeight: 'bold' }}>WORKER RECEIPT</h3>
+                    <div>Receipt No: WR-{Math.floor(10000 + Math.random() * 90000)}</div>
+                    <div>Date: {new Date(billDate).toLocaleDateString('en-GB')}</div>
+                  </div>
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <div><strong>Worker:</strong> Ramesh (Gold Smith)</div>
+                    <div><strong>Mobile:</strong> 9876543210</div>
+                  </div>
+
+                  <table style={{ width: '100%', borderCollapse: 'collapse', borderBottom: '2px dashed #000', marginBottom: '12px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #000' }}>
+                        <th style={{ textAlign: 'left', padding: '4px 0' }}>Product</th>
+                        <th style={{ textAlign: 'right', padding: '4px 0' }}>Qty</th>
+                        <th style={{ textAlign: 'right', padding: '4px 0' }}>Gross Wt</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map(item => (
+                        <tr key={item.id}>
+                          <td style={{ padding: '4px 0' }}>{item.name}</td>
+                          <td style={{ textAlign: 'right', padding: '4px 0' }}>1</td>
+                          <td style={{ textAlign: 'right', padding: '4px 0' }}>{item.grossWt.toFixed(3)}g</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  <div style={{ textAlign: 'right', marginBottom: '30px' }}>
+                    <strong>Total Qty:</strong> {items.length}
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '40px' }}>
+                    <div>
+                      <div style={{ width: '100px', borderBottom: '1px solid #000', height: '20px' }}></div>
+                      <div style={{ fontSize: '9px', marginTop: '4px' }}>Worker Signature</div>
+                    </div>
+                    <div>
+                      <div style={{ width: '100px', borderBottom: '1px solid #000', height: '20px' }}></div>
+                      <div style={{ fontSize: '9px', marginTop: '4px' }}>Manager Signature</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // 3. Regular A4/A5 Bill templates (Estimation, Invoice, Delivery Note, Job Card, Order Receipt)
+            return (
+              <div key={copyIdx} style={{
+                boxSizing: 'border-box',
+                fontFamily: theme.fontFamily,
+                backgroundColor: theme.bgColor,
+                padding: '20px',
+                minHeight: '297mm',
+                position: 'relative',
+                border: copyIdx > 0 ? '1px dashed #cbd5e1' : 'none',
+                marginTop: copyIdx > 0 ? '40px' : '0',
+                pageBreakAfter: isLast ? 'auto' : 'always'
+              }}>
+                {/* Watermark overlay */}
+                {((isEstimation && printSettings.watermark !== 'none') || (isInvoice && printSettings.watermark === 'none' ? false : printSettings.watermark !== 'none')) && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '40%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%) rotate(-30deg)',
+                    fontSize: '6rem',
+                    color: 'rgba(239, 68, 68, 0.08)',
+                    fontWeight: '900',
+                    pointerEvents: 'none',
+                    border: '10px double rgba(239, 68, 68, 0.08)',
+                    padding: '10px 40px',
+                    letterSpacing: '10px',
+                    zIndex: 0
+                  }}>
+                    {printSettings.watermark === 'none' ? (isEstimation ? 'ESTIMATION' : 'PAID') : printSettings.watermark}
+                  </div>
+                )}
+
+                {/* Copy title Badge */}
+                <div style={{ position: 'absolute', top: '10px', right: '20px', fontSize: '9px', fontWeight: 'bold', color: '#64748b', border: '1px solid #cbd5e1', padding: '2px 8px', borderRadius: '4px' }}>
+                  {copyTitle}
+                </div>
+
+                {/* Invoice Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: `2px solid ${theme.borderColor}`, paddingBottom: '12px', marginBottom: '15px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    {printSettings.showHeaderLogo && (
+                      company?.logo ? (
+                        <img src={company.logo} alt="Logo" style={{ width: '55px', height: '55px', objectFit: 'contain', borderRadius: '8px' }} />
+                      ) : (
+                        <div style={{ border: `2px solid ${theme.accentColor}`, borderRadius: '50%', width: '55px', height: '55px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '24px', color: theme.accentColor }}>
+                          {(company?.name || 'M')[0].toUpperCase()}
+                        </div>
+                      )
+                    )}
+                    <div>
+                      <h1 style={{ fontSize: '22px', fontWeight: '800', color: theme.headingColor, margin: '0', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                        {company?.name || 'MAHALAKSHMI JEWELLERY'}
+                      </h1>
+                      {printSettings.showHeaderAddress && <p style={{ fontSize: '9px', color: '#475569', margin: '2px 0 2px 0' }}>{company?.address || '123, Gold Street, Coimbatore - 641 001'}</p>}
+                      {printSettings.showHeaderContact && (
+                        <p style={{ fontSize: '9px', color: '#475569', margin: '0' }}>
+                          {company?.phone ? `📞 ${company.phone}` : ''} {company?.email ? ` | ✉ ${company.email}` : ''}
+                        </p>
+                      )}
+                      {printSettings.showHeaderGSTIN && company?.taxId && <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e293b', margin: '2px 0 0 0' }}>GSTIN : {company.taxId}</p>}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', marginTop: '10px' }}>
+                    <div style={{ background: theme.accentColor, color: '#ffffff', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '8px', display: 'inline-block' }}>
+                      {docTitle}
+                    </div>
+                    <table style={{ fontSize: '10px', width: '200px', borderCollapse: 'collapse', textAlign: 'left', border: 'none', marginLeft: 'auto' }}>
+                      <tbody>
+                        <tr><td style={{ padding: '2px 0', fontWeight: 'bold', color: '#475569' }}>Bill No.</td><td style={{ padding: '2px 0', textAlign: 'right' }}>{isInvoice ? 'INV' : 'EST'}-{Math.floor(10000 + Math.random() * 90000)}</td></tr>
+                        <tr><td style={{ padding: '2px 0', fontWeight: 'bold', color: '#475569' }}>Date</td><td style={{ padding: '2px 0', textAlign: 'right' }}>{new Date(billDate).toLocaleDateString('en-GB')}</td></tr>
+                        {isEstimation && <tr><td style={{ padding: '2px 0', fontWeight: 'bold', color: '#475569' }}>Est Date</td><td style={{ padding: '2px 0', textAlign: 'right' }}>{new Date(estimationDate).toLocaleDateString('en-GB')}</td></tr>}
+                        <tr><td style={{ padding: '2px 0', fontWeight: 'bold', color: '#475569' }}>Valid Till</td><td style={{ padding: '2px 0', textAlign: 'right' }}>07/06/2026</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Customer Details Row */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+                  <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '8px 12px' }}>
+                    <h4 style={{ margin: '0 0 6px 0', color: theme.accentColor, fontSize: '11px', borderBottom: '1px solid #e2e8f0', paddingBottom: '3px' }}>CUSTOMER DETAILS</h4>
+                    <table style={{ width: '100%', fontSize: '10px', borderCollapse: 'collapse' }}>
+                      <tbody>
+                        <tr><td style={{ width: '80px', padding: '2px 0', color: '#64748b' }}>Name</td><td style={{ padding: '2px 0', fontWeight: 'bold' }}>: {customerName}</td></tr>
+                        <tr><td style={{ padding: '2px 0', color: '#64748b' }}>Mobile</td><td style={{ padding: '2px 0' }}>: {customerPhone}</td></tr>
+                        <tr><td style={{ padding: '2px 0', color: '#64748b' }}>Customer ID</td><td style={{ padding: '2px 0' }}>: CUST000123</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '8px 12px' }}>
+                    <h4 style={{ margin: '0 0 6px 0', color: theme.accentColor, fontSize: '11px', borderBottom: '1px solid #e2e8f0', paddingBottom: '3px' }}>DOCUMENT DETAILS</h4>
+                    <table style={{ width: '100%', fontSize: '10px', borderCollapse: 'collapse' }}>
+                      <tbody>
+                        <tr><td style={{ width: '80px', padding: '2px 0', color: '#64748b' }}>Total Items</td><td style={{ padding: '2px 0', fontWeight: 'bold' }}>: {items.length}</td></tr>
+                        {printSettings.showHeaderGSTIN && isInvoice && <tr><td style={{ padding: '2px 0', color: '#64748b' }}>HSN Code</td><td style={{ padding: '2px 0' }}>: 7113 (Gold Jewellery)</td></tr>}
+                        <tr><td style={{ padding: '2px 0', color: '#64748b' }}>Description</td><td style={{ padding: '2px 0' }}>: {description}</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Items Grid Table */}
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', marginBottom: '15px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: theme.headingColor, color: '#ffffff', textAlign: 'left', fontWeight: 'bold' }}>
+                      <th style={{ padding: '6px', border: '1px solid #334155' }}>#</th>
+                      <th style={{ padding: '6px', border: '1px solid #334155' }}>PRODUCT / DESIGN</th>
+                      {printSettings.showItemBarcode && <th style={{ padding: '6px', border: '1px solid #334155' }}>BARCODE</th>}
+                      {printSettings.showItemHUID && <th style={{ padding: '6px', border: '1px solid #334155' }}>HUID</th>}
+                      <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>GROSS WT</th>
+                      {printSettings.showItemStoneDetails && !printSettings.groupStoneDetails && companyStones.map(stone => (
+                        <th key={stone.stoneName} style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>{stone.stoneName}</th>
+                      ))}
+                      <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>NET WT</th>
+                      <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'center' }}>PURITY</th>
+                      <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>AMOUNT</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item, idx) => (
+                      <tr key={item.id} style={{ borderBottom: '1px solid #cbd5e1' }}>
+                        <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>{idx + 1}</td>
+                        <td style={{ padding: '6px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>
+                          {item.name}
+                          {printSettings.showItemDescription && <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 'normal' }}>Description: {item.category} Ornament</div>}
+                          {printSettings.showItemStoneDetails && printSettings.groupStoneDetails && (
+                            <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 'normal', fontStyle: 'italic', marginTop: '2px' }}>
+                              Stone Details: {companyStones.map((stone, sidx) => `${stone.stoneName} ${(item.stoneWt > 0 ? (item.stoneWt / companyStones.length) : 0).toFixed(2)}g`).join(', ')}
+                            </div>
+                          )}
+                        </td>
+                        {printSettings.showItemBarcode && <td style={{ padding: '6px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}>{item.barcode}</td>}
+                        {printSettings.showItemHUID && <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>HUID{Math.floor(100000 + Math.random()*900000)}</td>}
+                        <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{item.grossWt.toFixed(3)}g</td>
+                        {printSettings.showItemStoneDetails && !printSettings.groupStoneDetails && companyStones.map(stone => (
+                          <td key={stone.stoneName} style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
+                            {item.stoneWt > 0 ? (item.stoneWt / companyStones.length).toFixed(3) : '0.000'}
+                          </td>
+                        ))}
+                        <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 'bold' }}>{item.netWeight.toFixed(3)}g</td>
+                        <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>{item.purity}%</td>
+                        <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 'bold' }}>₹{item.amount.toLocaleString()}.00</td>
+                      </tr>
+                    ))}
+                    {/* Total Row */}
+                    <tr style={{ fontWeight: 'bold', backgroundColor: '#f8fafc' }}>
+                      <td colSpan={printSettings.showItemBarcode ? (printSettings.showItemHUID ? 4 : 3) : (printSettings.showItemHUID ? 3 : 2)} style={{ padding: '6px', border: '1px solid #cbd5e1' }}>TOTAL</td>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalGross.toFixed(3)}g</td>
+                      {printSettings.showItemStoneDetails && !printSettings.groupStoneDetails && companyStones.map(stone => (
+                        <td key={stone.stoneName} style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{(totalStone / (companyStones.length || 1)).toFixed(3)}</td>
+                      ))}
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalNet.toFixed(3)}g</td>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}></td>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>₹{cashTotal.toLocaleString()}.00</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* Estimation / Invoice Summaries */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                  
+                  {/* Weight Summary */}
+                  <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px' }}>
+                    <h4 style={{ margin: '0 0 8px 0', borderBottom: `1.5px solid ${theme.borderColor}`, paddingBottom: '4px', color: '#1e293b', fontSize: '11px', fontWeight: '700' }}>WEIGHT SUMMARY</h4>
+                    <table style={{ width: '100%', fontSize: '10px' }}>
+                      <tbody>
+                        <tr><td style={{ padding: '3px 0', color: '#475569' }}>Gross Total</td><td style={{ padding: '3px 0', textAlign: 'right', fontWeight: 'bold' }}>: {totalGross.toFixed(3)} g</td></tr>
+                        <tr><td style={{ padding: '3px 0', color: '#475569' }}>Stone Total</td><td style={{ padding: '3px 0', textAlign: 'right', fontWeight: 'bold' }}>: {totalStone.toFixed(3)} g</td></tr>
+                        <tr><td style={{ padding: '3px 0', color: '#475569' }}>Net Total</td><td style={{ padding: '3px 0', textAlign: 'right', fontWeight: 'bold' }}>: {totalNet.toFixed(3)} g</td></tr>
+                        <tr><td style={{ padding: '3px 0', color: '#475569' }}>Pure Total</td><td style={{ padding: '3px 0', textAlign: 'right', fontWeight: 'bold', color: '#15803d' }}>: {totalPure.toFixed(3)} g</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Rate & Value Summary */}
+                  <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px' }}>
+                    <h4 style={{ margin: '0 0 8px 0', borderBottom: `1.5px solid ${theme.borderColor}`, paddingBottom: '4px', color: '#1e293b', fontSize: '11px', fontWeight: '700' }}>RATE & VALUE SUMMARY</h4>
+                    <table style={{ width: '100%', fontSize: '9px' }}>
+                      <tbody>
+                        {printSettings.showAmountGoldRate && <tr><td style={{ padding: '2px 0', color: '#475569' }}>Gold Rate (₹/g)</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: 6,150.00</td></tr>}
+                        {printSettings.showAmountGoldRate && <tr><td style={{ padding: '2px 0', color: '#475569' }}>Gold Value</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {(totalNet * 6150).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>}
+                        {printSettings.showAmountStoneCharges && <tr><td style={{ padding: '2px 0', color: '#475569' }}>Stone Charges</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {(totalStone * 1200).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>}
+                        {printSettings.showAmountMakingCharges && <tr><td style={{ padding: '2px 0', color: '#475569' }}>Making Charges (10%)</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {(totalNet * 6150 * 0.1).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>}
+                        {printSettings.showAmountDiscount && <tr><td style={{ padding: '2px 0', color: '#475569' }}>Discount</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {finalDiscount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>}
+                        {printSettings.showAmountGST && isInvoice && <tr><td style={{ padding: '2px 0', color: '#475569' }}>GST (3%)</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {(balanceCash * 0.03).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>}
+                        <tr style={{ borderTop: '1px solid #cbd5e1', fontWeight: 'bold' }}><td style={{ padding: '4px 0', color: '#000' }}>Sub Total</td><td style={{ padding: '4px 0', textAlign: 'right' }}>: {(balanceCash * (isInvoice ? 1.03 : 1)).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Estimation Total Badge */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ border: `1px solid ${theme.borderColor}`, borderRadius: '6px', overflow: 'hidden' }}>
+                      <div style={{ background: theme.accentColor, color: '#ffffff', padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', letterSpacing: '1px' }}>
+                        ₹ {isInvoice ? 'INVOICE TOTAL' : 'ESTIMATION TOTAL'}
+                      </div>
+                      <div style={{ padding: '10px', textAlign: 'center', background: theme.bgColor }}>
+                        <div style={{ fontSize: '18px', fontWeight: '800', color: theme.headingColor }}>₹ {Math.round(balanceCash * (isInvoice ? 1.03 : 1)).toLocaleString()}.00</div>
+                        <div style={{ fontSize: '8px', color: '#475569', marginTop: '4px', textTransform: 'capitalize', fontStyle: 'italic' }}>
+                          ({numberToWords(Math.round(balanceCash * (isInvoice ? 1.03 : 1)))})
+                        </div>
+                      </div>
+                    </div>
+                    {/* Hallmark / BIS details */}
+                    <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
+                      {printSettings.showHallmarkLogo && <span style={{ fontSize: '8px', border: '1px solid #d97706', padding: '2px 5px', borderRadius: '4px', color: '#d97706', fontWeight: 'bold' }}>🎗 916 BIS Hallmark</span>}
+                      {printSettings.showBISLogo && <span style={{ fontSize: '8px', border: '1px solid #0284c7', padding: '2px 5px', borderRadius: '4px', color: '#0284c7', fontWeight: 'bold' }}>BIS Certified</span>}
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Terms & Conditions & Signatory */}
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', borderTop: '1px solid #cbd5e1', paddingTop: '12px', marginBottom: '20px' }}>
+                  <div style={{ fontSize: '8px', color: '#475569' }}>
+                    <strong style={{ fontSize: '9px', color: '#0f172a' }}>TERMS & CONDITIONS</strong>
+                    <ul style={{ margin: '4px 0 0 12px', padding: 0 }}>
+                      <li>Gold rate and making charges are subject to change without notice.</li>
+                      <li>100% advance to be paid for order confirmation.</li>
+                      <li>Delivery will be made as per the mutually agreed timeline.</li>
+                      <li>This is computer generated estimate, no signature required.</li>
+                    </ul>
+                  </div>
+                  <div style={{ textAlign: 'center', alignSelf: 'end' }}>
+                    <p style={{ fontSize: '9px', fontWeight: 'bold', margin: '0 0 35px 0' }}>For {company?.name || 'Mahalakshmi Jewellery'}</p>
+                    <div style={{ width: '150px', borderBottom: '1px solid #000', margin: '0 auto 4px auto' }} />
+                    <p style={{ fontSize: '8px', color: '#475569', margin: 0 }}>Authorised Signatory</p>
+                  </div>
+                </div>
+
+                {/* Footer Badges bar */}
+                <div style={{ borderTop: '2.5px solid #cbd5e1', borderBottom: '2.5px solid #cbd5e1', padding: '6px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '8px', fontWeight: 'bold', color: '#475569' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: theme.accentColor }}>
+                    💎 THANK YOU FOR CHOOSING US!
+                  </div>
+                  <div style={{ width: '1px', height: '10px', backgroundColor: '#cbd5e1' }} />
+                  <div>Purity You Can Trust, Elegance You Deserve.</div>
+                  <div style={{ width: '1px', height: '10px', backgroundColor: '#cbd5e1' }} />
+                  <div>🎗 916 BIS Hallmarked</div>
+                  <div style={{ width: '1px', height: '10px', backgroundColor: '#cbd5e1' }} />
+                  <div>Certified Diamonds</div>
+                </div>
+
               </div>
-            </div>
-            <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '8px', fontSize: '8px', color: '#475569', backgroundColor: '#f8fafc' }}>
-              <strong>NOTE:</strong>
-              <ul style={{ margin: '3px 0 0 12px', padding: '0' }}>
-                <li>This is only an estimation.</li>
-                <li>Final amount may vary based on actual weight and stone details.</li>
-                <li>This estimation is valid till the date mentioned above.</li>
-              </ul>
-            </div>
-          </div>
-
-        </div>
-
-        {/* Terms & Conditions & Signatory */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', borderTop: '1px solid #cbd5e1', paddingTop: '12px', marginBottom: '20px' }}>
-          <div style={{ fontSize: '8px', color: '#475569' }}>
-            <strong style={{ fontSize: '9px', color: '#0f172a' }}>TERMS & CONDITIONS</strong>
-            <ul style={{ margin: '4px 0 0 12px', padding: 0 }}>
-              <li>Gold rate and making charges are subject to change without notice.</li>
-              <li>100% advance to be paid for order confirmation.</li>
-              <li>Delivery will be made as per the mutually agreed timeline.</li>
-              <li>This is computer generated estimate, no signature required.</li>
-            </ul>
-          </div>
-          <div style={{ textAlign: 'center', alignSelf: 'end' }}>
-            <p style={{ fontSize: '9px', fontWeight: 'bold', margin: '0 0 35px 0' }}>For Mahalakshmi Jewellery</p>
-            <div style={{ width: '150px', borderBottom: '1px solid #000', margin: '0 auto 4px auto' }} />
-            <p style={{ fontSize: '8px', color: '#475569', margin: 0 }}>Authorised Signatory</p>
-          </div>
-        </div>
-
-        {/* Footer Badges bar */}
-        <div style={{ borderTop: '2.5px solid #cbd5e1', borderBottom: '2.5px solid #cbd5e1', padding: '6px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '8px', fontWeight: 'bold', color: '#475569' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#b45309' }}>
-            💎 THANK YOU FOR CHOOSING US!
-          </div>
-          <div style={{ width: '1px', height: '10px', backgroundColor: '#cbd5e1' }} />
-          <div>Purity You Can Trust, Elegance You Deserve.</div>
-          <div style={{ width: '1px', height: '10px', backgroundColor: '#cbd5e1' }} />
-          <div>🎗 916 BIS Hallmarked</div>
-          <div style={{ width: '1px', height: '10px', backgroundColor: '#cbd5e1' }} />
-          <div>Certified Diamonds</div>
-          <div style={{ width: '1px', height: '10px', backgroundColor: '#cbd5e1' }} />
-          <div>Best Quality Assurance</div>
-        </div>
+            );
+          });
+        })()}
 
       </div>
 

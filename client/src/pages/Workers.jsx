@@ -164,7 +164,7 @@ const Workers = () => {
                                     }}
                                     title="Click to view worker profile"
                                 >
-                                    <span style={{ borderBottom: '1px dashed var(--primary-gold)' }}>
+                                    <span>
                                         {w.name}
                                     </span>
                                 </td>

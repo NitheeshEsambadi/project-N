@@ -48,6 +48,7 @@ app.use('/api/gold', goldRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/settings', settingRoutes);
 app.use('/api/company', companyRoutes);
+app.use('/api/customers', require('./routes/customerRoutes'));
 app.use('/api/mgmt', require('./routes/mgmtRoutes'));
 
 const PORT = process.env.PORT || 5000;

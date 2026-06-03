@@ -14,12 +14,14 @@ import {
   ShieldCheck,
   Briefcase,
   ShoppingCart,
-  Receipt
+  Receipt,
+  User
 } from 'lucide-react';
 
 const Sidebar = ({ user, logout, closeSidebar, company }) => {
   const links = [
     { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20}/>, roles: ['admin', 'accountant', 'worker'] },
+    { name: 'Customers', path: '/customers', icon: <User size={20}/>, roles: ['admin', 'accountant', 'worker'] },
     { name: 'Workers', path: '/workers', icon: <Users size={20}/>, roles: ['admin', 'accountant'] },
     { name: 'Production', path: '/products', icon: <Briefcase size={20}/>, roles: ['admin', 'accountant', 'worker'] },
     { name: 'Inventory', path: '/inventory', icon: <Package size={20}/>, roles: ['admin', 'accountant', 'worker'] },
@@ -47,11 +49,13 @@ const Sidebar = ({ user, logout, closeSidebar, company }) => {
             <img src={company.logo} alt="Logo" style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '8px' }} />
           ) : (
             <div style={{ width: '40px', height: '40px', background: 'var(--primary-gold)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '1.2rem' }}>
-              P
+              {(company?.name || 'P')[0].toUpperCase()}
             </div>
           )}
           <div>
-            <h3 className="gold-gradient" style={{ margin: 0, fontSize: '1.1rem' }}>PRO PORTAL</h3>
+            <h3 className="gold-gradient" style={{ margin: 0, fontSize: '1.1rem', textTransform: 'uppercase' }}>
+              {company?.name || 'PRO PORTAL'}
+            </h3>
             <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{user?.role}</p>
           </div>
         </div>

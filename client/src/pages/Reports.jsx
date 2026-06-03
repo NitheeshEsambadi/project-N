@@ -5,14 +5,22 @@ import { BarChart3, FileText, Download, TrendingUp, PieChart, Info, Map, Chevron
 
 const Reports = () => {
   const [data, setData] = useState({ transactions: [], products: [] });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      const [tRes, pRes] = await Promise.all([
-        api.get('/mgmt/transactions'),
-        api.get('/mgmt/products')
-      ]);
-      setData({ transactions: tRes.data, products: pRes.data });
+      try {
+        setLoading(true);
+        const [tRes, pRes] = await Promise.all([
+          api.get('/mgmt/transactions').catch(() => ({ data: [] })),
+          api.get('/mgmt/products').catch(() => ({ data: [] }))
+        ]);
+        setData({ transactions: tRes.data || [], products: pRes.data || [] });
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchData();
   }, []);
@@ -40,6 +48,72 @@ const Reports = () => {
     a.click();
     document.body.removeChild(a);
   };
+
+  const generateReport = (title) => {
+    let csvContent = "";
+    let fileName = "";
+    
+    if (title === 'Gold Circulation Report') {
+        fileName = 'gold_circulation_report.csv';
+        csvContent = "Product ID,Category,Design,Status,Gross Weight,Net Weight,Actual Wastage,Date\n";
+        data.products.forEach(p => {
+            csvContent += `"${p.productId}","${p.category || ''}","${p.designName || ''}","${p.status || ''}",${p.grossWeight || 0},${p.netWeight || 0},${p.actualWastage || 0},"${new Date(p.createdAt).toLocaleDateString()}"\n`;
+        });
+    } else if (title === 'Worker Performance Summary') {
+        fileName = 'worker_performance_summary.csv';
+        const workerStats = {};
+        data.products.forEach(p => {
+            const wName = p.workerId?.name || 'Unknown';
+            if (!workerStats[wName]) {
+                workerStats[wName] = { completed: 0, totalWastage: 0 };
+            }
+            if (p.status === 'completed') {
+                workerStats[wName].completed += 1;
+                workerStats[wName].totalWastage += (p.actualWastage || 0);
+            }
+        });
+        csvContent = "Worker Name,Completed Products,Total Actual Wastage (g)\n";
+        Object.entries(workerStats).forEach(([name, s]) => {
+            csvContent += `"${name}",${s.completed},${s.totalWastage.toFixed(3)}\n`;
+        });
+    } else if (title === 'Monthly Expense Report') {
+        fileName = 'monthly_expense_report.csv';
+        csvContent = "Date,Worker,Type,Payment Mode,Amount,Notes\n";
+        data.transactions.forEach(t => {
+            csvContent += `"${new Date(t.createdAt).toLocaleDateString()}","${t.workerId?.name || ''}","${t.type || ''}","${t.paymentMode || ''}",${t.amount || 0},"${t.notes || ''}"\n`;
+        });
+    } else if (title === 'Pending Work Report') {
+        fileName = 'pending_work_report.csv';
+        csvContent = "Product ID,Category,Design,Expected Weight,Worker,Due Date\n";
+        data.products.filter(p => p.status !== 'completed').forEach(p => {
+            csvContent += `"${p.productId}","${p.category || ''}","${p.designName || ''}",${p.expectedWeight || 0},"${p.workerId?.name || 'Unassigned'}","${p.dueDate ? new Date(p.dueDate).toLocaleDateString() : '—'}"\n`;
+        });
+    } else {
+        fileName = 'labour_summary.csv';
+        csvContent = "Worker Name,Total Earning,Total Payment,Net Due\n";
+        const wStats = {};
+        data.transactions.forEach(t => {
+            const name = t.workerId?.name || 'Unknown';
+            if (!wStats[name]) wStats[name] = { earning: 0, payment: 0 };
+            if (t.type === 'earning') wStats[name].earning += (t.amount || 0);
+            if (t.type === 'payment') wStats[name].payment += (t.amount || 0);
+        });
+        Object.entries(wStats).forEach(([name, s]) => {
+            csvContent += `"${name}",${s.earning},${s.payment},${s.earning - s.payment}\n`;
+        });
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', fileName);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   const reports = [
     { title: 'Gold Circulation Report', desc: 'Summary of gold currently issued, returned, and in stock.', icon: <BarChart3 size={24} color="var(--primary-gold)"/> },
     { title: 'Worker Performance Summary', desc: 'Efficiency, speed, and wastage metrics for all workshop workers.', icon: <TrendingUp size={24} color="var(--success)"/> },
@@ -47,6 +121,23 @@ const Reports = () => {
     { title: 'Pending Work Report', desc: 'Listing of all designs currently in production past their due date.', icon: <Info size={24} color="var(--danger)"/> },
     { title: 'Labour Summary', desc: 'Aggregate of total earnings per gram and per piece.', icon: <FileText size={24} color="white"/> },
   ];
+
+  if (loading) return <div className="glass" style={{ padding: '40px', textAlign: 'center' }}>Loading Reports...</div>;
+
+  // Operational metrics
+  const circulatingGold = data.products
+    .filter(p => p.status !== 'completed')
+    .reduce((acc, p) => acc + (p.expectedWeight || 0), 0) / 1000; // in kg
+
+  const unpaidLabour = data.transactions.reduce((acc, t) => {
+    if (t.type === 'earning') return acc + (t.amount || 0);
+    if (t.type === 'payment') return acc - (t.amount || 0);
+    return acc;
+  }, 0);
+
+  const completedProds = data.products.filter(p => p.status === 'completed');
+  const qcPassed = completedProds.filter(p => p.qualityCheck === 'passed').length;
+  const efficiency = completedProds.length > 0 ? (qcPassed / completedProds.length * 100) : 100;
 
   return (
     <div className="glass" style={{ padding: '24px' }}>
@@ -67,7 +158,7 @@ const Reports = () => {
 
       <div className="responsive-grid">
         {reports.map((report, idx) => (
-          <div key={idx} className="glass" style={{ padding: '24px', display: 'flex', gap: '20px', alignItems: 'flex-start', cursor: 'pointer', transition: 'var(--transition)' }}>
+          <div key={idx} onClick={() => generateReport(report.title)} className="glass card-hover" style={{ padding: '24px', display: 'flex', gap: '20px', alignItems: 'flex-start', cursor: 'pointer', transition: 'var(--transition)', border: '1px solid var(--glass-border)' }}>
             <div style={{ background: 'rgba(255,255,255,0.05)', padding: '16px', borderRadius: '12px' }}>
                 {report.icon}
             </div>
@@ -75,7 +166,7 @@ const Reports = () => {
                 <h3 style={{ fontSize: '1.1rem', marginBottom: '8px' }}>{report.title}</h3>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>{report.desc}</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary-gold)', fontSize: '0.8rem', marginTop: '15px', fontWeight: 600 }}>
-                    GENERATE REPORT <ChevronRight size={14}/>
+                    DOWNLOAD REPORT <ChevronRight size={14}/>
                 </div>
             </div>
           </div>
@@ -92,31 +183,10 @@ const Reports = () => {
         </div>
         
         <div className="responsive-grid" style={{ marginTop: '30px' }}>
-            <Metric title="Circulating Gold" value="1.42 kg" status="optimal" />
-            <Metric title="Total Unpaid Labour" value="₹ 45,200" status="on-track" />
-            <Metric title="Average Turnaround" value="4.2 Days" status="alert" />
-            <Metric title="Workshop Efficiency" value="94.2%" status="optimal" />
-        </div>
-
-        <div style={{ marginTop: '40px', padding: '20px', background: 'rgba(0,0,0,0.1)', borderRadius: '15px' }}>
-            <h4 style={{ marginBottom: '20px', fontSize: '0.9rem', color: 'var(--primary-gold)' }}>WASTAGE TREND (LAST 6 MONTHS)</h4>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '15px', height: '150px', padding: '0 20px' }}>
-                {[
-                    { month: 'Jan', val: 60, loss: '3.1g' },
-                    { month: 'Feb', val: 85, loss: '4.2g' },
-                    { month: 'Mar', val: 45, loss: '2.8g' },
-                    { month: 'Apr', val: 100, loss: '5.1g' },
-                    { month: 'May', val: 75, loss: '3.9g' },
-                    { month: 'Jun', val: 30, loss: '1.5g' }
-                ].map((d, i) => (
-                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: '100%', height: `${d.val}%`, background: d.val > 80 ? 'var(--danger)' : 'var(--primary-gold)', borderRadius: '4px 4px 0 0', position: 'relative' }} title={d.loss}>
-                            <span style={{ position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.65rem', fontWeight: 600 }}>{d.loss}</span>
-                        </div>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{d.month}</span>
-                    </div>
-                ))}
-            </div>
+            <Metric title="Circulating Gold" value={`${circulatingGold.toFixed(3)} kg`} status={circulatingGold > 1 ? 'alert' : 'optimal'} />
+            <Metric title="Total Unpaid Labour" value={`₹ ${unpaidLabour.toLocaleString()}`} status={unpaidLabour > 20000 ? 'alert' : 'optimal'} />
+            <Metric title="Average Turnaround" value="4.2 Days" status="optimal" />
+            <Metric title="Workshop Efficiency" value={`${efficiency.toFixed(1)}%`} status={efficiency > 90 ? 'optimal' : 'alert'} />
         </div>
       </div>
     </div>

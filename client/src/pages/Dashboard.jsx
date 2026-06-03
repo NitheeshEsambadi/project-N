@@ -5,6 +5,7 @@ import api from '../api';
 import Sidebar from '../components/Sidebar';
 import { AuthContext } from '../context/AuthContext';
 import Workers from './Workers';
+import Customers from './Customers';
 import Products from './Products';
 import WastageAnalytics from './WastageAnalytics';
 import Payments from './Payments';
@@ -77,6 +78,15 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
+  const fetchCompany = async () => {
+    try {
+      const { data } = await api.get('/company');
+      setCompany(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   // Close sidebar on route change (only on mobile)
   useEffect(() => {
     if (window.innerWidth <= 1024) {
@@ -125,6 +135,7 @@ const Dashboard = () => {
 
         <Routes>
           <Route path="/" element={<Home stats={stats} user={user} recentActivity={recentActivity} additions={dashboardAdditions} currency={company.currency} />} />
+          <Route path="/customers" element={<Customers />} />
           <Route path="/workers" element={<Workers />} />
 
           <Route path="/products" element={<Products />} />
@@ -134,7 +145,7 @@ const Dashboard = () => {
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/sales" element={<Sales />} />
           <Route path="/billing" element={<Billing setSidebarOpen={setSidebarOpen} />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings" element={<Settings onCompanyUpdate={fetchCompany} />} />
           <Route path="/workers/:id" element={<WorkerDetailView />} />
           <Route path="/worker-receipt" element={<WorkerReceipt />} />
         </Routes>

@@ -6,6 +6,16 @@ import {
   ArrowLeft, Coins, Package, CreditCard, History, AlertCircle, Phone, Hammer, RotateCcw, Edit2, Plus, X, ShieldCheck, Trash2, Printer, Settings2
 } from 'lucide-react';
 
+const formatDate = (date) => {
+  if (!date) return '-';
+  const d = new Date(date);
+  return d.toLocaleDateString('en-GB', { 
+      day: '2-digit', 
+      month: 'short', 
+      year: 'numeric' 
+  }).split(' ').join(' - ');
+};
+
 const WorkerDetailView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -19,15 +29,6 @@ const WorkerDetailView = () => {
   const [companyStones, setCompanyStones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
-  const formatDate = (date) => {
-    if (!date) return '-';
-    const d = new Date(date);
-    return d.toLocaleDateString('en-GB', { 
-        day: '2-digit', 
-        month: 'short', 
-        year: 'numeric' 
-    }).split(' ').join(' - ');
-  };
 
   // Modals Visibility
   const [showEditModal, setShowEditModal] = useState(false);
@@ -365,9 +366,9 @@ const WorkerDetailView = () => {
 
             {/* Tab Content */}
             {activeTab === 'overview' && <OverviewTab stats={stats} goldIssues={goldIssues} />}
-            {activeTab === 'products' && <ProductsTab products={products} setShowProductModal={setShowProductModal} />}
+            {activeTab === 'products' && <ProductsTab products={products} setShowProductModal={setShowProductModal} handlePrintReceipt={handlePrintReceipt} />}
             {activeTab === 'gold' && <GoldHistoryTab goldIssues={goldIssues} setShowGoldModal={setShowGoldModal} />}
-            {activeTab === 'transactions' && <TransactionsTab transactions={transactions} />}
+            {activeTab === 'transactions' && <TransactionsTab transactions={transactions} handlePrintPassbook={handlePrintPassbook} />}
         </div>
       </div>
 
@@ -605,7 +606,7 @@ const OverviewTab = ({ stats, goldIssues }) => (
 );
 
 /* ──────────── TAB: Products ──────────── */
-const ProductsTab = ({ products, setShowProductModal }) => (
+const ProductsTab = ({ products, setShowProductModal, handlePrintReceipt }) => (
         <div className="glass" style={{ padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -720,7 +721,7 @@ const GoldHistoryTab = ({ goldIssues, setShowGoldModal }) => (
 );
 
 /* ──────────── TAB: Transactions ──────────── */
-const TransactionsTab = ({ transactions }) => (
+const TransactionsTab = ({ transactions, handlePrintPassbook }) => (
     <div className="glass" style={{ padding: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

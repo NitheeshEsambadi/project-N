@@ -23,7 +23,7 @@ const Payments = () => {
   const fetchTransactions = async () => {
     try {
       const { data } = await api.get('/mgmt/transactions');
-      setTransactions(data);
+      setTransactions(data || []);
     } catch (err) {
       console.error(err);
     }
@@ -32,7 +32,7 @@ const Payments = () => {
   const fetchWorkers = async () => {
     try {
       const { data } = await api.get('/workers');
-      setWorkers(data);
+      setWorkers(data || []);
     } catch (err) {
       console.error(err);
     }
@@ -41,7 +41,10 @@ const Payments = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/mgmt/transactions', formData);
+      await api.post('/mgmt/transactions', {
+        ...formData,
+        amount: parseFloat(formData.amount) || 0
+      });
       setShowModal(false);
       setFormData({ workerId: '', type: 'payment', amount: '', paymentMode: 'Cash', notes: '' });
       fetchTransactions();
@@ -49,6 +52,14 @@ const Payments = () => {
       alert('Error recording transaction');
     }
   };
+
+  const totalDistributed = transactions
+    .filter(t => t.type === 'payment')
+    .reduce((acc, t) => acc + (t.amount || 0), 0);
+
+  const unpaidEarnings = transactions
+    .filter(t => t.type === 'earning')
+    .reduce((acc, t) => acc + (t.amount || 0), 0);
 
   return (
     <div className="glass" style={{ padding: '24px' }}>
@@ -65,11 +76,11 @@ const Payments = () => {
       <div className="responsive-grid" style={{ marginBottom: '30px' }}>
         <div className="glass" style={{ padding: '20px', borderLeft: '4px solid var(--success)' }}>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Total Distributed</p>
-            <h3 style={{ fontSize: '1.8rem', marginTop: '5px' }}>₹ {transactions.filter(t => t.type === 'payment').reduce((acc, t) => acc + t.amount, 0).toLocaleString()}</h3>
+            <h3 style={{ fontSize: '1.8rem', marginTop: '5px' }}>₹ {totalDistributed.toLocaleString()}</h3>
         </div>
         <div className="glass" style={{ padding: '20px', borderLeft: '4px solid var(--primary-gold)' }}>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Unpaid Earnings</p>
-            <h3 style={{ fontSize: '1.8rem', marginTop: '5px' }}>₹ {transactions.filter(t => t.type === 'earning').reduce((acc, t) => acc + t.amount, 0).toLocaleString()}</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Total Earned</p>
+            <h3 style={{ fontSize: '1.8rem', marginTop: '5px' }}>₹ {unpaidEarnings.toLocaleString()}</h3>
         </div>
       </div>
 
@@ -95,7 +106,7 @@ const Payments = () => {
                     </div>
                 </td>
                 <td style={{ padding: '16px 12px' }}>
-                    <span style={{ fontWeight: 500 }}>{t.workerId?.name}</span>
+                    <span style={{ fontWeight: 500 }}>{t.workerId?.name || '—'}</span>
                 </td>
                 <td style={{ padding: '16px 12px' }}>
                     <span style={{ 
@@ -112,17 +123,22 @@ const Payments = () => {
                 <td style={{ padding: '16px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
                         <Landmark size={14} color="var(--text-muted)"/>
-                        {t.paymentMode || 'N/A'}
+                        {t.paymentMode || 'Cash'}
                     </div>
                 </td>
                 <td style={{ padding: '16px 12px', fontWeight: 600, color: t.type === 'payment' ? 'var(--success)' : 'inherit' }}>
-                    {t.type === 'payment' ? '-' : '+'} ₹ {t.amount.toLocaleString()}
+                    {t.type === 'payment' ? '-' : '+'} ₹ {(t.amount || 0).toLocaleString()}
                 </td>
                 <td style={{ padding: '16px 12px', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {t.notes}
+                    {t.notes || '—'}
                 </td>
               </tr>
             ))}
+            {transactions.length === 0 && (
+                <tr>
+                    <td colSpan="6" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>No transactions found.</td>
+                </tr>
+            )}
           </tbody>
         </table>
       </div>

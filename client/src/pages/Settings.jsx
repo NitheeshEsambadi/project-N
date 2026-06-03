@@ -6,7 +6,7 @@ import {
     UserPlus, Shield, Trash, X, Settings as SettingsIcon, History
 } from 'lucide-react';
 
-const Settings = () => {
+const Settings = ({ onCompanyUpdate }) => {
     const prodNameRef = useRef(null);
     const stoneNameRef = useRef(null);
     // Basic Settings
@@ -18,6 +18,35 @@ const Settings = () => {
     const [stones, setStones] = useState([]);
     const [qrFormat, setQrFormat] = useState('qr');
     const [logo, setLogo] = useState('');
+    const [printSettings, setPrintSettings] = useState({
+        showHeaderLogo: true,
+        showHeaderGSTIN: true,
+        showHeaderAddress: true,
+        showHeaderContact: true,
+        showHallmarkLogo: true,
+        showBISLogo: true,
+        showItemBarcode: true,
+        showItemHUID: true,
+        showItemDescription: true,
+        showItemStoneDetails: true,
+        groupStoneDetails: true,
+        showItemProductImage: true,
+        showAmountGoldRate: true,
+        showAmountStoneCharges: true,
+        showAmountMakingCharges: true,
+        showAmountDiscount: true,
+        showAmountGST: true,
+        customerTemplate: 'classic',
+        workerTemplate: 'corporate',
+        watermark: 'none',
+        multiCopy: {
+            customerCopy: true,
+            officeCopy: true,
+            workerCopy: false
+        },
+        defaultPageSize: 'a4',
+        qrOption: 'invoice'
+    });
     
     // User Management
     const [users, setUsers] = useState([]);
@@ -27,9 +56,11 @@ const Settings = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState('general');
+    const [printSubTab, setPrintSubTab] = useState('customer');
     const [isDark, setIsDark] = useState(document.body.classList.contains('dark-theme'));
     
     // New Extended Settings
+    const [name, setName] = useState('');
     const [address, setAddress] = useState('');
     const [phone, setPhone] = useState('');
     const [email, setEmail] = useState('');
@@ -210,12 +241,16 @@ const Settings = () => {
                 setStones(compRes.data.stones || []);
                 setPurityStandards(compRes.data.purityStandards || []);
                 setQrFormat(compRes.data.qrFormat || 'qr');
+                setName(compRes.data.name || '');
                 setLogo(compRes.data.logo || '');
                 setAddress(compRes.data.address || '');
                 setPhone(compRes.data.phone || '');
                 setEmail(compRes.data.email || '');
                 setTaxId(compRes.data.taxId || '');
                 setCurrency(compRes.data.currency || '₹');
+                if (compRes.data.printSettings) {
+                    setPrintSettings(prev => ({ ...prev, ...compRes.data.printSettings }));
+                }
             }
             
             // Map users
@@ -255,11 +290,12 @@ const Settings = () => {
             const updates = [
                 ...Object.entries(settings).map(([key, value]) => api.post('/settings', { key, value })),
                 api.put('/company', { 
-                    categories, stones, qrFormat, logo, address, phone, email, taxId, purityStandards, currency 
+                    categories, stones, qrFormat, name, logo, address, phone, email, taxId, purityStandards, currency, printSettings 
                 })
             ];
             await Promise.all(updates);
             setSaveStatus('✓ All settings synced!');
+            if (onCompanyUpdate) onCompanyUpdate();
             setTimeout(() => setSaveStatus(''), 3000);
         } catch (err) {
             setSaveStatus('Error saving details');
@@ -380,8 +416,12 @@ const Settings = () => {
                     
                     <div className="responsive-grid">
                         <div className="input-group">
+                            <label>Company / Firm Name</label>
+                            <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Mahalakshmi Jewellery" />
+                        </div>
+                        <div className="input-group">
                             <label>Registered Address</label>
-                            <textarea value={address} onChange={e => setAddress(e.target.value)} style={{ minHeight: '80px' }} placeholder="Shop 12, Gold Souk..."/>
+                            <input value={address} onChange={e => setAddress(e.target.value)} placeholder="Shop 12, Gold Souk..."/>
                         </div>
                         <div className="input-group">
                             <label>Official Contact</label>
@@ -695,43 +735,336 @@ const Settings = () => {
             {/* Print/QR Tab */}
             {activeTab === 'qr' && (
                 <div className="fade-in">
-                    <h3 style={{ marginBottom: '20px' }}>Print Label & Tag Configuration</h3>
-                    <div className="glass" style={{ padding: '24px', background: 'var(--dark-bg)' }}>
-                        <div className="input-group" style={{ marginBottom: '20px' }}>
-                            <label>Label Format Strategy</label>
-                            <select 
-                                value={qrFormat} 
-                                onChange={e => setQrFormat(e.target.value)} 
-                                style={{ background: 'var(--surface-bg)', padding: '12px', width: '100%', maxWidth: '400px' }}
-                            >
-                                <option value="qr">Standard QR Code (ID Only)</option>
-                                <option value="qr_name_wt">QR + Name & Net Wt</option>
-                                <option value="qr_name_wt_stone">QR + Name, Gross/Net & Stone Wt</option>
-                                <option value="qr_name_wt_stonewt_details">QR + Full Details (Includes individual stones)</option>
-                                <option value="barcode_128">Standard Barcode (CODE128)</option>
-                            </select>
-                            <p style={{ marginTop: '10px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                Choose whether to print a standard QR Code or a Barcode (CODE128), and select the level of detail to print alongside it.
-                            </p>
-                        </div>
+                    <h3 style={{ marginBottom: '20px' }}>Advanced Print & QR Configuration</h3>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', alignItems: 'start', marginBottom: '30px' }} className="responsive-grid">
+                        
+                        {/* Configuration Controls */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            
+                            {/* Templates & Watermarks */}
+                            <div className="glass" style={{ padding: '20px', background: 'var(--dark-bg)' }}>
+                                <h4 style={{ color: 'var(--primary-gold)', marginBottom: '15px' }}>Premium Document Styles</h4>
+                                
+                                <div style={{ display: 'flex', borderBottom: '1px solid var(--glass-border)', marginBottom: '15px' }}>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setPrintSubTab('customer')}
+                                        style={{
+                                            padding: '8px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
+                                            color: printSubTab === 'customer' ? 'var(--primary-gold)' : 'var(--text-muted)',
+                                            borderBottom: printSubTab === 'customer' ? '2px solid var(--primary-gold)' : 'none',
+                                            fontWeight: 600, fontSize: '0.85rem'
+                                        }}
+                                    >
+                                        Customer Templates
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setPrintSubTab('worker')}
+                                        style={{
+                                            padding: '8px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
+                                            color: printSubTab === 'worker' ? 'var(--primary-gold)' : 'var(--text-muted)',
+                                            borderBottom: printSubTab === 'worker' ? '2px solid var(--primary-gold)' : 'none',
+                                            fontWeight: 600, fontSize: '0.85rem'
+                                        }}
+                                    >
+                                        Worker Templates
+                                    </button>
+                                </div>
 
-                        <div style={{ padding: '20px', background: 'var(--surface-bg)', borderRadius: '12px', border: '1px dashed var(--glass-border)', display: 'inline-block' }}>
-                            <p style={{ margin: '0 0 10px 0', fontSize: '0.8rem', color: 'var(--primary-gold)', fontWeight: 600 }}>PREVIEW</p>
-                            <div style={{ width: '200px', height: '100px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }}>
-                                {qrFormat === 'barcode_128' ? (
-                                    <div style={{ color: 'black', textAlign: 'center', fontFamily: 'monospace', fontWeight: 'bold' }}>
-                                        ||||| |||| |||<br/>
-                                        <span style={{ fontSize: '10px' }}>PROD-12345</span>
+                                {printSubTab === 'customer' ? (
+                                    <div className="input-group" style={{ marginBottom: '15px' }}>
+                                        <label>Customer Template Theme</label>
+                                        <select 
+                                            value={printSettings.customerTemplate} 
+                                            onChange={e => setPrintSettings({ ...printSettings, customerTemplate: e.target.value })}
+                                            style={{ background: 'var(--surface-bg)', padding: '10px', width: '100%', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px' }}
+                                        >
+                                            <option value="classic">Classic Jewellery (Elegant & Traditional)</option>
+                                            <option value="minimal">Minimal Modern (Sleek, High White-space)</option>
+                                            <option value="luxury">Luxury Gold (Warm Amber Accents)</option>
+                                            <option value="corporate">Corporate ERP (Clean Grid Lines)</option>
+                                        </select>
                                     </div>
                                 ) : (
-                                    <div style={{ color: 'black', textAlign: 'center', fontWeight: 'bold' }}>
-                                        [ QR ]<br/>
-                                        {qrFormat !== 'qr' && <span style={{ fontSize: '10px' }}>Details...</span>}
+                                    <div className="input-group" style={{ marginBottom: '15px' }}>
+                                        <label>Worker Template Theme</label>
+                                        <select 
+                                            value={printSettings.workerTemplate} 
+                                            onChange={e => setPrintSettings({ ...printSettings, workerTemplate: e.target.value })}
+                                            style={{ background: 'var(--surface-bg)', padding: '10px', width: '100%', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px' }}
+                                        >
+                                            <option value="classic">Classic Jewellery (Elegant & Traditional)</option>
+                                            <option value="minimal">Minimal Modern (Sleek, High White-space)</option>
+                                            <option value="luxury">Luxury Gold (Warm Amber Accents)</option>
+                                            <option value="corporate">Corporate ERP (Clean Grid Lines)</option>
+                                        </select>
                                     </div>
                                 )}
+                                <div className="input-group" style={{ marginBottom: '15px' }}>
+                                    <label>Watermark Stamp</label>
+                                    <select 
+                                        value={printSettings.watermark} 
+                                        onChange={e => setPrintSettings({ ...printSettings, watermark: e.target.value })}
+                                        style={{ background: 'var(--surface-bg)', padding: '10px', width: '100%', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px' }}
+                                    >
+                                        <option value="none">No Watermark</option>
+                                        <option value="ESTIMATION">ESTIMATION</option>
+                                        <option value="PAID">PAID</option>
+                                        <option value="UNPAID">UNPAID</option>
+                                        <option value="DELIVERED">DELIVERED</option>
+                                        <option value="CANCELLED">CANCELLED</option>
+                                    </select>
+                                </div>
+                                <div className="input-group">
+                                    <label>Label / Document Format Strategy</label>
+                                    <select 
+                                        value={qrFormat} 
+                                        onChange={e => setQrFormat(e.target.value)} 
+                                        style={{ background: 'var(--surface-bg)', padding: '10px', width: '100%', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px' }}
+                                    >
+                                        <option value="qr">Standard QR Code (ID Only)</option>
+                                        <option value="qr_name_wt">QR + Name & Net Wt</option>
+                                        <option value="qr_name_wt_stone">QR + Name, Gross/Net & Stone Wt</option>
+                                        <option value="qr_name_wt_stonewt_details">QR + Full Details (Includes individual stones)</option>
+                                        <option value="barcode_128">Standard Barcode (CODE128)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Page size, QR Option & Copies */}
+                            <div className="glass" style={{ padding: '20px', background: 'var(--dark-bg)' }}>
+                                <h4 style={{ color: 'var(--primary-gold)', marginBottom: '15px' }}>Page Sizes & Print Queue</h4>
+                                <div className="input-group" style={{ marginBottom: '15px' }}>
+                                    <label>Default Page Size & aspect ratio</label>
+                                    <select 
+                                        value={printSettings.defaultPageSize} 
+                                        onChange={e => setPrintSettings({ ...printSettings, defaultPageSize: e.target.value })}
+                                        style={{ background: 'var(--surface-bg)', padding: '10px', width: '100%', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px' }}
+                                    >
+                                        <option value="a4">A4 Portrait (210 x 297mm - Standard Invoices)</option>
+                                        <option value="a5">A5 Portrait (148 x 210mm - Receipts & Job Cards)</option>
+                                        <option value="thermal_80">Thermal Roll (80mm - Fast Payment Receipts)</option>
+                                        <option value="tag_50_25">Jewellery Tag (50 x 25mm)</option>
+                                        <option value="tag_60_40">Jewellery Tag (60 x 40mm)</option>
+                                        <option value="tag_80_50">Jewellery Tag (80 x 50mm)</option>
+                                    </select>
+                                </div>
+                                <div className="input-group" style={{ marginBottom: '15px' }}>
+                                    <label>QR Code Target Option</label>
+                                    <select 
+                                        value={printSettings.qrOption} 
+                                        onChange={e => setPrintSettings({ ...printSettings, qrOption: e.target.value })}
+                                        style={{ background: 'var(--surface-bg)', padding: '10px', width: '100%', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px' }}
+                                    >
+                                        <option value="invoice">Invoice QR (ID, Customer, Amount, Date)</option>
+                                        <option value="product">Product QR (ID, Barcode)</option>
+                                        <option value="worker">Worker QR (Worker ID)</option>
+                                        <option value="tracking">Order Tracking QR (Premium Status Link)</option>
+                                    </select>
+                                </div>
+                                <div style={{ display: 'flex', gap: '15px', marginTop: '10px' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={printSettings.multiCopy?.customerCopy || false}
+                                            onChange={e => setPrintSettings({
+                                                ...printSettings,
+                                                multiCopy: { ...printSettings.multiCopy, customerCopy: e.target.checked }
+                                            })}
+                                        /> Customer Copy
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={printSettings.multiCopy?.officeCopy || false}
+                                            onChange={e => setPrintSettings({
+                                                ...printSettings,
+                                                multiCopy: { ...printSettings.multiCopy, officeCopy: e.target.checked }
+                                            })}
+                                        /> Office Copy
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={printSettings.multiCopy?.workerCopy || false}
+                                            onChange={e => setPrintSettings({
+                                                ...printSettings,
+                                                multiCopy: { ...printSettings.multiCopy, workerCopy: e.target.checked }
+                                            })}
+                                        /> Worker Copy
+                                    </label>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        {/* Layout Toggle Settings */}
+                        <div className="glass" style={{ padding: '20px', background: 'var(--dark-bg)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div>
+                                <h4 style={{ color: 'var(--primary-gold)', marginBottom: '10px' }}>Header Settings</h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                    {[
+                                        { key: 'showHeaderLogo', label: 'Show Logo' },
+                                        { key: 'showHeaderGSTIN', label: 'Show GSTIN' },
+                                        { key: 'showHeaderAddress', label: 'Show Address' },
+                                        { key: 'showHeaderContact', label: 'Show Contact' },
+                                        { key: 'showHallmarkLogo', label: 'Show Hallmark Logo' },
+                                        { key: 'showBISLogo', label: 'Show BIS Logo' }
+                                    ].map(item => (
+                                        <label key={item.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={printSettings[item.key] || false} 
+                                                onChange={e => setPrintSettings({ ...printSettings, [item.key]: e.target.checked })} 
+                                            />
+                                            {item.label}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <hr style={{ border: '0', borderTop: '1px solid var(--glass-border)', margin: '0' }} />
+
+                            <div>
+                                <h4 style={{ color: 'var(--primary-gold)', marginBottom: '10px' }}>Item Table Settings</h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                    {[
+                                        { key: 'showItemBarcode', label: 'Show Barcode' },
+                                        { key: 'showItemHUID', label: 'Show HUID' },
+                                        { key: 'showItemDescription', label: 'Show Description' },
+                                        { key: 'showItemStoneDetails', label: 'Show Stone Details' },
+                                        { key: 'groupStoneDetails', label: 'Group Stone Details' },
+                                        { key: 'showItemProductImage', label: 'Show Product Image' }
+                                    ].map(item => (
+                                        <label key={item.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={printSettings[item.key] || false} 
+                                                onChange={e => setPrintSettings({ ...printSettings, [item.key]: e.target.checked })} 
+                                            />
+                                            {item.label}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <hr style={{ border: '0', borderTop: '1px solid var(--glass-border)', margin: '0' }} />
+
+                            <div>
+                                <h4 style={{ color: 'var(--primary-gold)', marginBottom: '10px' }}>Amount Settings</h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                    {[
+                                        { key: 'showAmountGoldRate', label: 'Show Gold Rate' },
+                                        { key: 'showAmountStoneCharges', label: 'Show Stone Charges' },
+                                        { key: 'showAmountMakingCharges', label: 'Show Making Charges' },
+                                        { key: 'showAmountDiscount', label: 'Show Discount' },
+                                        { key: 'showAmountGST', label: 'Show GST' }
+                                    ].map(item => (
+                                        <label key={item.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={printSettings[item.key] || false} 
+                                                onChange={e => setPrintSettings({ ...printSettings, [item.key]: e.target.checked })} 
+                                            />
+                                            {item.label}
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
                         </div>
+
                     </div>
+
+                    {/* Preview Area */}
+                    <div className="glass" style={{ padding: '24px', background: 'var(--dark-bg)' }}>
+                        <h4 style={{ color: 'var(--primary-gold)', marginBottom: '15px' }}>Template Output Preview (Live)</h4>
+                        
+                        {(() => {
+                            const activePreviewTemplate = printSubTab === 'customer' ? (printSettings.customerTemplate || 'classic') : (printSettings.workerTemplate || 'corporate');
+                            return (
+                                <div style={{
+                                    padding: '30px', 
+                                    background: activePreviewTemplate === 'luxury' ? '#fdfaf2' : (activePreviewTemplate === 'minimal' ? '#ffffff' : '#f8fafc'), 
+                                    border: activePreviewTemplate === 'corporate' ? '2px solid #334155' : '1px solid var(--glass-border)',
+                                    borderRadius: '8px',
+                                    color: '#1e293b',
+                                    fontFamily: activePreviewTemplate === 'classic' ? 'Georgia, serif' : 'Inter, sans-serif',
+                                    minHeight: '200px',
+                                    position: 'relative'
+                                }}>
+                            {/* Watermark preview */}
+                            {printSettings.watermark !== 'none' && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '50%',
+                                    transform: 'translate(-50%, -50%) rotate(-30deg)',
+                                    fontSize: '2.5rem',
+                                    color: 'rgba(239, 68, 68, 0.15)',
+                                    fontWeight: '900',
+                                    pointerEvents: 'none',
+                                    border: '6px double rgba(239, 68, 68, 0.15)',
+                                    padding: '5px 20px',
+                                    letterSpacing: '5px'
+                                }}>
+                                    {printSettings.watermark}
+                                </div>
+                            )}
+
+                            {/* Header details preview */}
+                            <div style={{ borderBottom: '1px solid #cbd5e1', paddingBottom: '10px', marginBottom: '15px' }}>
+                                <div style={{ display: 'flex', justifyItems: 'center', justifyContent: 'space-between' }}>
+                                    <div>
+                                        {printSettings.showHeaderLogo && <div style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--primary-gold)', border: '1px solid #cbd5e1', padding: '2px 5px', display: 'inline-block', marginBottom: '5px' }}>[COMPANY LOGO]</div>}
+                                        <h5 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>{name || 'MAHALAKSHMI JEWELLERY'}</h5>
+                                        {printSettings.showHeaderAddress && <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>{address || '123 Gold Bazaar Road'}</p>}
+                                        {printSettings.showHeaderContact && <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>{phone || '+91-999999999'}</p>}
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        {printSettings.showHeaderGSTIN && <div style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>GSTIN: {taxId || '33AAAAA0000A1Z5'}</div>}
+                                        <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                                            {printSettings.showHallmarkLogo && <span style={{ fontSize: '8px', border: '1px solid #d97706', padding: '1px 3px', borderRadius: '3px', color: '#d97706' }}>HALLMARK</span>}
+                                            {printSettings.showBISLogo && <span style={{ fontSize: '8px', border: '1px solid #0284c7', padding: '1px 3px', borderRadius: '3px', color: '#0284c7' }}>BIS</span>}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Item Table details preview */}
+                            <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                                        <th style={{ padding: '6px', textAlign: 'left' }}>Item</th>
+                                        {printSettings.showItemBarcode && <th style={{ padding: '6px', textAlign: 'left' }}>Barcode</th>}
+                                        {printSettings.showItemHUID && <th style={{ padding: '6px', textAlign: 'left' }}>HUID</th>}
+                                        {printSettings.showItemDescription && <th style={{ padding: '6px', textAlign: 'left' }}>Description</th>}
+                                        <th style={{ padding: '6px', textAlign: 'right' }}>Gross Wt</th>
+                                        <th style={{ padding: '6px', textAlign: 'right' }}>Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                        <td style={{ padding: '6px', fontWeight: 'bold' }}>
+                                            Bridal Ring
+                                            {printSettings.showItemStoneDetails && (
+                                                <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 'normal' }}>
+                                                    {printSettings.groupStoneDetails ? "Stone Details: Ruby 2g, AD 0.5g" : "Ruby (2g) | AD (0.5g)"}
+                                                </div>
+                                            )}
+                                        </td>
+                                        {printSettings.showItemBarcode && <td style={{ padding: '6px', fontFamily: 'monospace' }}>RNG2045</td>}
+                                        {printSettings.showItemHUID && <td style={{ padding: '6px' }}>HUID12345</td>}
+                                        {printSettings.showItemDescription && <td style={{ padding: '6px', color: '#64748b' }}>Custom handmade engagement ring</td>}
+                                        <td style={{ padding: '6px', textAlign: 'right' }}>8.500 g</td>
+                                        <td style={{ padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>₹56,400.00</td>
+                                    </tr>
+                                </tbody>
+                            );
+                        })()}
+                    </div>
+
                 </div>
             )}
 
