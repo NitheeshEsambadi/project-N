@@ -481,13 +481,18 @@ const WorkerReceipt = () => {
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'flex-end' }}>
                         <div style={{ width: '120px' }}>
                             <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Product *</label>
-                            <select 
+                            <input 
+                                required
+                                type="text"
+                                list="receipt-products-datalist"
                                 value={ornament.product} 
                                 onChange={e => setOrnament({ ...ornament, product: e.target.value })} 
-                                style={{ width: '100%', padding: '8px 10px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-main)', fontSize: '0.85rem' }}
-                            >
-                                {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                            </select>
+                                placeholder="Select or type..."
+                                style={{ width: '100%', padding: '8px 10px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none' }}
+                            />
+                            <datalist id="receipt-products-datalist">
+                                {categories.map(c => <option key={c.name} value={c.name} />)}
+                            </datalist>
                         </div>
                         <div style={{ width: '130px' }}>
                             <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Ornament Wt *</label>

@@ -36,25 +36,35 @@ const Billing = ({ setSidebarOpen }) => {
   const [showCustomerSearch, setShowCustomerSearch] = useState(false);
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [showStoneRatesModal, setShowStoneRatesModal] = useState(false);
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [customers, setCustomers] = useState([]);
+  const [itemStones, setItemStones] = useState([]);
+  const [showStoneDetail, setShowStoneDetail] = useState(false);
 
   // Fetch products and company stones on mount
   useEffect(() => {
     const fetchProdsAndStones = async () => {
       try {
         setLoadingProducts(true);
-        const [prodRes, companyRes] = await Promise.all([
+        const [prodRes, companyRes, custRes] = await Promise.all([
           api.get('/mgmt/products?status=completed').catch(() => ({ data: [] })),
-          api.get('/company').catch(() => ({ data: {} }))
+          api.get('/company').catch(() => ({ data: {} })),
+          api.get('/customers').catch(() => ({ data: [] }))
         ]);
         setAvailableProducts(prodRes.data || []);
         setCompany(companyRes.data || {});
+        setCustomers(custRes.data || []);
         
         // Use stones from company or default list if empty
-        const fetchedStones = (companyRes.data?.stones || []).filter(s => s.status !== 'Inactive');
+        const fetchedStones = (companyRes.data?.stones || [])
+          .filter(s => s.status !== 'Inactive')
+          .map(s => ({ ...s, rate: s.rate || 1200 }));
         if (fetchedStones.length === 0) {
           setCompanyStones([
-            { stoneName: 'AD', stoneType: 'Precious' },
-            { stoneName: 'MT', stoneType: 'Precious' }
+            { stoneName: 'AD', stoneType: 'Precious', rate: 1200 },
+            { stoneName: 'MT', stoneType: 'Precious', rate: 800 }
           ]);
         } else {
           setCompanyStones(fetchedStones);
@@ -82,6 +92,10 @@ const Billing = ({ setSidebarOpen }) => {
       if (e.key === 'F4') {
         e.preventDefault();
         setShowProductSearch(true);
+      }
+      if (e.key === 'F9') {
+        e.preventDefault();
+        setShowStoneRatesModal(true);
       }
       if (e.key === 'F1') {
         e.preventDefault();
@@ -120,13 +134,61 @@ const Billing = ({ setSidebarOpen }) => {
             amount: Math.round((found.netWeight || 0) * 6200)
           });
           setBarcode('');
+          setGrossWt('');
+          setStoneWt('0');
+          setNetWt('');
+          setItemStones([]);
+          setShowStoneDetail(false);
         }, 150);
         return () => clearTimeout(timer);
       }
     }
   }, [barcode, availableProducts, autoSubmit]);
 
+  const addStoneRow = () => {
+    setItemStones([...itemStones, { stoneName: '', weight: '', rate: '' }]);
+  };
+
+  const updateStoneRow = (idx, field, value) => {
+    const updated = [...itemStones];
+    updated[idx][field] = value;
+    
+    // Auto populate rate if stoneName changes
+    if (field === 'stoneName') {
+      const matchedStone = companyStones.find(s => s.stoneName === value);
+      if (matchedStone) {
+        updated[idx]['rate'] = matchedStone.rate || '';
+      }
+    }
+    
+    setItemStones(updated);
+
+    if (field === 'weight') {
+      const total = updated.reduce((acc, curr) => acc + (parseFloat(curr.weight) || 0), 0);
+      setStoneWt(total.toFixed(3));
+      if (grossWt) {
+        setNetWt((parseFloat(grossWt) - total).toFixed(3));
+      }
+    }
+  };
+
+  const removeStoneRow = (idx) => {
+    const updated = [...itemStones];
+    updated.splice(idx, 1);
+    setItemStones(updated);
+    
+    const total = updated.reduce((acc, curr) => acc + (parseFloat(curr.weight) || 0), 0);
+    setStoneWt(total.toFixed(3));
+    if (grossWt) {
+      setNetWt((parseFloat(grossWt) - total).toFixed(3));
+    }
+  };
+
   const commitItem = (customItem) => {
+    if (customItem.barcode && items.some(item => item.barcode === customItem.barcode)) {
+      alert("This item/barcode is already added to the bill.");
+      return;
+    }
     const newItem = {
       id: Date.now(),
       barcode: customItem.barcode,
@@ -152,7 +214,8 @@ const Billing = ({ setSidebarOpen }) => {
       blkRate: 0,
       em: 0,
       emRate: 0,
-      amount: customItem.amount
+      amount: customItem.amount,
+      stones: customItem.stones || []
     };
     setItems(prev => [...prev, newItem]);
   };
@@ -167,6 +230,10 @@ const Billing = ({ setSidebarOpen }) => {
     const s = parseFloat(stoneWt) || 0;
     const n = parseFloat(netWt) || Math.max(0, g - s);
 
+    // Calculate total stone charges (weight * rate)
+    const stoneCharges = itemStones.reduce((acc, curr) => acc + (parseFloat(curr.weight) || 0) * (parseFloat(curr.rate) || 0), 0);
+    const totalAmount = Math.round(n * 6200) + stoneCharges;
+
     commitItem({
       barcode: barcode || `BC-${Math.floor(100000 + Math.random() * 900000)}`,
       name: `${category} Ornament`,
@@ -176,13 +243,16 @@ const Billing = ({ setSidebarOpen }) => {
       netWeight: n,
       purity: parseFloat(purity) || 92,
       wastage: wastage,
-      amount: Math.round(n * 6200)
+      amount: totalAmount,
+      stones: itemStones
     });
 
     setBarcode('');
     setGrossWt('');
     setStoneWt('0');
     setNetWt('');
+    setItemStones([]);
+    setShowStoneDetail(false);
   };
 
   const handleDeleteItem = (id) => {
@@ -199,6 +269,7 @@ const Billing = ({ setSidebarOpen }) => {
       setCustomerName('');
       setCustomerPhone('');
       setDescription('');
+      setTotalTagWeight('');
     }
   };
 
@@ -210,52 +281,7 @@ const Billing = ({ setSidebarOpen }) => {
     }, 250);
   };
 
-  // Pre-populate some dummy items if empty to match the beautiful demo
-  useEffect(() => {
-    if (items.length === 0) {
-      setItems([
-        {
-          id: 1,
-          name: 'GOLD NECKLACE',
-          barcode: 'NKC1023',
-          category: 'Gold',
-          grossWt: 25.450,
-          stoneWt: 1.250,
-          netWeight: 24.200,
-          purity: 916,
-          wastage: '10.00',
-          pureWeight: 22.167,
-          amount: 168950
-        },
-        {
-          id: 2,
-          name: 'GOLD BANGLES',
-          barcode: 'BGL2045',
-          category: 'Gold',
-          grossWt: 18.300,
-          stoneWt: 0.800,
-          netWeight: 17.500,
-          purity: 916,
-          wastage: '10.00',
-          pureWeight: 16.030,
-          amount: 118450
-        },
-        {
-          id: 3,
-          name: 'GOLD RING',
-          barcode: 'RNG3012',
-          category: 'Gold',
-          grossWt: 4.650,
-          stoneWt: 0.150,
-          netWeight: 4.500,
-          purity: 916,
-          wastage: '10.00',
-          pureWeight: 4.122,
-          amount: 30650
-        }
-      ]);
-    }
-  }, []);
+
 
   // Calculations for billing row
   const totalGross = items.reduce((acc, curr) => acc + curr.grossWt, 0);
@@ -392,32 +418,12 @@ const Billing = ({ setSidebarOpen }) => {
           boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            {setSidebarOpen && (
-              <button 
-                type="button" 
-                className=""
-                onClick={() => setSidebarOpen(prev => !prev)}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.15)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '6px',
-                  cursor: 'pointer',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: '5px'
-                }}
-              >
-                <Menu size={20} />
-              </button>
-            )}
+
             <FileText size={20} style={{ color: '#ffffff' }} />
             <h2 style={{ fontSize: '15px', fontWeight: '700', margin: 0, letterSpacing: 'normal', color: '#ffffff' }}>
-              Multi Stone-Less Ornament Sales Returns(Barcode)
+              Billing
             </h2>
-            <span className="desktop-only" style={{ fontSize: '11px', color: '#cbd5e1' }}>Sales & Returns Module</span>
+            {/* <span className="desktop-only" style={{ fontSize: '11px', color: '#cbd5e1' }}>Sales & Returns Module</span>/ */}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button 
@@ -427,7 +433,27 @@ const Billing = ({ setSidebarOpen }) => {
               <HelpCircle size={16} /> Keyboard Shortcuts (F1)
             </button>
             <div style={{ width: '1px', height: '20px', backgroundColor: 'rgba(255,255,255,0.2)' }} className="desktop-only" />
-            <span style={{ fontSize: '12px', fontWeight: '500', color: '#ffffff' }} className="desktop-only">Active: ERP Billing Mode</span>
+            <button 
+              onClick={() => setShowStoneRatesModal(true)} 
+              style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                borderRadius: '4px',
+                color: '#ffffff',
+                padding: '4px 10px',
+                fontSize: '11px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={e => e.target.style.backgroundColor = 'rgba(255,255,255,0.25)'}
+              onMouseLeave={e => e.target.style.backgroundColor = 'rgba(255,255,255,0.15)'}
+            >
+              💎 Stone Rates (F9)
+            </button>
           </div>
         </header>
 
@@ -472,16 +498,21 @@ const Billing = ({ setSidebarOpen }) => {
                 />
               </div>
 
-              <div style={{ flex: '1 1 90px' }}>
+              <div style={{ flex: '1 1 125px' }}>
                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '3px', color: 'var(--text-muted)', fontSize: '11px' }}>Stone Wt.</label>
-                <input 
-                  type="number" 
-                  step="0.001"
-                  value={stoneWt}
-                  onChange={e => setStoneWt(e.target.value)}
-                  placeholder="In Grams"
-                  style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
-                />
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <input 
+                    type="number" 
+                    step="0.001"
+                    value={stoneWt}
+                    onChange={e => setStoneWt(e.target.value)}
+                    placeholder="In Grams"
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
+                  />
+                  <button type="button" onClick={() => setShowStoneDetail(!showStoneDetail)} style={{ padding: '6px', background: showStoneDetail ? 'var(--primary-gold)' : '#0059a8', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Add individual stones, weights and rates">
+                    💎
+                  </button>
+                </div>
               </div>
 
               <div style={{ flex: '1 1 90px' }}>
@@ -553,6 +584,49 @@ const Billing = ({ setSidebarOpen }) => {
               </div>
 
             </div>
+
+            {showStoneDetail && (
+              <div style={{ marginTop: '12px', padding: '12px', background: 'var(--dark-bg)', borderRadius: '8px', border: '1px dashed var(--glass-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: '750', color: 'var(--primary-gold)' }}>💎 INDIVIDUAL STONES & RATES</span>
+                  <button type="button" onClick={addStoneRow} style={{ padding: '3px 8px', background: 'transparent', border: '1px solid var(--primary-gold)', color: 'var(--primary-gold)', borderRadius: '4px', fontSize: '10px', cursor: 'pointer', fontWeight: '600' }}>+ Add Stone</button>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {itemStones.map((stone, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <select 
+                        value={stone.stoneName} 
+                        onChange={e => updateStoneRow(idx, 'stoneName', e.target.value)}
+                        style={{ flex: '2', padding: '6px 8px', background: 'var(--surface-bg)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '11px' }}
+                      >
+                        <option value="">Select Stone...</option>
+                        {companyStones.map(s => <option key={s.stoneName} value={s.stoneName}>{s.stoneName}</option>)}
+                      </select>
+                      <input 
+                        type="number" 
+                        step="0.001" 
+                        placeholder="Weight (g)" 
+                        value={stone.weight} 
+                        onChange={e => updateStoneRow(idx, 'weight', e.target.value)}
+                        style={{ flex: '1.5', padding: '6px 8px', background: 'var(--surface-bg)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '11px' }}
+                      />
+                      <input 
+                        type="number" 
+                        placeholder="Rate (₹/g or piece)" 
+                        value={stone.rate} 
+                        onChange={e => updateStoneRow(idx, 'rate', e.target.value)}
+                        style={{ flex: '2', padding: '6px 8px', background: 'var(--surface-bg)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '11px' }}
+                      />
+                      <button type="button" onClick={() => removeStoneRow(idx)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '12px' }}>✕</button>
+                    </div>
+                  ))}
+                  {itemStones.length === 0 && (
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>No custom stones added. Weights will fallback to default total Stone Wt.</span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Transaction Grid Table */}
@@ -600,7 +674,14 @@ const Billing = ({ setSidebarOpen }) => {
                           <Trash2 size={14} />
                         </button>
                       </td>
-                      <td style={{ padding: '6px 10px', fontWeight: '500' }}>{item.name}</td>
+                      <td style={{ padding: '6px 10px', fontWeight: '500' }}>
+                        {item.name}
+                        {item.stones && item.stones.length > 0 && (
+                          <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 'normal', marginTop: '2px' }}>
+                            {item.stones.map(s => `• ${s.stoneName}: ${s.weight}g @ ₹${s.rate}`).join(' ')}
+                          </div>
+                        )}
+                      </td>
                       <td style={{ padding: '6px 10px', color: 'var(--text-muted)' }}>{item.barcode}</td>
                       <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: '600' }}>{item.grossWt.toFixed(3)}g</td>
                       <td style={{ padding: '6px 10px', textAlign: 'right', color: 'var(--text-muted)' }}>{item.stoneWt.toFixed(3)}g</td>
@@ -866,8 +947,15 @@ const Billing = ({ setSidebarOpen }) => {
                   alert("Please add at least one item to complete the bill.");
                   return;
                 }
-                alert("Bill Submitted successfully to ERP database!");
                 setItems([]);
+                setBarcode('');
+                setGrossWt('');
+                setStoneWt('0');
+                setNetWt('');
+                setCustomerName('');
+                setCustomerPhone('');
+                setDescription('');
+                setTotalTagWeight('');
               }} 
               style={{ 
                 padding: '10px 24px', 
@@ -938,13 +1026,9 @@ const Billing = ({ setSidebarOpen }) => {
                 }}>
                   <div style={{ padding: '6px 12px', fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid var(--glass-border)' }}>ERP Print Center</div>
                   {[
-                    { key: 'estimation', label: '🧾 Estimation Bill' },
                     { key: 'invoice', label: '📄 Tax Invoice' },
-                    { key: 'tag', label: '🏷 Product Tag' },
-                    { key: 'worker', label: '👷 Worker Receipt' },
-                    { key: 'delivery', label: '📦 Delivery Note' },
-                    { key: 'jobcard', label: '📋 Job Card' },
-                    { key: 'order', label: '📑 Order Receipt' }
+                    { key: 'estimation', label: '🧾 Estimation Bill' },
+                    { key: 'detailed', label: '📋 Detailed Bill' }
                   ].map(opt => (
                     <button
                       key={opt.key}
@@ -1006,6 +1090,275 @@ const Billing = ({ setSidebarOpen }) => {
           </div>
 
         </div>
+
+        {/* Customer Search Modal */}
+        {showCustomerSearch && (
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: 'var(--surface-bg)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '500px',
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
+              overflow: 'hidden'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px', borderBottom: '1px solid var(--glass-border)' }}>
+                <h3 style={{ margin: 0, color: 'var(--primary-gold)', fontSize: '16px', fontWeight: '700' }}>👥 Search Customers</h3>
+                <button onClick={() => setShowCustomerSearch(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+              </div>
+              <div style={{ padding: '20px' }}>
+                <input 
+                  type="text" 
+                  placeholder="Search by name or phone..." 
+                  value={customerSearchQuery}
+                  onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', background: 'var(--dark-bg)', border: '1px solid var(--glass-border)', borderRadius: '6px', color: 'var(--text-main)', fontSize: '13px', marginBottom: '15px' }}
+                />
+                <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {customers
+                    .filter(c => 
+                      c.name.toLowerCase().includes(customerSearchQuery.toLowerCase()) || 
+                      (c.phone && c.phone.includes(customerSearchQuery))
+                    )
+                    .map(c => (
+                    <div 
+                      key={c._id || c.id} 
+                      onClick={() => {
+                        setCustomerName(c.name);
+                        setCustomerPhone(c.phone || '');
+                        setShowCustomerSearch(false);
+                      }}
+                      style={{
+                        padding: '10px 12px',
+                        background: 'var(--dark-bg)',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <span style={{ fontWeight: '600' }}>{c.name}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{c.phone}</span>
+                    </div>
+                  ))}
+                  {customers.length === 0 && (
+                    <div style={{ fontStyle: 'italic', color: 'var(--text-muted)', textAlign: 'center', padding: '10px' }}>No customers found.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Product Search Modal */}
+        {showProductSearch && (
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: 'var(--surface-bg)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '700px',
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
+              overflow: 'hidden'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px', borderBottom: '1px solid var(--glass-border)' }}>
+                <h3 style={{ margin: 0, color: 'var(--primary-gold)', fontSize: '16px', fontWeight: '700' }}>📦 Completed Stock / Products</h3>
+                <button onClick={() => setShowProductSearch(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+              </div>
+              <div style={{ padding: '20px' }}>
+                <input 
+                  type="text" 
+                  placeholder="Search products by design, ID or category..." 
+                  value={productSearchQuery}
+                  onChange={(e) => setProductSearchQuery(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', background: 'var(--dark-bg)', border: '1px solid var(--glass-border)', borderRadius: '6px', color: 'var(--text-main)', fontSize: '13px', marginBottom: '15px' }}
+                />
+                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--dark-bg)', borderBottom: '1.5px solid var(--glass-border)' }}>
+                        <th style={{ padding: '8px', textAlign: 'left' }}>Product ID</th>
+                        <th style={{ padding: '8px', textAlign: 'left' }}>Design Name</th>
+                        <th style={{ padding: '8px', textAlign: 'left' }}>Category</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Net Wt.</th>
+                        <th style={{ padding: '8px', textAlign: 'center' }}>Select</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {availableProducts
+                        .filter(p => !items.some(item => item.barcode === p.productId))
+                        .filter(p => 
+                          (p.productId && p.productId.toLowerCase().includes(productSearchQuery.toLowerCase())) ||
+                          (p.designName && p.designName.toLowerCase().includes(productSearchQuery.toLowerCase())) ||
+                          (p.category && p.category.toLowerCase().includes(productSearchQuery.toLowerCase()))
+                        )
+                        .map(p => (
+                        <tr key={p._id || p.productId} style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                          <td style={{ padding: '8px', fontWeight: '600' }}>{p.productId}</td>
+                          <td style={{ padding: '8px' }}>{p.designName}</td>
+                          <td style={{ padding: '8px' }}>{p.category}</td>
+                          <td style={{ padding: '8px', textAlign: 'right' }}>{(p.netWeight || 0).toFixed(3)}g</td>
+                          <td style={{ padding: '8px', textAlign: 'center' }}>
+                            <button 
+                              onClick={() => {
+                                setBarcode(p.productId);
+                                setGrossWt(p.goldWeight || p.netWeight || '');
+                                setNetWt(p.netWeight || '');
+                                setCategory(p.category || 'Gold');
+                                setStoneWt(p.stoneWeight || '0');
+                                setShowProductSearch(false);
+                              }}
+                              style={{ background: '#0059a8', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer' }}
+                            >
+                              Choose
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {availableProducts.length === 0 && (
+                        <tr>
+                          <td colSpan="5" style={{ textAlign: 'center', padding: '15px', color: 'var(--text-muted)' }}>No completed products in stock.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Shortcuts Help Modal */}
+        {showShortcutsHelp && (
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: 'var(--surface-bg)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '450px',
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
+              overflow: 'hidden'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px', borderBottom: '1px solid var(--glass-border)' }}>
+                <h3 style={{ margin: 0, color: 'var(--primary-gold)', fontSize: '16px', fontWeight: '700' }}>⌨ Keyboard Shortcuts</h3>
+                <button onClick={() => setShowShortcutsHelp(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+              </div>
+              <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--glass-border)' }}>
+                  <kbd style={{ background: 'var(--dark-bg)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--glass-border)', fontWeight: 'bold' }}>F1</kbd>
+                  <span>Show Shortcuts Help</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--glass-border)' }}>
+                  <kbd style={{ background: 'var(--dark-bg)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--glass-border)', fontWeight: 'bold' }}>F2</kbd>
+                  <span>Search Customers Modal</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--glass-border)' }}>
+                  <kbd style={{ background: 'var(--dark-bg)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--glass-border)', fontWeight: 'bold' }}>F4</kbd>
+                  <span>Search Products / Stock Modal</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--glass-border)' }}>
+                  <kbd style={{ background: 'var(--dark-bg)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--glass-border)', fontWeight: 'bold' }}>F9</kbd>
+                  <span>Edit Stone Rates Modal</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
+                  <kbd style={{ background: 'var(--dark-bg)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--glass-border)', fontWeight: 'bold' }}>Ctrl + J</kbd>
+                  <span>Trigger Print Options</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Stone Rates Modal */}
+        {showStoneRatesModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: 'var(--surface-bg)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '450px',
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
+              overflow: 'hidden'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px', borderBottom: '1px solid var(--glass-border)' }}>
+                <h3 style={{ margin: 0, color: 'var(--primary-gold)', fontSize: '16px', fontWeight: '700' }}>💎 Configure Stone Rates</h3>
+                <button onClick={() => setShowStoneRatesModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+              </div>
+              <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {companyStones.map((stone, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>{stone.stoneName} ({stone.stoneType})</span>
+                      <input 
+                        type="number"
+                        value={stone.rate || ''}
+                        onChange={(e) => {
+                          const updated = [...companyStones];
+                          updated[idx].rate = parseFloat(e.target.value) || 0;
+                          setCompanyStones(updated);
+                        }}
+                        style={{ width: '120px', padding: '6px 8px', background: 'var(--dark-bg)', border: '1px solid var(--glass-border)', borderRadius: '4px', color: 'var(--text-main)', fontSize: '12px', textAlign: 'right' }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <button 
+                  onClick={() => setShowStoneRatesModal(false)}
+                  style={{ marginTop: '10px', padding: '10px', background: '#0059a8', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}
+                >
+                  Save & Apply
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
 
       <div id="print-invoice-root" style={{ display: 'none', backgroundColor: '#ffffff', color: '#000000', padding: 0 }}>
@@ -1075,12 +1428,14 @@ const Billing = ({ setSidebarOpen }) => {
             const isDelivery = activePrintFormat === 'delivery';
             const isOrder = activePrintFormat === 'order';
             const isEstimation = activePrintFormat === 'estimation';
+            const isDetailed = activePrintFormat === 'detailed';
 
             const theme = (isWorker || isJobCard) ? workerTheme : customerTheme;
 
             // Document Title
             let docTitle = "ESTIMATION BILL";
             if (isInvoice) docTitle = "TAX INVOICE";
+            if (isDetailed) docTitle = "DETAILED BILL";
             if (isWorker) docTitle = "WORKER RECEIPT";
             if (isTag) docTitle = "PRODUCT TAG";
             if (isDelivery) docTitle = "DELIVERY RECEIPT";
@@ -1317,10 +1672,16 @@ const Billing = ({ setSidebarOpen }) => {
                         <td style={{ padding: '6px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>
                           {item.name}
                           {printSettings.showItemDescription && <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 'normal' }}>Description: {item.category} Ornament</div>}
-                          {printSettings.showItemStoneDetails && printSettings.groupStoneDetails && (
+                          {item.stones && item.stones.length > 0 ? (
                             <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 'normal', fontStyle: 'italic', marginTop: '2px' }}>
-                              Stone Details: {companyStones.map((stone, sidx) => `${stone.stoneName} ${(item.stoneWt > 0 ? (item.stoneWt / companyStones.length) : 0).toFixed(2)}g`).join(', ')}
+                              Stone Details: {item.stones.map(s => `${s.stoneName} (${s.weight}g @ ₹${s.rate})`).join(', ')}
                             </div>
+                          ) : (
+                            printSettings.showItemStoneDetails && printSettings.groupStoneDetails && (
+                              <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 'normal', fontStyle: 'italic', marginTop: '2px' }}>
+                                Stone Details: {companyStones.map((stone, sidx) => `${stone.stoneName} ${(item.stoneWt > 0 ? (item.stoneWt / companyStones.length) : 0).toFixed(2)}g`).join(', ')}
+                              </div>
+                            )
                           )}
                         </td>
                         {printSettings.showItemBarcode && <td style={{ padding: '6px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}>{item.barcode}</td>}
@@ -1431,14 +1792,11 @@ const Billing = ({ setSidebarOpen }) => {
                   <div>Purity You Can Trust, Elegance You Deserve.</div>
                   <div style={{ width: '1px', height: '10px', backgroundColor: '#cbd5e1' }} />
                   <div>🎗 916 BIS Hallmarked</div>
-                  <div style={{ width: '1px', height: '10px', backgroundColor: '#cbd5e1' }} />
-                  <div>Certified Diamonds</div>
-                </div>
-
               </div>
-            );
-          });
-        })()}
+            </div>
+          );
+        });
+      })()}
 
       </div>
 

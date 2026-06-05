@@ -27,7 +27,7 @@ const createProduct = async (req, res) => {
 
         for (let i = 0; i < qty; i++) {
             const serial = String(count + 1).padStart(3, '0');
-            const finalProductId = `${workerCode}-${catCode}-${dateStr}-${serial}`;
+            const finalProductId = `${workerCode}${dateStr}${serial}`;
             
             const product = new Product({
                 ...rest,
@@ -108,4 +108,75 @@ const updateProduct = async (req, res) => {
     }
 };
 
-module.exports = { createProduct, receiveProduct, getProducts, updateProduct };
+const addIssuance = async (req, res) => {
+    try {
+        const product = await Product.findById(req.params.id);
+        if (!product) return res.status(404).json({ message: 'Product not found' });
+
+        const { weight, purity, stones, totalStoneWeight, notes, issuanceDate, cashIssuance } = req.body;
+        product.issuances.push({
+            weight,
+            purity,
+            stones,
+            totalStoneWeight,
+            notes,
+            issuanceDate,
+            cashIssuance
+        });
+
+        const saved = await product.save();
+        res.status(201).json(saved);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+const updateIssuance = async (req, res) => {
+    try {
+        const product = await Product.findById(req.params.id);
+        if (!product) return res.status(404).json({ message: 'Product not found' });
+
+        const issuance = product.issuances.id(req.params.issuanceId);
+        if (!issuance) return res.status(404).json({ message: 'Issuance not found' });
+
+        const { weight, purity, stones, totalStoneWeight, notes, issuanceDate, cashIssuance } = req.body;
+        if (weight !== undefined) issuance.weight = weight;
+        if (purity !== undefined) issuance.purity = purity;
+        if (stones !== undefined) issuance.stones = stones;
+        if (totalStoneWeight !== undefined) issuance.totalStoneWeight = totalStoneWeight;
+        if (notes !== undefined) issuance.notes = notes;
+        if (issuanceDate !== undefined) issuance.issuanceDate = issuanceDate;
+        if (cashIssuance !== undefined) issuance.cashIssuance = cashIssuance;
+
+        const saved = await product.save();
+        res.json(saved);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+const deleteIssuance = async (req, res) => {
+    try {
+        const product = await Product.findById(req.params.id);
+        if (!product) return res.status(404).json({ message: 'Product not found' });
+
+        product.issuances.pull(req.params.issuanceId);
+        const saved = await product.save();
+        res.json(saved);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+const deleteProduct = async (req, res) => {
+    try {
+        const product = await Product.findById(req.params.id);
+        if (!product) return res.status(404).json({ message: 'Product not found' });
+        await Product.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Product deleted successfully' });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+module.exports = { createProduct, receiveProduct, getProducts, updateProduct, addIssuance, updateIssuance, deleteIssuance, deleteProduct };

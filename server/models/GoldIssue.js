@@ -8,8 +8,8 @@ const goldIssueSchema = new mongoose.Schema({
     deliveryDate: { type: Date },
     status: { 
         type: String, 
-        enum: ['issued', 'completed', 'returned'], 
-        default: 'issued' 
+        enum: ['pending', 'completed'], 
+        default: 'pending' 
     },
     stones: [
         {
@@ -18,7 +18,10 @@ const goldIssueSchema = new mongoose.Schema({
         }
     ],
     notes: { type: String },
-    totalStoneWeight: { type: Number, default: 0 } // Simplified gross stone weight
+    totalStoneWeight: { type: Number, default: 0 }, // Simplified gross stone weight
+    itemName: { type: String, default: '' },
+    category: { type: String, default: '' },
+    cashIssued: { type: Number, default: 0 }
 }, { timestamps: true });
 
 module.exports = mongoose.model('GoldIssue', goldIssueSchema);

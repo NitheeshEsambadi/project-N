@@ -16,7 +16,7 @@ const Workers = () => {
     const [editingId, setEditingId] = useState(null);
     
     const [formData, setFormData] = useState({
-        name: '', contact: '', specialization: '', identityNumber: ''
+        name: '', contact: '', identityNumber: ''
     });
 
     const [adjustmentData, setAdjustmentData] = useState({
@@ -41,7 +41,6 @@ const Workers = () => {
         setFormData({
             name: worker.name || '',
             contact: worker.contact || '',
-            specialization: worker.specialization || '',
             identityNumber: worker.identityNumber || ''
         });
         setShowModal(true);
@@ -56,7 +55,7 @@ const Workers = () => {
     const closeModal = () => {
         setShowModal(false);
         setEditingId(null);
-        setFormData({ name: '', contact: '', specialization: '', identityNumber: '' });
+        setFormData({ name: '', contact: '', identityNumber: '' });
     };
 
     const handleSubmit = async (e) => {
@@ -235,10 +234,13 @@ const Workers = () => {
                                     </label>
                                     <input 
                                         required 
-                                        type="text" 
+                                        type="tel" 
                                         value={formData.contact} 
-                                        onChange={e => setFormData({...formData, contact: e.target.value})} 
+                                        onChange={e => setFormData({...formData, contact: e.target.value.replace(/\D/g, '')})} 
                                         placeholder="e.g., 9876543210" 
+                                        pattern="[0-9]{10}"
+                                        maxLength={10}
+                                        title="Mobile number must be exactly 10 digits"
                                         style={{ width: '100%', padding: '12px 16px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-main)', outline: 'none' }}
                                     />
                                 </div>

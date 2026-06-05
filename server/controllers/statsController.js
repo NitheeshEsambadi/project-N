@@ -43,7 +43,22 @@ exports.getDashboardStats = async (req, res) => {
                 { $group: { _id: null, total: { $sum: '$goldAmount' } } }
             ]);
 
-            const bal = (issued[0]?.total || 0) - (returned[0]?.total || 0) + (adjustmentStats[0]?.total || 0);
+            const productsOfWorker = await Product.find({ workerId });
+            let productGoldIssued = 0;
+            let productGoldReturned = 0;
+            productsOfWorker.forEach(p => {
+                productGoldIssued += parseFloat(p.expectedWeight) || 0;
+                if (p.issuances && p.issuances.length > 0) {
+                    p.issuances.forEach(iss => {
+                        productGoldIssued += parseFloat(iss.weight) || 0;
+                    });
+                }
+                if (p.status === 'completed') {
+                    productGoldReturned += parseFloat(p.grossWeight) || 0;
+                }
+            });
+
+            const bal = (issued[0]?.total || 0) + productGoldIssued - (returned[0]?.total || 0) - productGoldReturned + (adjustmentStats[0]?.total || 0);
             return {
                 name: w.name,
                 workerID: w.workerID,
@@ -84,6 +99,21 @@ exports.getWorkerStats = async (req, res) => {
 
         const productStats = await Product.countDocuments({ workerId, status: 'completed' });
 
+        const productsOfWorker = await Product.find({ workerId });
+        let productGoldIssued = 0;
+        let productGoldReturned = 0;
+        productsOfWorker.forEach(p => {
+            productGoldIssued += parseFloat(p.expectedWeight) || 0;
+            if (p.issuances && p.issuances.length > 0) {
+                p.issuances.forEach(iss => {
+                    productGoldIssued += parseFloat(iss.weight) || 0;
+                });
+            }
+            if (p.status === 'completed') {
+                productGoldReturned += parseFloat(p.grossWeight) || 0;
+            }
+        });
+
         const financeStats = await Transaction.aggregate([
             { $match: { workerId } },
             { $group: { 
@@ -96,8 +126,8 @@ exports.getWorkerStats = async (req, res) => {
         const goldAdjustment = financeStats.reduce((acc, curr) => acc + (curr.goldTotal || 0), 0);
 
         res.json({
-            goldIssued: totalGoldIssued[0]?.total || 0,
-            goldReturned: goldReturnedStats[0]?.total || 0,
+            goldIssued: (totalGoldIssued[0]?.total || 0) + productGoldIssued,
+            goldReturned: (goldReturnedStats[0]?.total || 0) + productGoldReturned,
             goldAdjustment,
             completedProducts: productStats,
             totalEarnings: financeStats.find(s => s._id === 'earning')?.total || 0,

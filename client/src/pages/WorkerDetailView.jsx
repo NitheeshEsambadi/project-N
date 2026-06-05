@@ -37,7 +37,7 @@ const WorkerDetailView = () => {
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
 
   // Form Datas
-  const [editData, setEditData] = useState({ name: '', contact: '', specialization: '', identityNumber: '' });
+  const [editData, setEditData] = useState({ name: '', contact: '', identityNumber: '' });
   const [goldData, setGoldData] = useState({ weight: '', purity: '22k', expectedWastage: '0', deliveryDate: '', notes: '', stones: [], totalStoneWeight: 0 });
   const [adjustmentData, setAdjustmentData] = useState({ type: 'payment', amount: '', goldAmount: '', notes: 'Manual Adjustment' });
   const [productData, setProductData] = useState({ category: '', designName: '', expectedWeight: '', stones: [], quantity: 1, totalStoneWeight: 0 });
@@ -190,7 +190,6 @@ const WorkerDetailView = () => {
       setEditData({
         name: workerRes.data.name,
         contact: workerRes.data.contact || '',
-        specialization: workerRes.data.specialization || '',
         identityNumber: workerRes.data.identityNumber || ''
       });
     } catch (err) {
@@ -345,6 +344,7 @@ const WorkerDetailView = () => {
                 <MetricCard icon={<Coins size={20} color="var(--primary-gold)"/>} title="Gold Bal." value={`${((stats?.goldIssued || 0) - (stats?.goldReturned || 0) + (stats?.goldAdjustment || 0)).toFixed(3)}g`} />
                 <MetricCard icon={<Package size={20} color="var(--accent-blue)"/>} title="Done" value={stats?.completedProducts || 0} />
                 <MetricCard icon={<CreditCard size={20} color="var(--success)"/>} title="Earnings" value={`₹ ${(stats?.totalEarnings || 0).toLocaleString()}`} />
+                <MetricCard icon={<Hammer size={20} color="var(--danger)"/>} title="Assigned" value={products.filter(p => p.status !== 'completed').length} />
             </div>
 
             {/* Tabs */}
@@ -382,7 +382,7 @@ const WorkerDetailView = () => {
                   </div>
                   <form onSubmit={handleEditSubmit}>
                       <div className="input-group"><label>Full Name</label><input required value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} /></div>
-                      <div className="input-group"><label>Contact</label><input value={editData.contact} onChange={e => setEditData({...editData, contact: e.target.value})} /></div>
+                      <div className="input-group"><label>Contact</label><input required type="tel" value={editData.contact} onChange={e => setEditData({...editData, contact: e.target.value.replace(/\D/g, '')})} pattern="[0-9]{10}" maxLength={10} title="Mobile number must be exactly 10 digits" /></div>
                       <div className="input-group"><label>Identity Proof Number</label><input value={editData.identityNumber} onChange={e => setEditData({...editData, identityNumber: e.target.value})} /></div>
                       <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                           <button type="button" className="glass" onClick={() => setShowEditModal(false)} style={{ flex: 1, padding: '12px', color: 'var(--text-main)' }}>Cancel</button>
@@ -702,8 +702,8 @@ const GoldHistoryTab = ({ goldIssues, setShowGoldModal }) => (
                             <td style={{ padding: '12px 10px' }}>
                                 <span style={{ 
                                     padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase',
-                                    background: g.status === 'completed' ? 'rgba(46,204,113,0.1)' : g.status === 'returned' ? 'rgba(52,152,219,0.1)' : 'rgba(212,175,55,0.1)',
-                                    color: g.status === 'completed' ? 'var(--success)' : g.status === 'returned' ? 'var(--accent-blue)' : 'var(--primary-gold)'
+                                    background: g.status === 'completed' ? 'rgba(46,204,113,0.1)' : 'rgba(212,175,55,0.1)',
+                                    color: g.status === 'completed' ? 'var(--success)' : 'var(--primary-gold)'
                                 }}>
                                     {g.status}
                                 </span>

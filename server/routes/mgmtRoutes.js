@@ -16,10 +16,14 @@ const { issueGold, getAllIssues } = require('../controllers/goldController');
 router.route('/gold').get(protect, getAllIssues).post(protect, authorize('admin', 'accountant'), issueGold);
 
 // Products
-const { createProduct, receiveProduct, getProducts, updateProduct } = require('../controllers/productController');
+const { createProduct, receiveProduct, getProducts, updateProduct, addIssuance, updateIssuance, deleteIssuance, deleteProduct } = require('../controllers/productController');
 router.route('/products').get(protect, getProducts).post(protect, authorize('admin', 'accountant'), createProduct);
-router.route('/products/:id').put(protect, authorize('admin', 'accountant'), updateProduct);
+router.route('/products/:id').put(protect, authorize('admin', 'accountant'), updateProduct).delete(protect, authorize('admin', 'accountant'), deleteProduct);
 router.route('/products/:id/receive').put(protect, authorize('admin', 'accountant'), receiveProduct);
+router.route('/products/:id/issuances').post(protect, authorize('admin', 'accountant'), addIssuance);
+router.route('/products/:id/issuances/:issuanceId')
+    .put(protect, authorize('admin', 'accountant'), updateIssuance)
+    .delete(protect, authorize('admin', 'accountant'), deleteIssuance);
 
 router.route('/transactions').get(protect, getTransactions).post(protect, authorize('admin', 'accountant'), recordTransaction);
 

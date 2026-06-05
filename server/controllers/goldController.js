@@ -6,7 +6,7 @@ const Worker = require('../models/Worker');
 // @access  Private/Admin
 exports.issueGold = async (req, res) => {
     try {
-        const { workerId, weight, purity, expectedWastage, deliveryDate, notes, stones } = req.body;
+        const { workerId, weight, purity, expectedWastage, deliveryDate, notes, stones, itemName, category, cashIssued } = req.body;
 
         const worker = await Worker.findById(workerId);
         if (!worker) {
@@ -20,7 +20,10 @@ exports.issueGold = async (req, res) => {
             expectedWastage,
             deliveryDate,
             notes,
-            stones
+            stones,
+            itemName,
+            category,
+            cashIssued
         });
 
         const savedIssue = await goldIssue.save();

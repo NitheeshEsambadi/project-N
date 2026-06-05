@@ -1061,7 +1061,9 @@ const Settings = ({ onCompanyUpdate }) => {
                                         <td style={{ padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>₹56,400.00</td>
                                     </tr>
                                 </tbody>
-                            );
+                            </table>
+                        </div>
+                    );
                         })()}
                     </div>
 
