@@ -68,7 +68,7 @@ const Sidebar = ({ user, logout, closeSidebar, company }) => {
         </button>
       </div>
 
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
         {links.filter(link => link.roles.includes(user?.role)).map(link => (
           <NavLink 
             key={link.name} 

@@ -8,7 +8,7 @@ const Billing = ({ setSidebarOpen }) => {
   const [grossWt, setGrossWt] = useState('');
   const [stoneWt, setStoneWt] = useState('0');
   const [netWt, setNetWt] = useState('');
-  const [wastage, setWastage] = useState('92+');
+  const [wastage, setWastage] = useState('10');
   const [purity, setPurity] = useState('92'); 
   const [category, setCategory] = useState('Gold');
   const [autoSubmit, setAutoSubmit] = useState(true);
@@ -22,21 +22,32 @@ const Billing = ({ setSidebarOpen }) => {
   const [company, setCompany] = useState({});
 
   // Customer & Bill
-  const [customerName, setCustomerName] = useState('Mr. Arun Kumar');
-  const [customerPhone, setCustomerPhone] = useState('98765 43210');
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
   const [estimationDate, setEstimationDate] = useState(new Date().toISOString().split('T')[0]);
-  const [totalTagWeight, setTotalTagWeight] = useState('48.400 g');
-  const [description, setDescription] = useState('Estimation for custom jewellery design as per requirement.');
-  const [hallmarkCharges, setHallmarkCharges] = useState(0);
+  const [totalTagWeight, setTotalTagWeight] = useState('');
+  const [description, setDescription] = useState('');
+  const [hallmarkCharges, setHallmarkCharges] = useState('');
   const [makePayment, setMakePayment] = useState(false);
   const [makeDiscount, setMakeDiscount] = useState(false);
+  const [discountPercent, setDiscountPercent] = useState('0');
+  const [discountAmount, setDiscountAmount] = useState('0');
+  const [finalAmount, setFinalAmount] = useState('');
+  const [lastEditedField, setLastEditedField] = useState('percent'); // 'percent', 'amount', 'final'
+  
+  const [applyTax, setApplyTax] = useState(false);
+  const [taxGoldPercent, setTaxGoldPercent] = useState('0');
+  const [taxStonePercent, setTaxStonePercent] = useState('0');
+  const [vatPercent, setVatPercent] = useState('0');
 
   // Search Modals / Popup States
   const [showCustomerSearch, setShowCustomerSearch] = useState(false);
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showStoneRatesModal, setShowStoneRatesModal] = useState(false);
+  const [showWastageApplet, setShowWastageApplet] = useState(false);
+  const [showWastageInNetWeight, setShowWastageInNetWeight] = useState(false);
   const [productSearchQuery, setProductSearchQuery] = useState('');
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [customers, setCustomers] = useState([]);
@@ -115,23 +126,49 @@ const Billing = ({ setSidebarOpen }) => {
     );
 
     if (found) {
-      setGrossWt(found.goldWeight || found.netWeight || '');
+      // Calculate total stone weight from individual stones or totalStoneWeight field
+      const stoneWtFromStones = (found.stones || []).reduce((acc, s) => acc + (parseFloat(s.stoneWeight) || 0), 0);
+      const totalStWt = found.totalStoneWeight || stoneWtFromStones || 0;
+      
+      setGrossWt(found.grossWeight || found.netWeight || '');
       setNetWt(found.netWeight || '');
       setCategory(found.category || 'Gold');
+      setStoneWt(totalStWt.toString());
       setPurity('92');
       
       if (autoSubmit) {
         const timer = setTimeout(() => {
+          const netWtVal = parseFloat(found.netWeight) || 0;
+          const wastageVal = parseFloat(wastage) || 0;
+          const billingWeight = netWtVal * (1 + wastageVal / 100);
+          
+          // Calculate stone charges from found.stones using companyStones rates
+          const stoneCharges = (found.stones || []).reduce((sum, s) => {
+            const matchedStone = companyStones.find(cs => cs.stoneName.toLowerCase().trim() === s.stoneName.toLowerCase().trim());
+            const rate = matchedStone ? (parseFloat(matchedStone.rate) || 0) : 0;
+            return sum + (parseFloat(s.stoneWeight) || 0) * rate;
+          }, 0);
+
+          const totalAmount = Math.round(billingWeight * 6200) + stoneCharges;
+
           commitItem({
             barcode: found.productId,
             name: found.designName || `${found.category} Ornament`,
             category: found.category,
-            grossWt: parseFloat(found.goldWeight || found.netWeight) || 0,
-            stoneWt: parseFloat(found.stoneWeight || 0),
-            netWeight: parseFloat(found.netWeight) || 0,
-            purity: 92,
-            wastage: '92+',
-            amount: Math.round((found.netWeight || 0) * 6200)
+            grossWt: parseFloat(found.grossWeight || found.netWeight) || 0,
+            stoneWt: totalStWt,
+            netWeight: netWtVal,
+            purity: parseFloat(purity) || 92,
+            wastage: wastage,
+            amount: totalAmount,
+            stones: (found.stones || []).map(s => {
+              const matchedStone = companyStones.find(cs => cs.stoneName.toLowerCase().trim() === s.stoneName.toLowerCase().trim());
+              return {
+                stoneName: s.stoneName,
+                weight: s.stoneWeight,
+                rate: matchedStone ? matchedStone.rate : 0
+              };
+            })
           });
           setBarcode('');
           setGrossWt('');
@@ -143,7 +180,9 @@ const Billing = ({ setSidebarOpen }) => {
         return () => clearTimeout(timer);
       }
     }
-  }, [barcode, availableProducts, autoSubmit]);
+  }, [barcode, availableProducts, autoSubmit, wastage, purity, companyStones]);
+
+
 
   const addStoneRow = () => {
     setItemStones([...itemStones, { stoneName: '', weight: '', rate: '' }]);
@@ -199,7 +238,7 @@ const Billing = ({ setSidebarOpen }) => {
       netWeight: customItem.netWeight,
       purity: customItem.purity,
       wastage: customItem.wastage,
-      pureWeight: parseFloat((customItem.netWeight * 0.92).toFixed(3)),
+      pureWeight: parseFloat((customItem.netWeight * (1 + (parseFloat(customItem.wastage) || 0) / 100) * ((parseFloat(customItem.purity) || 92) / 100)).toFixed(3)),
       labor: 150,
       laborRate: 40,
       ad: 0,
@@ -229,10 +268,12 @@ const Billing = ({ setSidebarOpen }) => {
     const g = parseFloat(grossWt) || 0;
     const s = parseFloat(stoneWt) || 0;
     const n = parseFloat(netWt) || Math.max(0, g - s);
+    const wastageVal = parseFloat(wastage) || 0;
+    const billingWeight = n * (1 + wastageVal / 100);
 
     // Calculate total stone charges (weight * rate)
     const stoneCharges = itemStones.reduce((acc, curr) => acc + (parseFloat(curr.weight) || 0) * (parseFloat(curr.rate) || 0), 0);
-    const totalAmount = Math.round(n * 6200) + stoneCharges;
+    const totalAmount = Math.round(billingWeight * 6200) + stoneCharges;
 
     commitItem({
       barcode: barcode || `BC-${Math.floor(100000 + Math.random() * 900000)}`,
@@ -270,6 +311,17 @@ const Billing = ({ setSidebarOpen }) => {
       setCustomerPhone('');
       setDescription('');
       setTotalTagWeight('');
+      setHallmarkCharges('');
+      setMakePayment(false);
+      setMakeDiscount(false);
+      setDiscountPercent('0');
+      setDiscountAmount('0');
+      setFinalAmount('');
+      setLastEditedField('percent');
+      setApplyTax(false);
+      setTaxGoldPercent('0');
+      setTaxStonePercent('0');
+      setVatPercent('0');
     }
   };
 
@@ -289,9 +341,79 @@ const Billing = ({ setSidebarOpen }) => {
   const totalNet = items.reduce((acc, curr) => acc + curr.netWeight, 0);
   const totalPure = items.reduce((acc, curr) => acc + curr.pureWeight, 0);
   const cashTotal = items.reduce((acc, curr) => acc + curr.amount, 0);
-  const finalDiscount = makeDiscount ? 1500 : 0;
+
+  const subtotal = cashTotal + (parseFloat(hallmarkCharges) || 0);
+
+  const totalBaseGoldCost = items.reduce((sum, item) => sum + Math.round(item.netWeight * 6200), 0);
+  const totalWastageWt = items.reduce((sum, item) => sum + (item.netWeight * (parseFloat(item.wastage) || 0) / 100), 0);
+  const totalWastageCost = items.reduce((sum, item) => sum + Math.round((item.netWeight * (parseFloat(item.wastage) || 0) / 100) * 6200), 0);
+  const totalStoneCost = items.reduce((sum, item) => sum + (item.stones || []).reduce((sSum, s) => sSum + (parseFloat(s.weight) || 0) * (parseFloat(s.rate) || 0), 0), 0);
+
+  const goldValue = totalBaseGoldCost + totalWastageCost;
+  const taxGoldValue = applyTax ? Math.round((goldValue * (parseFloat(taxGoldPercent) || 0)) / 100) : 0;
+  const taxStoneValue = applyTax ? Math.round((totalStoneCost * (parseFloat(taxStonePercent) || 0)) / 100) : 0;
+  const vatValue = applyTax ? Math.round((totalWastageCost * (parseFloat(vatPercent) || 0)) / 100) : 0;
+  const totalTaxAmount = taxGoldValue + taxStoneValue + vatValue;
+
+  const handlePercentChange = (val) => {
+    setLastEditedField('percent');
+    setDiscountPercent(val);
+    let pct = parseFloat(val) || 0;
+    if (pct < 0) pct = 0;
+    if (pct > 100) pct = 100;
+    const amt = (subtotal * pct) / 100;
+    setDiscountAmount(Math.round(amt).toString());
+    setFinalAmount(Math.round(subtotal + totalTaxAmount - amt).toString());
+  };
+
+  const handleAmountChange = (val) => {
+    setLastEditedField('amount');
+    setDiscountAmount(val);
+    let amt = parseFloat(val) || 0;
+    if (amt < 0) amt = 0;
+    if (amt > subtotal) amt = subtotal;
+    const pct = subtotal > 0 ? ((amt / subtotal) * 100).toFixed(1) : '0';
+    setDiscountPercent(pct);
+    setFinalAmount(Math.round(subtotal + totalTaxAmount - amt).toString());
+  };
+
+  const handleFinalAmountChange = (val) => {
+    setLastEditedField('final');
+    setFinalAmount(val);
+    let finalAmt = parseFloat(val) || 0;
+    if (finalAmt < 0) finalAmt = 0;
+    const maxVal = subtotal + totalTaxAmount;
+    if (finalAmt > maxVal) finalAmt = maxVal;
+    const amt = (subtotal + totalTaxAmount) - finalAmt;
+    setDiscountAmount(Math.round(amt).toString());
+    const pct = subtotal > 0 ? ((amt / subtotal) * 100).toFixed(1) : '0';
+    setDiscountPercent(pct);
+  };
+
+  // Synchronize discount inputs when subtotal or taxes change
+  useEffect(() => {
+    if (lastEditedField === 'percent') {
+      const pct = parseFloat(discountPercent) || 0;
+      const amt = (subtotal * pct) / 100;
+      setDiscountAmount(Math.round(amt).toString());
+      setFinalAmount(Math.round(subtotal + totalTaxAmount - amt).toString());
+    } else if (lastEditedField === 'amount') {
+      const amt = parseFloat(discountAmount) || 0;
+      const pct = subtotal > 0 ? ((amt / subtotal) * 100).toFixed(1) : '0';
+      setDiscountPercent(pct);
+      setFinalAmount(Math.round(subtotal + totalTaxAmount - amt).toString());
+    } else if (lastEditedField === 'final') {
+      const finalAmt = parseFloat(finalAmount) || (subtotal + totalTaxAmount);
+      const amt = Math.max(0, (subtotal + totalTaxAmount) - finalAmt);
+      setDiscountAmount(Math.round(amt).toString());
+      const pct = subtotal > 0 ? ((amt / subtotal) * 100).toFixed(1) : '0';
+      setDiscountPercent(pct);
+    }
+  }, [subtotal, totalTaxAmount]);
+
+  const finalDiscount = makeDiscount ? (parseFloat(discountAmount) || 0) : 0;
   const balanceGold = (totalPure * 1.05).toFixed(3);
-  const balanceCash = Math.max(0, cashTotal + parseFloat(hallmarkCharges) - finalDiscount);
+  const balanceCash = Math.max(0, subtotal + totalTaxAmount - finalDiscount);
 
   // Helper to convert number to Rupees words
   const numberToWords = (num) => {
@@ -408,7 +530,7 @@ const Billing = ({ setSidebarOpen }) => {
       <div className="no-print">
         {/* Top Header Bar */}
         <header style={{
-          background: 'linear-gradient(180deg, #0059a8 0%, #003d7a 100%)',
+          background: 'linear-gradient(135deg, var(--primary-gold) 0%, #3e00a3 100%)',
           height: '50px',
           display: 'flex',
           alignItems: 'center',
@@ -454,6 +576,122 @@ const Billing = ({ setSidebarOpen }) => {
             >
               💎 Stone Rates (F9)
             </button>
+            <div style={{ position: 'relative' }}>
+              <button 
+                onClick={() => setShowWastageApplet(!showWastageApplet)} 
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  borderRadius: '4px',
+                  color: '#ffffff',
+                  padding: '4px 10px',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={e => e.target.style.backgroundColor = 'rgba(255,255,255,0.25)'}
+                onMouseLeave={e => e.target.style.backgroundColor = 'rgba(255,255,255,0.15)'}
+              >
+                ⚖️ Wastage Applet ({wastage}%)
+              </button>
+              
+              {showWastageApplet && (
+                <div style={{
+                  position: 'absolute',
+                  top: '35px',
+                  right: '0',
+                  width: '260px',
+                  backgroundColor: 'var(--surface-bg)',
+                  border: '1px solid var(--glass-border)',
+                  borderRadius: '8px',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+                  padding: '15px',
+                  zIndex: 1000,
+                  color: 'var(--text-main)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  textAlign: 'left'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>
+                    <span style={{ fontWeight: '700', fontSize: '12px' }}>Wastage Configurator</span>
+                    <button onClick={() => setShowWastageApplet(false)} style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' }}>×</button>
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '5px' }}>Wastage Percentage</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <input 
+                        type="number" 
+                        step="0.1"
+                        value={wastage}
+                        onChange={e => setWastage(e.target.value)}
+                        style={{ flex: 1, padding: '5px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--dark-bg)', color: 'var(--text-main)' }}
+                      />
+                      <span style={{ fontWeight: '600' }}>%</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '5px' }}>Quick Presets</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                      {['5', '8', '10', '12', '15'].map(pct => (
+                        <button 
+                          key={pct}
+                          onClick={() => setWastage(pct)}
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            border: '1px solid var(--glass-border)',
+                            backgroundColor: wastage === pct ? 'var(--primary-gold)' : 'var(--dark-bg)',
+                            color: wastage === pct ? '#fff' : 'var(--text-main)',
+                            fontSize: '11px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {pct}%
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '5px', marginBottom: '5px' }}>
+                    <input 
+                      type="checkbox" 
+                      id="showWastageInNetWeight"
+                      checked={showWastageInNetWeight}
+                      onChange={e => setShowWastageInNetWeight(e.target.checked)}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <label htmlFor="showWastageInNetWeight" style={{ fontSize: '11px', cursor: 'pointer', userSelect: 'none', color: 'var(--text-main)' }}>
+                      Show wastage % beside Wastage
+                    </label>
+                  </div>
+
+                  <button 
+                    onClick={() => setShowWastageApplet(false)} 
+                    style={{
+                      width: '100%',
+                      padding: '6px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      background: 'linear-gradient(135deg, var(--secondary-gold), var(--primary-gold))',
+                      color: '#fff',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      fontSize: '12px'
+                    }}
+                  >
+                    Done & Apply
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -480,7 +718,7 @@ const Billing = ({ setSidebarOpen }) => {
                     placeholder="Scan Barcode / ID..."
                     style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--dark-bg)', color: 'var(--text-main)' }}
                   />
-                  <button type="button" onClick={() => setShowProductSearch(true)} style={{ padding: '6px', background: '#0059a8', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }} title="Browse completed stock">
+                  <button type="button" onClick={() => setShowProductSearch(true)} style={{ padding: '6px', background: 'var(--primary-gold)', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }} title="Browse completed stock">
                     <Search size={16} />
                   </button>
                 </div>
@@ -493,6 +731,7 @@ const Billing = ({ setSidebarOpen }) => {
                   step="0.001"
                   value={grossWt}
                   onChange={e => setGrossWt(e.target.value)}
+                  onFocus={e => e.target.select()}
                   placeholder="In Grams"
                   style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
                 />
@@ -506,10 +745,11 @@ const Billing = ({ setSidebarOpen }) => {
                     step="0.001"
                     value={stoneWt}
                     onChange={e => setStoneWt(e.target.value)}
+                    onFocus={e => e.target.select()}
                     placeholder="In Grams"
                     style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
                   />
-                  <button type="button" onClick={() => setShowStoneDetail(!showStoneDetail)} style={{ padding: '6px', background: showStoneDetail ? 'var(--primary-gold)' : '#0059a8', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Add individual stones, weights and rates">
+                  <button type="button" onClick={() => setShowStoneDetail(!showStoneDetail)} style={{ padding: '6px', background: showStoneDetail ? 'var(--primary-gold)' : 'var(--primary-gold)', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Add individual stones, weights and rates">
                     💎
                   </button>
                 </div>
@@ -522,6 +762,7 @@ const Billing = ({ setSidebarOpen }) => {
                   step="0.001"
                   value={netWt}
                   onChange={e => setNetWt(e.target.value)}
+                  onFocus={e => e.target.select()}
                   placeholder="In Grams"
                   style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
                 />
@@ -533,7 +774,8 @@ const Billing = ({ setSidebarOpen }) => {
                   type="text" 
                   value={wastage}
                   onChange={e => setWastage(e.target.value)}
-                  placeholder="92+"
+                  onFocus={e => e.target.select()}
+                  placeholder="10"
                   style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
                 />
               </div>
@@ -543,7 +785,18 @@ const Billing = ({ setSidebarOpen }) => {
                 <input 
                   type="text" 
                   value={purity}
-                  onChange={e => setPurity(e.target.value)}
+                  onChange={e => {
+                    const val = e.target.value;
+                    const parsed = parseFloat(val);
+                    if (val === '') {
+                      setPurity(val);
+                    } else if (!isNaN(parsed)) {
+                      if (parsed >= 0 && parsed <= 100) {
+                        setPurity(val);
+                      }
+                    }
+                  }}
+                  onFocus={e => e.target.select()}
                   placeholder="92"
                   style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
                 />
@@ -577,7 +830,7 @@ const Billing = ({ setSidebarOpen }) => {
                 <button 
                   type="button" 
                   onClick={handleAddItem}
-                  style={{ padding: '7px 15px', background: '#0088a9', color: '#ffffff', border: 'none', borderRadius: '4px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                  style={{ padding: '7px 15px', background: 'var(--primary-gold)', color: '#ffffff', border: 'none', borderRadius: '4px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
                 >
                   Add <Plus size={14} />
                 </button>
@@ -601,7 +854,7 @@ const Billing = ({ setSidebarOpen }) => {
                         style={{ flex: '2', padding: '6px 8px', background: 'var(--surface-bg)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '11px' }}
                       >
                         <option value="">Select Stone...</option>
-                        {companyStones.map(s => <option key={s.stoneName} value={s.stoneName}>{s.stoneName}</option>)}
+                        {companyStones.map(s => <option key={s.stoneName} value={s.stoneName}>{s.stoneName.replace(/\s*\(Precious\)/gi, '')}</option>)}
                       </select>
                       <input 
                         type="number" 
@@ -639,7 +892,7 @@ const Billing = ({ setSidebarOpen }) => {
             <div style={{ overflowX: 'auto', maxHeight: '250px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1300px' }}>
                 <thead>
-                  <tr style={{ background: '#0088a9', color: '#ffffff', fontSize: '11px', fontWeight: '700' }}>
+                  <tr style={{ background: 'var(--primary-gold)', color: '#ffffff', fontSize: '11px', fontWeight: '700' }}>
                     <th style={{ padding: '8px 10px', width: '40px' }}>Del</th>
                     <th style={{ padding: '8px 10px' }}>Item Name</th>
                     <th style={{ padding: '8px 10px' }}>Barcode</th>
@@ -650,7 +903,11 @@ const Billing = ({ setSidebarOpen }) => {
                     <th style={{ padding: '8px 10px', textAlign: 'right' }}>Wastage</th>
                     <th style={{ padding: '8px 10px', textAlign: 'right' }}>Pure Wt.</th>
                     {companyStones.map(stone => (
-                      <th key={stone.stoneName} style={{ padding: '8px 10px', textAlign: 'right' }}>{stone.stoneName}</th>
+                      <React.Fragment key={stone.stoneName}>
+                        <th style={{ padding: '8px 10px', textAlign: 'right' }}>{stone.stoneName}</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'right' }}>{stone.stoneName} Rate</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'right' }}>{stone.stoneName} Cost</th>
+                      </React.Fragment>
                     ))}
                     {companyStones.length === 0 && (
                       <th style={{ padding: '8px 10px', textAlign: 'right' }}>Stones</th>
@@ -676,24 +933,42 @@ const Billing = ({ setSidebarOpen }) => {
                       </td>
                       <td style={{ padding: '6px 10px', fontWeight: '500' }}>
                         {item.name}
-                        {item.stones && item.stones.length > 0 && (
-                          <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 'normal', marginTop: '2px' }}>
-                            {item.stones.map(s => `• ${s.stoneName}: ${s.weight}g @ ₹${s.rate}`).join(' ')}
-                          </div>
-                        )}
                       </td>
                       <td style={{ padding: '6px 10px', color: 'var(--text-muted)' }}>{item.barcode}</td>
                       <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: '600' }}>{item.grossWt.toFixed(3)}g</td>
                       <td style={{ padding: '6px 10px', textAlign: 'right', color: 'var(--text-muted)' }}>{item.stoneWt.toFixed(3)}g</td>
                       <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: '600' }}>{item.netWeight.toFixed(3)}g</td>
                       <td style={{ padding: '6px 10px', textAlign: 'right' }}>{item.purity}%</td>
-                      <td style={{ padding: '6px 10px', textAlign: 'right' }}>{item.wastage}</td>
+                      <td style={{ padding: '6px 10px', textAlign: 'right' }}>
+                        {((item.netWeight * (parseFloat(item.wastage) || 0)) / 100).toFixed(3)}g
+                        {showWastageInNetWeight && (
+                          <span style={{ fontSize: '10px', fontWeight: 'normal', color: 'var(--text-muted)', marginLeft: '4px' }}>
+                            ({item.wastage}%)
+                          </span>
+                        )}
+                      </td>
                       <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: '600', color: '#0369a1' }}>{item.pureWeight.toFixed(3)}g</td>
-                      {companyStones.map(stone => (
-                        <td key={stone.stoneName} style={{ padding: '6px 10px', textAlign: 'right' }}>
-                          {item.stoneWt > 0 ? (item.stoneWt / companyStones.length).toFixed(3) + 'g' : '0.000g'}
-                        </td>
-                      ))}
+                      {companyStones.map(stone => {
+                        const matchedStone = (item.stones || []).find(
+                          s => s.stoneName && s.stoneName.toLowerCase().trim() === stone.stoneName.toLowerCase().trim()
+                        );
+                        const weight = matchedStone ? (parseFloat(matchedStone.weight) || 0) : 0;
+                        const rate = matchedStone ? (parseFloat(matchedStone.rate) || 0) : 0;
+                        const cost = weight * rate;
+                        return (
+                          <React.Fragment key={stone.stoneName}>
+                            <td style={{ padding: '6px 10px', textAlign: 'right' }}>
+                              {weight > 0 ? weight.toFixed(3) + 'g' : '0.000g'}
+                            </td>
+                            <td style={{ padding: '6px 10px', textAlign: 'right', color: 'var(--text-muted)' }}>
+                              {rate > 0 ? `₹${rate.toLocaleString()}` : '-'}
+                            </td>
+                            <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: '600' }}>
+                              {cost > 0 ? `₹${cost.toLocaleString()}` : '-'}
+                            </td>
+                          </React.Fragment>
+                        );
+                      })}
                       {companyStones.length === 0 && (
                         <td style={{ padding: '6px 10px', textAlign: 'right' }}>{item.stoneWt.toFixed(3)}g</td>
                       )}
@@ -702,7 +977,7 @@ const Billing = ({ setSidebarOpen }) => {
                   ))}
                   {items.length === 0 && (
                     <tr>
-                      <td colSpan="16" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                      <td colSpan={10 + (companyStones.length > 0 ? companyStones.length * 3 : 1)} style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                         {loadingProducts ? "Loading completed stock list..." : "No items selected. Use Barcode Lookup above or press F4 to search."}
                       </td>
                     </tr>
@@ -720,210 +995,196 @@ const Billing = ({ setSidebarOpen }) => {
             padding: '15px'
           }}>
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-              gap: '12px',
-              alignItems: 'start'
+              display: 'flex',
+              gap: '20px',
+              alignItems: 'start',
+              flexWrap: 'wrap'
             }}>
-              
-              {/* Column 1 */}
-              <div>
-                <div style={{ marginBottom: '8px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Date</label>
-                  <input 
-                    type="date" 
-                    value={billDate}
-                    onChange={e => setBillDate(e.target.value)}
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
-                  />
-                </div>
-                <div style={{ marginBottom: '8px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Estimation Date</label>
-                  <input 
-                    type="date" 
-                    value={estimationDate}
-                    onChange={e => setEstimationDate(e.target.value)}
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
-                  />
-                </div>
+              {/* Left Side: Inputs & Simple Totals */}
+              <div style={{
+                flex: '1 1 650px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '15px'
+              }}>
+                {/* Upper Grid for inputs/totals */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                  gap: '12px'
+                }}>
+                {/* Column 1: Dates */}
                 <div>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Total Tag Weight</label>
-                  <input 
-                    type="text" 
-                    placeholder="Total Tag Weight"
-                    value={totalTagWeight}
-                    onChange={e => setTotalTagWeight(e.target.value)}
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
-                  />
+                  <div style={{ marginBottom: '8px' }}>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Date</label>
+                    <input 
+                      type="date" 
+                      value={billDate}
+                      onChange={e => setBillDate(e.target.value)}
+                      style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Estimation Date</label>
+                    <input 
+                      type="date" 
+                      value={estimationDate}
+                      onChange={e => setEstimationDate(e.target.value)}
+                      style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Column 2 */}
-              <div>
-                <div style={{ marginBottom: '8px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Customer (F2 to Search)</label>
-                  <div style={{ display: 'flex', gap: '4px' }}>
+                {/* Column 2: Customer & Total Items */}
+                <div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Customer (F2 to Search)</label>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <input 
+                        type="text" 
+                        placeholder="Customer Name"
+                        value={customerName}
+                        onChange={e => setCustomerName(e.target.value)}
+                        style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
+                      />
+                      <button type="button" onClick={() => setShowCustomerSearch(true)} style={{ padding: '6px', background: 'var(--primary-gold)', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                        <Search size={14} />
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Total Items</label>
                     <input 
                       type="text" 
-                      placeholder="Customer Name"
-                      value={customerName}
-                      onChange={e => setCustomerName(e.target.value)}
-                      style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
-                  />
-                    <button type="button" onClick={() => setShowCustomerSearch(true)} style={{ padding: '6px', background: '#0088a9', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                      <Search size={14} />
-                    </button>
-                  </div>
-                </div>
-                <div style={{ marginBottom: '8px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Total Items</label>
-                  <input 
-                    type="text" 
-                    readOnly
-                    value={items.length}
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--dark-bg)', color: 'var(--text-main)', fontWeight: '600' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Description</label>
-                  <textarea 
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                    rows="1"
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', resize: 'vertical', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
-                  />
-                </div>
-              </div>
-
-              {/* Column 3 & 4: Weights Totals */}
-              <div>
-                <div style={{ marginBottom: '8px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Gross Total</label>
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={`${totalGross.toFixed(3)} g`}
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--dark-bg)', color: 'var(--text-main)', fontWeight: '600' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Gross Total (Return)</label>
-                  <input 
-                    type="text" 
-                    placeholder="Total Gross"
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
-                  />
-                </div>
-              </div>
-
-              {/* Column 5: Stone Totals */}
-              <div>
-                <div style={{ marginBottom: '8px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Stone Total</label>
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={`${totalStone.toFixed(3)} g`}
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--dark-bg)', color: 'var(--text-main)', fontWeight: '600' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Stone Total (Return)</label>
-                  <input 
-                    type="text" 
-                    placeholder="Total Stone"
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
-                  />
-                </div>
-              </div>
-
-              {/* Column 6: Net Totals */}
-              <div>
-                <div style={{ marginBottom: '8px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Net Total</label>
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={`${totalNet.toFixed(3)} g`}
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--dark-bg)', color: 'var(--text-main)', fontWeight: '600' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Net Total (Return)</label>
-                  <input 
-                    type="text" 
-                    placeholder="Total Net"
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
-                  />
-                </div>
-              </div>
-
-              {/* Column 7: Pure Total & Gold Balance */}
-              <div>
-                <div style={{ marginBottom: '8px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Pure Total</label>
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={items.length > 0 ? `${totalPure.toFixed(3)} g` : 'NaN'}
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--dark-bg)', color: 'var(--text-main)', fontWeight: '600' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Balance Gold</label>
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={items.length > 0 ? `${balanceGold} g` : 'NaN'}
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--dark-bg)', color: 'var(--text-main)', fontWeight: '600' }}
-                  />
-                </div>
-              </div>
-
-              {/* Column 8: Cash Total & Balance Cash */}
-              <div>
-                <div style={{ marginBottom: '8px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Cash Total</label>
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={`₹ ${cashTotal.toLocaleString()}`}
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--dark-bg)', color: 'var(--text-main)', fontWeight: '600' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Balance Cash</label>
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={`₹ ${balanceCash.toLocaleString()}`}
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--dark-bg)', color: 'var(--text-main)', fontWeight: '600' }}
-                  />
-                </div>
-              </div>
-
-              {/* Column 9: Hallmark & Addons */}
-              <div>
-                <div style={{ marginBottom: '8px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Hallmark Charges</label>
-                  <input 
-                    type="number" 
-                    placeholder="0"
-                    value={hallmarkCharges}
-                    onChange={e => setHallmarkCharges(e.target.value)}
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
-                  />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <input 
-                      type="checkbox" 
-                      id="make-payment-cb" 
-                      checked={makePayment} 
-                      onChange={e => setMakePayment(e.target.checked)} 
+                      readOnly
+                      value={items.length}
+                      style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--dark-bg)', color: 'var(--text-main)', fontWeight: '600' }}
                     />
-                    <label htmlFor="make-payment-cb" style={{ fontWeight: '600', color: 'var(--text-muted)', fontSize: '11px', cursor: 'pointer' }}>Make Payment</label>
                   </div>
+                </div>
+
+                {/* Column 3: Tag Weight & Description */}
+                <div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Total Tag Weight</label>
+                    <input 
+                      type="text" 
+                      placeholder="Total Tag Weight"
+                      value={totalTagWeight}
+                      onChange={e => setTotalTagWeight(e.target.value)}
+                      style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Description</label>
+                    <textarea 
+                      value={description}
+                      onChange={e => setDescription(e.target.value)}
+                      rows={Math.max(1, description.split('\n').length)}
+                      style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', resize: 'vertical', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)', minHeight: '32px' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Column 4: Hallmark */}
+                <div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Hallmark Charges</label>
+                    <input 
+                      type="number" 
+                      placeholder="0"
+                      value={hallmarkCharges}
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val === '' || parseFloat(val) >= 0) {
+                          setHallmarkCharges(val);
+                        }
+                      }}
+                      onFocus={e => e.target.select()}
+                      style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Column 5: Gross Total */}
+                <div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Gross Total</label>
+                    <input 
+                      type="text" 
+                      readOnly 
+                      value={`${totalGross.toFixed(3)} g`}
+                      style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--dark-bg)', color: 'var(--text-main)', fontWeight: '600' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Column 6: Stone Total */}
+                <div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Stone Total</label>
+                    <input 
+                      type="text" 
+                      readOnly 
+                      value={`${totalStone.toFixed(3)} g`}
+                      style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--dark-bg)', color: 'var(--text-main)', fontWeight: '600' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Column 7: Net Total */}
+                <div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Net Total</label>
+                    <input 
+                      type="text" 
+                      readOnly 
+                      value={`${totalNet.toFixed(3)} g`}
+                      style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--dark-bg)', color: 'var(--text-main)', fontWeight: '600' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Column 8: Pure Total */}
+                <div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Pure Total</label>
+                    <input 
+                      type="text" 
+                      readOnly 
+                      value={items.length > 0 ? `${totalPure.toFixed(3)} g` : '0.000 g'}
+                      style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--dark-bg)', color: 'var(--text-main)', fontWeight: '600' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Column 9: Cash Total */}
+                <div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '2px', color: 'var(--text-muted)', fontSize: '11px' }}>Cash Total</label>
+                    <input 
+                      type="text" 
+                      readOnly 
+                      value={`₹ ${cashTotal.toLocaleString()}`}
+                      style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--dark-bg)', color: 'var(--text-main)', fontWeight: '600' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Options Panel (Checkboxes & Discount/Tax Inputs) */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                padding: '12px',
+                backgroundColor: 'var(--hover-bg)',
+                borderRadius: '6px',
+                border: '1.5px solid var(--glass-border)',
+                width: '100%'
+              }}>
+                {/* Discount Row */}
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <input 
                       type="checkbox" 
@@ -931,11 +1192,213 @@ const Billing = ({ setSidebarOpen }) => {
                       checked={makeDiscount} 
                       onChange={e => setMakeDiscount(e.target.checked)} 
                     />
-                    <label htmlFor="make-discount-cb" style={{ fontWeight: '600', color: 'var(--text-muted)', fontSize: '11px', cursor: 'pointer' }}>Make Discount</label>
+                    <label htmlFor="make-discount-cb" style={{ fontWeight: '600', color: 'var(--text-muted)', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Make Discount</label>
                   </div>
+
+                  {makeDiscount && (
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <div style={{ width: '75px' }}>
+                        <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '2px', whiteSpace: 'nowrap' }}>Discount (%)</label>
+                        <input 
+                          id="discount-percent-input"
+                          key="discount-percent-input"
+                          type="number" 
+                          step="0.1"
+                          placeholder="Discount %"
+                          value={discountPercent}
+                          onChange={e => handlePercentChange(e.target.value)}
+                          onFocus={e => e.target.select()}
+                          style={{ width: '100%', padding: '5px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '11px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
+                        />
+                      </div>
+                      <div style={{ width: '110px' }}>
+                        <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '2px', whiteSpace: 'nowrap' }}>Discount Amount (₹)</label>
+                        <input 
+                          id="discount-amount-input"
+                          key="discount-amount-input"
+                          type="number" 
+                          placeholder="Discount Amt"
+                          value={discountAmount}
+                          onChange={e => handleAmountChange(e.target.value)}
+                          onFocus={e => e.target.select()}
+                          style={{ width: '100%', padding: '5px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '11px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
+                        />
+                      </div>
+                      <div style={{ width: '130px' }}>
+                        <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '2px', whiteSpace: 'nowrap' }}>Final Rounded Amount (₹)</label>
+                        <input 
+                          id="discount-final-input"
+                          key="discount-final-input"
+                          type="number" 
+                          placeholder="Round Off to"
+                          value={finalAmount}
+                          onChange={e => handleFinalAmountChange(e.target.value)}
+                          onFocus={e => e.target.select()}
+                          style={{ width: '100%', padding: '5px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '11px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Tax Row */}
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '20px', borderTop: '1px dashed var(--glass-border)', paddingTop: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <input 
+                      type="checkbox" 
+                      id="apply-tax-cb" 
+                      checked={applyTax} 
+                      onChange={e => setApplyTax(e.target.checked)} 
+                    />
+                    <label htmlFor="apply-tax-cb" style={{ fontWeight: '600', color: 'var(--text-muted)', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Apply Tax / VAT</label>
+                  </div>
+
+                  {applyTax && (
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <div style={{ width: '95px' }}>
+                        <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '2px', whiteSpace: 'nowrap' }}>Tax on Gold (%)</label>
+                        <input 
+                          type="number" 
+                          step="0.1"
+                          placeholder="Gold Tax %"
+                          value={taxGoldPercent}
+                          onChange={e => setTaxGoldPercent(e.target.value)}
+                          onFocus={e => e.target.select()}
+                          style={{ width: '100%', padding: '5px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '11px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
+                        />
+                      </div>
+                      <div style={{ width: '105px' }}>
+                        <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '2px', whiteSpace: 'nowrap' }}>Tax on Stones (%)</label>
+                        <input 
+                          type="number" 
+                          step="0.1"
+                          placeholder="Stone Tax %"
+                          value={taxStonePercent}
+                          onChange={e => setTaxStonePercent(e.target.value)}
+                          onFocus={e => e.target.select()}
+                          style={{ width: '100%', padding: '5px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '11px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
+                        />
+                      </div>
+                      <div style={{ width: '150px' }}>
+                        <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '2px', whiteSpace: 'nowrap' }}>Taxable Making Chargers (%)</label>
+                        <input 
+                          type="number" 
+                          step="0.1"
+                          placeholder="Taxable Making Chargers %"
+                          value={vatPercent}
+                          onChange={e => setVatPercent(e.target.value)}
+                          onFocus={e => e.target.select()}
+                          style={{ width: '100%', padding: '5px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '11px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
+            </div>
 
+              {/* Right Side: Detailed Bill Summary Card */}
+              <div style={{
+                flex: '0 0 340px',
+                minWidth: '300px',
+                backgroundColor: 'var(--hover-bg)',
+                border: '1.5px solid var(--glass-border)',
+                borderRadius: '8px',
+                padding: '16px',
+                color: 'var(--text-main)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <h3 style={{ fontSize: '12px', fontWeight: '700', borderBottom: '1px solid var(--glass-border)', paddingBottom: '6px', color: 'var(--primary-gold)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Detailed Bill Summary
+                </h3>
+                
+                <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--text-muted)', fontWeight: '600' }}>
+                      <th style={{ textAlign: 'left', paddingBottom: '4px' }}>Particulars</th>
+                      <th style={{ textAlign: 'right', paddingBottom: '4px' }}>Qty / Weight</th>
+                      <th style={{ textAlign: 'right', paddingBottom: '4px' }}>Cost (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: '1px dashed var(--glass-border)' }}>
+                      <td style={{ padding: '6px 0', fontWeight: '500' }}>Net Weight (Gold)</td>
+                      <td style={{ padding: '6px 0', textAlign: 'right' }}>{totalNet.toFixed(3)} g</td>
+                      <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: '600' }}>
+                        ₹{items.reduce((sum, item) => sum + Math.round(item.netWeight * 6200), 0).toLocaleString()}
+                      </td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px dashed var(--glass-border)' }}>
+                      <td style={{ padding: '6px 0', fontWeight: '500' }}>Stone Weight</td>
+                      <td style={{ padding: '6px 0', textAlign: 'right' }}>{totalStone.toFixed(3)} g</td>
+                      <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: '600' }}>
+                        ₹{items.reduce((sum, item) => sum + (item.stones || []).reduce((sSum, s) => sSum + (parseFloat(s.weight) || 0) * (parseFloat(s.rate) || 0), 0), 0).toLocaleString()}
+                      </td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px dashed var(--glass-border)' }}>
+                      <td style={{ padding: '6px 0', fontWeight: '500' }}>Wastage</td>
+                      <td style={{ padding: '6px 0', textAlign: 'right' }}>
+                        {items.reduce((sum, item) => sum + (item.netWeight * (parseFloat(item.wastage) || 0) / 100), 0).toFixed(3)} g
+                      </td>
+                      <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: '600' }}>
+                        ₹{items.reduce((sum, item) => sum + Math.round((item.netWeight * (parseFloat(item.wastage) || 0) / 100) * 6200), 0).toLocaleString()}
+                      </td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px dashed var(--glass-border)' }}>
+                      <td style={{ padding: '6px 0', fontWeight: '500' }}>Hallmark Charges</td>
+                      <td style={{ padding: '6px 0', textAlign: 'right' }}>{items.length} items</td>
+                      <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: '600' }}>
+                        ₹{(parseFloat(hallmarkCharges) || 0).toLocaleString()}
+                      </td>
+                    </tr>
+                    {applyTax && (
+                      <>
+                        <tr style={{ borderBottom: '1px dashed var(--glass-border)' }}>
+                          <td style={{ padding: '6px 0', fontWeight: '500' }}>Tax on Gold ({taxGoldPercent}%)</td>
+                          <td style={{ padding: '6px 0', textAlign: 'right' }}></td>
+                          <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: '600' }}>
+                            ₹{taxGoldValue.toLocaleString()}
+                          </td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px dashed var(--glass-border)' }}>
+                          <td style={{ padding: '6px 0', fontWeight: '500' }}>Tax on Stones ({taxStonePercent}%)</td>
+                          <td style={{ padding: '6px 0', textAlign: 'right' }}></td>
+                          <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: '600' }}>
+                            ₹{taxStoneValue.toLocaleString()}
+                          </td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px dashed var(--glass-border)' }}>
+                          <td style={{ padding: '6px 0', fontWeight: '500' }}>Taxable Making Chargers ({vatPercent}%)</td>
+                          <td style={{ padding: '6px 0', textAlign: 'right' }}></td>
+                          <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: '600' }}>
+                            ₹{vatValue.toLocaleString()}
+                          </td>
+                        </tr>
+                      </>
+                    )}
+                    {makeDiscount && (
+                      <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--danger)' }}>
+                        <td style={{ padding: '6px 0', fontWeight: '500' }}>Discount Applied</td>
+                        <td style={{ padding: '6px 0', textAlign: 'right' }}>
+                          {subtotal > 0 ? ((finalDiscount / subtotal) * 100).toFixed(1) + '%' : '0.0%'}
+                        </td>
+                        <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: '600' }}>
+                          - ₹{finalDiscount.toLocaleString()}
+                        </td>
+                      </tr>
+                    )}
+                    <tr style={{ borderTop: '1.5px solid var(--glass-border)', fontWeight: '800', fontSize: '12px', color: 'var(--success)' }}>
+                      <td style={{ paddingTop: '8px' }}>Total Amount</td>
+                      <td style={{ paddingTop: '8px' }}></td>
+                      <td style={{ paddingTop: '8px', textAlign: 'right', fontSize: '13px' }}>
+                        ₹{Math.round(balanceCash).toLocaleString()}.00
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -959,7 +1422,7 @@ const Billing = ({ setSidebarOpen }) => {
               }} 
               style={{ 
                 padding: '10px 24px', 
-                background: '#28a745', 
+                background: 'var(--success)', 
                 color: '#ffffff', 
                 border: 'none', 
                 borderRadius: '4px', 
@@ -975,7 +1438,7 @@ const Billing = ({ setSidebarOpen }) => {
               onClick={handleClearAll} 
               style={{ 
                 padding: '10px 24px', 
-                background: '#dc3545', 
+                background: 'var(--danger)', 
                 color: '#ffffff', 
                 border: 'none', 
                 borderRadius: '4px', 
@@ -992,7 +1455,7 @@ const Billing = ({ setSidebarOpen }) => {
                 onClick={() => setPrintDropdownOpen(!printDropdownOpen)} 
                 style={{ 
                   padding: '10px 24px', 
-                  background: '#0059a8', 
+                  background: 'var(--primary-gold)', 
                   color: '#ffffff', 
                   border: 'none', 
                   borderRadius: '4px', 
@@ -1204,6 +1667,8 @@ const Billing = ({ setSidebarOpen }) => {
                         <th style={{ padding: '8px', textAlign: 'left' }}>Product ID</th>
                         <th style={{ padding: '8px', textAlign: 'left' }}>Design Name</th>
                         <th style={{ padding: '8px', textAlign: 'left' }}>Category</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Gross Wt.</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Stone Wt.</th>
                         <th style={{ padding: '8px', textAlign: 'right' }}>Net Wt.</th>
                         <th style={{ padding: '8px', textAlign: 'center' }}>Select</th>
                       </tr>
@@ -1216,20 +1681,39 @@ const Billing = ({ setSidebarOpen }) => {
                           (p.designName && p.designName.toLowerCase().includes(productSearchQuery.toLowerCase())) ||
                           (p.category && p.category.toLowerCase().includes(productSearchQuery.toLowerCase()))
                         )
-                        .map(p => (
+                        .map(p => {
+                          const stoneWtFromStones = (p.stones || []).reduce((acc, s) => acc + (parseFloat(s.stoneWeight) || 0), 0);
+                          const totalStWt = p.totalStoneWeight || stoneWtFromStones || 0;
+                          return (
                         <tr key={p._id || p.productId} style={{ borderBottom: '1px solid var(--glass-border)' }}>
                           <td style={{ padding: '8px', fontWeight: '600' }}>{p.productId}</td>
                           <td style={{ padding: '8px' }}>{p.designName}</td>
                           <td style={{ padding: '8px' }}>{p.category}</td>
+                          <td style={{ padding: '8px', textAlign: 'right' }}>{(p.grossWeight || 0).toFixed(3)}g</td>
+                          <td style={{ padding: '8px', textAlign: 'right', color: totalStWt > 0 ? 'var(--primary-gold)' : 'var(--text-muted)' }}>{totalStWt.toFixed(3)}g</td>
                           <td style={{ padding: '8px', textAlign: 'right' }}>{(p.netWeight || 0).toFixed(3)}g</td>
                           <td style={{ padding: '8px', textAlign: 'center' }}>
                             <button 
                               onClick={() => {
                                 setBarcode(p.productId);
-                                setGrossWt(p.goldWeight || p.netWeight || '');
+                                setGrossWt(p.grossWeight || p.netWeight || '');
                                 setNetWt(p.netWeight || '');
                                 setCategory(p.category || 'Gold');
-                                setStoneWt(p.stoneWeight || '0');
+                                setStoneWt(totalStWt.toString());
+                                // Populate individual stone rows if product has stones
+                                if (p.stones && p.stones.length > 0) {
+                                  setItemStones(p.stones.map(s => {
+                                    const matchedStone = companyStones.find(cs => cs.stoneName.toLowerCase().trim() === s.stoneName.toLowerCase().trim());
+                                    return {
+                                      stoneName: s.stoneName || '',
+                                      weight: s.stoneWeight || '',
+                                      rate: matchedStone ? matchedStone.rate || '' : ''
+                                    };
+                                  }));
+                                  setShowStoneDetail(true);
+                                } else {
+                                  setItemStones([]);
+                                }
                                 setShowProductSearch(false);
                               }}
                               style={{ background: '#0059a8', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer' }}
@@ -1238,10 +1722,12 @@ const Billing = ({ setSidebarOpen }) => {
                             </button>
                           </td>
                         </tr>
-                      ))}
+                          );
+                        })
+                      }}
                       {availableProducts.length === 0 && (
                         <tr>
-                          <td colSpan="5" style={{ textAlign: 'center', padding: '15px', color: 'var(--text-muted)' }}>No completed products in stock.</td>
+                          <td colSpan="7" style={{ textAlign: 'center', padding: '15px', color: 'var(--text-muted)' }}>No completed products in stock.</td>
                         </tr>
                       )}
                     </tbody>
@@ -1687,11 +2173,16 @@ const Billing = ({ setSidebarOpen }) => {
                         {printSettings.showItemBarcode && <td style={{ padding: '6px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}>{item.barcode}</td>}
                         {printSettings.showItemHUID && <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>HUID{Math.floor(100000 + Math.random()*900000)}</td>}
                         <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{item.grossWt.toFixed(3)}g</td>
-                        {printSettings.showItemStoneDetails && !printSettings.groupStoneDetails && companyStones.map(stone => (
-                          <td key={stone.stoneName} style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
-                            {item.stoneWt > 0 ? (item.stoneWt / companyStones.length).toFixed(3) : '0.000'}
-                          </td>
-                        ))}
+                        {printSettings.showItemStoneDetails && !printSettings.groupStoneDetails && companyStones.map(stone => {
+                          const matchedStoneWeight = (item.stones || [])
+                            .filter(s => s.stoneName && s.stoneName.toLowerCase().trim() === stone.stoneName.toLowerCase().trim())
+                            .reduce((sum, s) => sum + (parseFloat(s.weight) || 0), 0);
+                          return (
+                            <td key={stone.stoneName} style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
+                              {matchedStoneWeight > 0 ? matchedStoneWeight.toFixed(3) : '0.000'}
+                            </td>
+                          );
+                        })}
                         <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 'bold' }}>{item.netWeight.toFixed(3)}g</td>
                         <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>{item.purity}%</td>
                         <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 'bold' }}>₹{item.amount.toLocaleString()}.00</td>
@@ -1701,9 +2192,17 @@ const Billing = ({ setSidebarOpen }) => {
                     <tr style={{ fontWeight: 'bold', backgroundColor: '#f8fafc' }}>
                       <td colSpan={printSettings.showItemBarcode ? (printSettings.showItemHUID ? 4 : 3) : (printSettings.showItemHUID ? 3 : 2)} style={{ padding: '6px', border: '1px solid #cbd5e1' }}>TOTAL</td>
                       <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalGross.toFixed(3)}g</td>
-                      {printSettings.showItemStoneDetails && !printSettings.groupStoneDetails && companyStones.map(stone => (
-                        <td key={stone.stoneName} style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{(totalStone / (companyStones.length || 1)).toFixed(3)}</td>
-                      ))}
+                      {printSettings.showItemStoneDetails && !printSettings.groupStoneDetails && companyStones.map(stone => {
+                        const totalForStone = items.reduce((acc, item) => {
+                          const matchedStoneWeight = (item.stones || [])
+                            .filter(s => s.stoneName && s.stoneName.toLowerCase().trim() === stone.stoneName.toLowerCase().trim())
+                            .reduce((sum, s) => sum + (parseFloat(s.weight) || 0), 0);
+                          return acc + matchedStoneWeight;
+                        }, 0);
+                        return (
+                          <td key={stone.stoneName} style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalForStone.toFixed(3)}</td>
+                        );
+                      })}
                       <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalNet.toFixed(3)}g</td>
                       <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}></td>
                       <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>₹{cashTotal.toLocaleString()}.00</td>

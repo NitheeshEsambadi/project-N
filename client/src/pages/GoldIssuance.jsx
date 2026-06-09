@@ -244,9 +244,9 @@ const GoldIssuance = () => {
                 className="glass-card fade-in" 
                 style={{ 
                   padding: '14px', 
-                  background: '#0D0C12', // Match very dark background from user image
-                  border: '2px solid #3c1e70', // Deep purple border
-                  borderRadius: '16px', // Rounded corners
+                  background: 'var(--card-deep-bg)',
+                  border: '2px solid var(--card-border)',
+                  borderRadius: '16px',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '10px',
@@ -258,13 +258,13 @@ const GoldIssuance = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   {/* Serial Number Pill */}
                   <div style={{ 
-                    border: '1px solid #282630', 
+                    border: '1px solid var(--card-pill-border)', 
                     borderRadius: '6px', 
                     padding: '3px 6px', 
                     fontSize: '0.7rem', 
-                    color: '#AFAEB4',
+                    color: 'var(--card-pill-text)',
                     fontFamily: 'monospace',
-                    background: '#16151B'
+                    background: 'var(--card-inner-bg)'
                   }}>
                     {serialNumber}
                   </div>
@@ -279,7 +279,7 @@ const GoldIssuance = () => {
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#8B45FF',
+                            color: 'var(--primary-gold)',
                             cursor: 'pointer',
                             padding: '4px',
                             display: 'flex',
@@ -298,7 +298,7 @@ const GoldIssuance = () => {
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#8B45FF',
+                        color: 'var(--primary-gold)',
                         cursor: 'pointer',
                         padding: '4px',
                         display: 'flex',
@@ -315,7 +315,7 @@ const GoldIssuance = () => {
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#FF453A',
+                        color: 'var(--danger)',
                         cursor: 'pointer',
                         padding: '4px',
                         display: 'flex',
@@ -323,21 +323,21 @@ const GoldIssuance = () => {
                         justifyContent: 'center'
                       }}
                     >
-                      <Trash2 size={16} style={{ color: '#FF453A' }} />
+                      <Trash2 size={16} style={{ color: 'var(--danger)' }} />
                     </button>
                   </div>
                 </div>
 
                 {/* Product Title / Category */}
                 <div style={{ marginBottom: '12px' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.5rem', color: '#FFF', fontWeight: '700', letterSpacing: '-0.02em', lineHeight: '1.2' }}>{title}</h3>
+                  <h3 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-main)', fontWeight: '700', letterSpacing: '-0.02em', lineHeight: '1.2' }}>{title}</h3>
                   <p style={{ margin: '4px 0 0 0', color: '#FF2E93', fontWeight: '600', fontSize: '0.95rem' }}>{subtitle}</p>
                 </div>
 
                 {/* Three Column Stats Grid */}
                 <div style={{ 
-                  background: '#131219', 
-                  border: '1px solid #201E2A',
+                  background: 'var(--card-inner-bg)', 
+                  border: '1px solid var(--card-inner-border)',
                   borderRadius: '12px',
                   display: 'grid',
                   gridTemplateColumns: '1fr 1fr 1fr',
@@ -349,44 +349,44 @@ const GoldIssuance = () => {
                   {/* Issued Weight */}
                   <div style={{ borderRight: '1px solid rgba(255, 255, 255, 0.08)' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
-                      <Scale size={18} style={{ color: '#8B45FF' }} />
+                      <Scale size={18} style={{ color: 'var(--primary-gold)' }} />
                     </div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#FFF' }}>{issue.weight}g</div>
-                    <div style={{ fontSize: '0.7rem', color: '#8F8B9E', textTransform: 'capitalize', marginTop: '2px' }}>Issued Wt</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>{issue.weight}g</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize', marginTop: '2px' }}>Issued Wt</div>
                   </div>
 
                   {/* Stones */}
                   <div style={{ borderRight: '1px solid rgba(255, 255, 255, 0.08)' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
-                      <Gem size={18} style={{ color: '#8B45FF' }} />
+                      <Gem size={18} style={{ color: 'var(--primary-gold)' }} />
                     </div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#FFF' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>
                       {(issue.stones?.reduce((acc, st) => acc + (parseFloat(st.stoneWeight) || 0), 0) || issue.totalStoneWeight || 0).toFixed(2)}g
                     </div>
-                    <div style={{ fontSize: '0.7rem', color: '#8F8B9E', textTransform: 'capitalize', marginTop: '2px' }}>Stone Wt</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize', marginTop: '2px' }}>Stone Wt</div>
                   </div>
 
                   {/* Cash Issued */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px', height: '18px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '18px', fontWeight: 700, color: '#32D74B', lineHeight: '18px' }}>₹</span>
+                      <span style={{ fontSize: '18px', fontWeight: 700, color: 'var(--success)', lineHeight: '18px' }}>₹</span>
                     </div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#32D74B' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--success)' }}>
                       {(issue.cashIssued || 0).toLocaleString('en-IN')}
                     </div>
-                    <div style={{ fontSize: '0.7rem', color: '#8F8B9E', textTransform: 'capitalize', marginTop: '2px' }}>Cash Issued</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize', marginTop: '2px' }}>Cash Issued</div>
                   </div>
                 </div>
                 {/* Craftsman Info Block with Status next to Name */}
                 <div style={{ 
-                  background: '#131219', 
-                  border: '1px solid #201E2A',
+                  background: 'var(--card-inner-bg)', 
+                  border: '1px solid var(--card-inner-border)',
                   borderRadius: '10px',
                   padding: '6px 10px',
                   marginBottom: '8px'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: '750', color: '#FFF' }}>{issue.workerId?.name || 'N/A'}</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: '750', color: 'var(--text-main)' }}>{issue.workerId?.name || 'N/A'}</div>
                     <span style={{ 
                       display: 'inline-flex', 
                       alignItems: 'center', 
@@ -396,16 +396,16 @@ const GoldIssuance = () => {
                       fontSize: '0.65rem', 
                       fontWeight: 700, 
                       background: 'rgba(139, 69, 255, 0.12)', 
-                      color: '#8B45FF',
+                      color: 'var(--primary-gold)',
                       border: '1px solid rgba(139, 69, 255, 0.2)',
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px'
                     }}>
-                      <Clock size={10} style={{ color: '#8B45FF' }} /> {issue.status}
+                      <Clock size={10} style={{ color: 'var(--primary-gold)' }} /> {issue.status}
                     </span>
                   </div>
                   {issue.workerId?.contact && (
-                    <div style={{ fontSize: '0.75rem', color: '#8F8B9E', marginTop: '4px' }}>{issue.workerId.contact}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>{issue.workerId.contact}</div>
                   )}
                 </div>
 
@@ -416,9 +416,9 @@ const GoldIssuance = () => {
                     style={{ 
                       width: '100%',
                       background: 'transparent',
-                      border: '2px solid #8B45FF',
+                      border: '2px solid rgba(255, 255, 255, 0.3)',
                       borderRadius: '12px',
-                      color: '#8B45FF',
+                      color: 'var(--text-main)',
                       fontWeight: 700,
                       fontSize: '1rem',
                       padding: '10px',
@@ -430,12 +430,14 @@ const GoldIssuance = () => {
                       transition: 'all 0.3s ease'
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.background = '#8B45FF';
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
                       e.currentTarget.style.color = '#FFF';
+                      e.currentTarget.style.borderColor = '#FFF';
                     }}
                     onMouseLeave={e => {
                       e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#8B45FF';
+                      e.currentTarget.style.color = 'var(--text-main)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
                     }}
                   >
                     Receive Work <span style={{ fontSize: '1.2rem', lineHeight: '1rem' }}>&rsaquo;</span>

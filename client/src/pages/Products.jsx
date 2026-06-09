@@ -844,15 +844,15 @@ const Products = () => {
                       className="glass-card fade-in" 
                       style={{ 
                         padding: '14px', 
-                        background: '#0D0C12', // Premium deep dark card background
-                        border: '2px solid #3c1e70', // Deep purple border
+                        background: 'var(--card-deep-bg)',
+                        border: '2px solid var(--card-border)',
                         borderRadius: '16px', 
                         display: 'flex', 
                         flexDirection: 'column', 
                         justifyContent: 'space-between', 
                         gap: '10px',
                         position: 'relative',
-                        boxShadow: '0 8px 20px rgba(0, 0, 0, 0.6)'
+                        boxShadow: 'var(--card-shadow)'
                       }}
                     >
                       <div>
@@ -860,13 +860,13 @@ const Products = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                           {/* Serial Number Pill */}
                           <div style={{ 
-                            border: '1px solid #282630', 
+                            border: '1px solid var(--card-pill-border)', 
                             borderRadius: '6px', 
                             padding: '3px 6px', 
                             fontSize: '0.7rem', 
-                            color: '#AFAEB4',
+                            color: 'var(--card-pill-text)',
                             fontFamily: 'monospace',
-                            background: '#16151B'
+                            background: 'var(--card-pill-bg)'
                           }}>
                             {product.productId}
                           </div>
@@ -879,7 +879,7 @@ const Products = () => {
                               style={{
                                 background: 'none',
                                 border: 'none',
-                                color: '#8B45FF',
+                                color: 'var(--primary-gold)',
                                 cursor: 'pointer',
                                 padding: '4px',
                                 display: 'flex',
@@ -889,14 +889,14 @@ const Products = () => {
                             >
                               <Settings size={16} />
                             </button>
-                            <div style={{ width: '1px', height: '14px', background: 'rgba(255, 255, 255, 0.12)' }} />
+                            <div style={{ width: '1px', height: '14px', background: 'var(--card-divider)' }} />
                             <button 
                               onClick={() => handleEditClick(product)} 
                               title="Edit"
                               style={{
                                 background: 'none',
                                 border: 'none',
-                                color: '#8B45FF',
+                                color: 'var(--primary-gold)',
                                 cursor: 'pointer',
                                 padding: '4px',
                                 display: 'flex',
@@ -906,14 +906,14 @@ const Products = () => {
                             >
                               <Edit2 size={16} />
                             </button>
-                            <div style={{ width: '1px', height: '14px', background: 'rgba(255, 255, 255, 0.12)' }} />
+                            <div style={{ width: '1px', height: '14px', background: 'var(--card-divider)' }} />
                             <button 
                               onClick={() => handleDeleteProduct(product)} 
                               title="Delete"
                               style={{
                                 background: 'none',
                                 border: 'none',
-                                color: '#FF453A',
+                                color: 'var(--danger)',
                                 cursor: 'pointer',
                                 padding: '4px',
                                 display: 'flex',
@@ -921,21 +921,21 @@ const Products = () => {
                                 justifyContent: 'center'
                               }}
                             >
-                              <Trash2 size={16} style={{ color: '#FF453A' }} />
+                              <Trash2 size={16} style={{ color: 'var(--danger)' }} />
                             </button>
                           </div>
                         </div>
 
                         {/* Product Title / Category */}
                         <div style={{ marginBottom: '12px' }}>
-                          <h3 style={{ margin: 0, fontSize: '1.5rem', color: '#FFF', fontWeight: '700', letterSpacing: '-0.02em', lineHeight: '1.2' }}>{product.designName}</h3>
-                          <p style={{ margin: '4px 0 0 0', color: '#FF2E93', fontWeight: '600', fontSize: '0.95rem' }}>{product.category}</p>
+                          <h3 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--card-title-text)', fontWeight: '700', letterSpacing: '-0.02em', lineHeight: '1.2' }}>{product.designName}</h3>
+                          <p style={{ margin: '4px 0 0 0', color: 'var(--secondary-gold)', fontWeight: '600', fontSize: '0.95rem' }}>{product.category}</p>
                         </div>
 
                         {/* Three Column Stats Grid */}
                         <div style={{ 
-                          background: '#131219', 
-                          border: '1px solid #201E2A',
+                          background: 'var(--card-inner-bg)', 
+                          border: '1px solid var(--card-inner-border)',
                           borderRadius: '12px',
                           display: 'grid',
                           gridTemplateColumns: '1fr 1fr 1fr',
@@ -945,42 +945,42 @@ const Products = () => {
                           marginBottom: '12px'
                         }}>
                           {/* Issued Weight */}
-                          <div style={{ borderRight: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                          <div style={{ borderRight: '1px solid var(--card-divider)' }}>
                             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
-                              <Scale size={18} style={{ color: '#8B45FF' }} />
+                              <Scale size={18} style={{ color: 'var(--primary-gold)' }} />
                             </div>
-                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#FFF' }}>{getProductTotalPureWeight(product).toFixed(3)}g</div>
-                            <div style={{ fontSize: '0.7rem', color: '#8F8B9E', textTransform: 'capitalize', marginTop: '2px' }}>Pure Wt</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--card-stat-text)' }}>{getProductTotalPureWeight(product).toFixed(3)}g</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize', marginTop: '2px' }}>Pure Wt</div>
                           </div>
 
                           {/* Stones */}
-                          <div style={{ borderRight: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                          <div style={{ borderRight: '1px solid var(--card-divider)' }}>
                             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
-                              <Gem size={18} style={{ color: '#8B45FF' }} />
+                              <Gem size={18} style={{ color: 'var(--primary-gold)' }} />
                             </div>
-                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#FFF' }}>{totalStoneWeight.toFixed(2)}g</div>
-                            <div style={{ fontSize: '0.7rem', color: '#8F8B9E', textTransform: 'capitalize', marginTop: '2px' }}>Stone Wt</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--card-stat-text)' }}>{totalStoneWeight.toFixed(2)}g</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize', marginTop: '2px' }}>Stone Wt</div>
                           </div>
 
                           {/* Cash Issued */}
                           <div>
                             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px', height: '18px', alignItems: 'center' }}>
-                              <span style={{ fontSize: '18px', fontWeight: 700, color: '#32D74B', lineHeight: '18px' }}>₹</span>
+                              <span style={{ fontSize: '18px', fontWeight: 700, color: 'var(--success)', lineHeight: '18px' }}>₹</span>
                             </div>
-                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#32D74B' }}>{cashIssued.toLocaleString('en-IN')}</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--success)' }}>{cashIssued.toLocaleString('en-IN')}</div>
                           </div>
                         </div>
 
                         {/* Craftsman Info Block with Status next to Name */}
                         <div style={{ 
-                          background: '#131219', 
-                          border: '1px solid #201E2A',
+                          background: 'var(--card-inner-bg)', 
+                          border: '1px solid var(--card-inner-border)',
                           borderRadius: '10px',
                           padding: '6px 10px',
                           marginBottom: '8px'
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ fontSize: '0.9rem', fontWeight: '750', color: '#FFF' }}>{product.workerId?.name || 'Unassigned'}</div>
+                            <div style={{ fontSize: '0.9rem', fontWeight: '750', color: 'var(--card-title-text)' }}>{product.workerId?.name || 'Unassigned'}</div>
                             <span style={{ 
                               display: 'inline-flex', 
                               alignItems: 'center', 
@@ -990,16 +990,16 @@ const Products = () => {
                               fontSize: '0.65rem', 
                               fontWeight: 700, 
                               background: 'rgba(139, 69, 255, 0.12)', 
-                              color: '#8B45FF',
+                              color: 'var(--primary-gold)',
                               border: '1px solid rgba(139, 69, 255, 0.2)',
                               textTransform: 'uppercase',
                               letterSpacing: '0.5px'
                             }}>
-                              <Clock size={10} style={{ color: '#8B45FF' }} /> {product.status}
+                              <Clock size={10} style={{ color: 'var(--primary-gold)' }} /> {product.status}
                             </span>
                           </div>
                           {product.workerId?.contact && (
-                            <div style={{ fontSize: '0.75rem', color: '#8F8B9E', marginTop: '4px' }}>{product.workerId.contact}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>{product.workerId.contact}</div>
                           )}
                         </div>
                       </div>
@@ -1011,9 +1011,9 @@ const Products = () => {
                         style={{ 
                           width: '100%',
                           background: 'transparent',
-                          border: '2px solid #8B45FF',
+                          border: '2px solid var(--primary-gold)',
                           borderRadius: '12px',
-                          color: '#8B45FF',
+                          color: 'var(--primary-gold)',
                           fontWeight: 700,
                           fontSize: '1rem',
                           padding: '10px',
@@ -1024,8 +1024,8 @@ const Products = () => {
                           gap: '6px',
                           transition: 'all 0.3s ease'
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = '#8B45FF'; e.currentTarget.style.color = '#FFFFFF'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#8B45FF'; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary-gold)'; e.currentTarget.style.color = '#FFFFFF'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--primary-gold)'; }}
                       >
                         Receive Work <span style={{ fontSize: '1.2rem', lineHeight: '1rem' }}>&rsaquo;</span>
                       </button>
@@ -1442,89 +1442,89 @@ const Products = () => {
         return (
           <div style={{ 
             position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', 
-            background: '#07060A', display: 'flex', flexDirection: 'column', zIndex: 1000,
+            background: 'var(--dark-bg)', display: 'flex', flexDirection: 'column', zIndex: 1000,
             fontFamily: "'Outfit', 'Inter', -apple-system, sans-serif",
-            color: '#FFF'
+            color: 'var(--text-main)'
           }}>
             {/* Header Panel */}
             <div style={{ 
               display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-              padding: '20px 24px', background: '#07060A', borderBottom: '1px solid #14131A' 
+              padding: '20px 24px', background: 'var(--dark-bg)', borderBottom: '1px solid var(--card-inner-border)' 
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <button 
                   onClick={() => setShowIssuanceModal(false)} 
-                  style={{ background: '#0D0C12', border: '1px solid #1C1B24', borderRadius: '8px', cursor: 'pointer', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFF', transition: 'all 0.2s' }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = '#8B45FF'}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = '#1C1B24'}
+                  style={{ background: 'var(--card-deep-bg)', border: '1px solid var(--card-btn-border)', borderRadius: '8px', cursor: 'pointer', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)', transition: 'all 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--primary-gold)'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--card-btn-border)'}
                 >
                   <ArrowLeft size={18} />
                 </button>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#FFF', letterSpacing: '-0.02em' }}>Material & Cash Issuance</h3>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#8F8B9E', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                    Product ID: <span style={{ color: '#FFF', fontWeight: 600 }}>{selectedProductForIssuance.productId}</span> • {selectedProductForIssuance.designName} • Worker: <span style={{ color: '#8B45FF', fontWeight: 800, fontSize: '0.95rem', background: 'rgba(139, 69, 255, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>{selectedProductForIssuance.workerId?.name || 'Unassigned'}</span>
+                  <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>Material & Cash Issuance</h3>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    Product ID: <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{selectedProductForIssuance.productId}</span> • {selectedProductForIssuance.designName} • Worker: <span style={{ color: 'var(--primary-gold)', fontWeight: 800, fontSize: '0.95rem', background: 'rgba(139, 69, 255, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>{selectedProductForIssuance.workerId?.name || 'Unassigned'}</span>
                   </p>
                 </div>
               </div>
               <button 
                 onClick={() => setShowIssuanceModal(false)} 
-                style={{ background: '#0D0C12', border: '1px solid #1C1B24', borderRadius: '8px', cursor: 'pointer', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFF', transition: 'all 0.2s' }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = '#FF453A'}
-                onMouseLeave={e => e.currentTarget.style.borderColor = '#1C1B24'}
+                style={{ background: 'var(--card-deep-bg)', border: '1px solid var(--card-btn-border)', borderRadius: '8px', cursor: 'pointer', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)', transition: 'all 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--danger)'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--card-btn-border)'}
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* Page Content Panel */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: '40px', padding: '30px 40px', flex: 1, overflowY: 'auto', background: '#07060A' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: '40px', padding: '30px 40px', flex: 1, overflowY: 'auto', background: 'var(--dark-bg)' }}>
               
               {/* Left Side: Metrics and Issuance Timeline */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
                 
                 {/* Metric Box Row */}
                 <div>
-                  <div style={{ fontSize: '0.8rem', color: '#8B45FF', fontWeight: 800, letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: '16px' }}>Total Issued to Worker</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--primary-gold)', fontWeight: 800, letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: '16px' }}>Total Issued to Worker</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
                     
                     {/* Gold Metric */}
-                    <div style={{ background: '#121118', border: '1px solid #1C1B24', padding: '20px', borderRadius: '12px' }}>
+                    <div style={{ background: 'var(--card-inner-bg)', border: '1px solid var(--card-inner-border)', padding: '20px', borderRadius: '12px' }}>
                       <div style={{ color: '#E0A96D', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.3px' }}>Gold</div>
-                      <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#FFF', margin: '10px 0 6px' }}>{getProductTotalPureWeight(selectedProductForIssuance).toFixed(3)} g</div>
-                      <div style={{ fontSize: '0.75rem', color: '#8F8B9E', fontWeight: 500 }}>Pure Gold</div>
+                      <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)', margin: '10px 0 6px' }}>{getProductTotalPureWeight(selectedProductForIssuance).toFixed(3)} g</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>Pure Gold</div>
                     </div>
 
                     {/* Stones Metric */}
-                    <div style={{ background: '#121118', border: '1px solid #1C1B24', padding: '20px', borderRadius: '12px' }}>
-                      <div style={{ color: '#8B45FF', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.3px' }}>Stones</div>
-                      <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#FFF', margin: '10px 0 6px' }}>{totalStoneWeightIssued.toFixed(3)} g</div>
-                      <div style={{ fontSize: '0.75rem', color: '#8F8B9E', fontWeight: 500 }}>Total Pieces: {totalStonesCount} pcs</div>
+                    <div style={{ background: 'var(--card-inner-bg)', border: '1px solid var(--card-inner-border)', padding: '20px', borderRadius: '12px' }}>
+                      <div style={{ color: 'var(--primary-gold)', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.3px' }}>Stones</div>
+                      <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)', margin: '10px 0 6px' }}>{totalStoneWeightIssued.toFixed(3)} g</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>Total Pieces: {totalStonesCount} pcs</div>
                     </div>
 
                     {/* Cash Metric */}
-                    <div style={{ background: '#121118', border: '1px solid #1C1B24', padding: '20px', borderRadius: '12px' }}>
-                      <div style={{ color: '#32D74B', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.3px' }}>Cash</div>
-                      <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#FFF', margin: '10px 0 6px' }}>₹ {totalCashIssued.toLocaleString('en-IN')}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#8F8B9E', fontWeight: 500 }}>Total Amount</div>
+                    <div style={{ background: 'var(--card-inner-bg)', border: '1px solid var(--card-inner-border)', padding: '20px', borderRadius: '12px' }}>
+                      <div style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.3px' }}>Cash</div>
+                      <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)', margin: '10px 0 6px' }}>₹ {totalCashIssued.toLocaleString('en-IN')}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>Total Amount</div>
                     </div>
 
                   </div>
                 </div>
 
                 {/* Timeline Header Row */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #14131A', paddingBottom: '16px', marginTop: '10px' }}>
-                  <span style={{ fontSize: '1rem', fontWeight: 800, color: '#FFF', letterSpacing: '0.5px' }}>ISSUANCE HISTORY</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--card-inner-border)', paddingBottom: '16px', marginTop: '10px' }}>
+                  <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '0.5px' }}>ISSUANCE HISTORY</span>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <select 
                       value={issuanceSort} 
                       onChange={e => setIssuanceSort(e.target.value)}
-                      style={{ background: '#0D0C12', border: '1px solid #1C1B24', color: '#FFF', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', outline: 'none' }}
+                      style={{ background: 'var(--card-deep-bg)', border: '1px solid var(--card-btn-border)', color: 'var(--text-main)', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', outline: 'none' }}
                     >
                       <option value="newest">Newest First</option>
                       <option value="oldest">Oldest First</option>
                     </select>
-                    <button style={{ background: '#0D0C12', border: '1px solid #1C1B24', color: '#FFF', padding: '8px 12px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                    <button style={{ background: 'var(--card-deep-bg)', border: '1px solid var(--card-btn-border)', color: 'var(--text-main)', padding: '8px 12px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                       <Filter size={16} />
                     </button>
                   </div>
@@ -1534,7 +1534,7 @@ const Products = () => {
                 <div style={{ position: 'relative', paddingLeft: '35px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
                   
                   {/* Vertical Timeline Line */}
-                  <div style={{ position: 'absolute', left: '11px', top: '15px', bottom: '15px', width: '2px', background: '#3c1e70' }} />
+                  <div style={{ position: 'absolute', left: '11px', top: '15px', bottom: '15px', width: '2px', background: 'var(--card-border)' }} />
 
                   {allIssuancesCombined.map((iss) => {
                     const numberLabel = `#${String(iss.sequence).padStart(3, '0')}`;
@@ -1544,30 +1544,30 @@ const Products = () => {
                         <div style={{ 
                           position: 'absolute', left: '-30px', top: '16px', 
                           width: '14px', height: '14px', borderRadius: '50%', 
-                          background: '#8B45FF', border: '3px solid #07060A',
-                          boxShadow: '0 0 0 2px #3c1e70'
+                          background: 'var(--primary-gold)', border: '3px solid var(--dark-bg)',
+                          boxShadow: '0 0 0 2px var(--card-border)'
                         }} />
 
                         {/* Timeline Card */}
-                        <div style={{ background: '#121118', border: '1px solid #1C1B24', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        <div style={{ background: 'var(--card-inner-bg)', border: '1px solid var(--card-inner-border)', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                           
                           {/* Title Header */}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFF', fontFamily: 'monospace' }}>{numberLabel}</span>
+                              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', fontFamily: 'monospace' }}>{numberLabel}</span>
                               
                               {/* Type Badge */}
                               {iss.type === 'initial' || (iss.type === 'additional' && iss.weight > 0 && (!iss.stones || iss.stones.length === 0) && !iss.cashIssuance) ? (
                                 <span style={{ background: 'rgba(224, 169, 109, 0.1)', color: '#E0A96D', padding: '4px 10px', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Gold Issuance</span>
                               ) : iss.stones && iss.stones.length > 0 ? (
-                                <span style={{ background: 'rgba(139, 69, 255, 0.1)', color: '#8B45FF', padding: '4px 10px', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stone Issuance</span>
+                                <span style={{ background: 'rgba(139, 69, 255, 0.1)', color: 'var(--primary-gold)', padding: '4px 10px', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stone Issuance</span>
                               ) : (
-                                <span style={{ background: 'rgba(50, 215, 75, 0.1)', color: '#32D74B', padding: '4px 10px', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Cash Issuance</span>
+                                <span style={{ background: 'rgba(50, 215, 75, 0.1)', color: 'var(--success)', padding: '4px 10px', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Cash Issuance</span>
                               )}
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                              <span style={{ fontSize: '0.8rem', color: '#8F8B9E', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
+                              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
                                 <Calendar size={14} /> {formatDate(iss.date)}
                               </span>
                               
@@ -1576,14 +1576,14 @@ const Products = () => {
                                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                   <button 
                                     onClick={() => handleEditIssuanceClick(iss.raw)} 
-                                    style={{ background: '#1C1B24', border: '1px solid #282630', color: '#8F8B9E', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
+                                    style={{ background: 'var(--card-pill-bg)', border: '1px solid var(--card-pill-border)', color: 'var(--text-muted)', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
                                     title="Edit"
                                   >
                                     <Edit2 size={13} />
                                   </button>
                                   <button 
                                     onClick={() => handleDeleteIssuance(iss.raw._id)} 
-                                    style={{ background: '#1C1B24', border: '1px solid #282630', color: '#FF453A', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
+                                    style={{ background: 'var(--card-pill-bg)', border: '1px solid var(--card-pill-border)', color: 'var(--danger)', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
                                     title="Delete"
                                   >
                                     <Trash2 size={13} />
@@ -1598,8 +1598,8 @@ const Products = () => {
 
                           {/* Card Content details */}
                           {iss.type === 'initial' && (
-                            <div style={{ fontSize: '0.9rem', color: '#AFAEB4', fontWeight: 500 }}>
-                              Purity: <span style={{ color: '#FFF', fontWeight: 700 }}>{selectedProductForIssuance.purity}{selectedProductForIssuance.purityType === 'Carat' ? 'k' : '%'}</span> &nbsp;•&nbsp; Weight: <span style={{ color: '#FFF', fontWeight: 700 }}>{selectedProductForIssuance.expectedWeight} g</span> &nbsp;•&nbsp; Pure Weight: <span style={{ color: '#32D74B', fontWeight: 700 }}>{parseFloat(selectedProductForIssuance.pureWeight || 0).toFixed(3)} g</span>
+                            <div style={{ fontSize: '0.9rem', color: 'var(--card-pill-text)', fontWeight: 500 }}>
+                              Purity: <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{selectedProductForIssuance.purity}{selectedProductForIssuance.purityType === 'Carat' ? 'k' : '%'}</span> &nbsp;•&nbsp; Weight: <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{selectedProductForIssuance.expectedWeight} g</span> &nbsp;•&nbsp; Pure Weight: <span style={{ color: '#32D74B', fontWeight: 700 }}>{parseFloat(selectedProductForIssuance.pureWeight || 0).toFixed(3)} g</span>
                             </div>
                           )}
 
@@ -1608,8 +1608,8 @@ const Products = () => {
                             const w = parseFloat(iss.weight) || 0;
                             const pw = ((w * p) / 100).toFixed(3);
                             return (
-                              <div style={{ fontSize: '0.9rem', color: '#AFAEB4', fontWeight: 500 }}>
-                                Purity: <span style={{ color: '#FFF', fontWeight: 700 }}>{iss.purity || selectedProductForIssuance.purity}%</span> &nbsp;•&nbsp; Weight: <span style={{ color: '#FFF', fontWeight: 700 }}>{iss.weight} g</span> &nbsp;•&nbsp; Pure Weight: <span style={{ color: '#32D74B', fontWeight: 700 }}>{pw} g</span>
+                              <div style={{ fontSize: '0.9rem', color: 'var(--card-pill-text)', fontWeight: 500 }}>
+                                Purity: <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{iss.purity || selectedProductForIssuance.purity}%</span> &nbsp;•&nbsp; Weight: <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{iss.weight} g</span> &nbsp;•&nbsp; Pure Weight: <span style={{ color: '#32D74B', fontWeight: 700 }}>{pw} g</span>
                               </div>
                             );
                           })()}
@@ -1618,7 +1618,7 @@ const Products = () => {
                             <div style={{ overflowX: 'hidden', marginTop: '4px' }}>
                               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                                 <thead>
-                                  <tr style={{ color: '#8F8B9E', borderBottom: '1px solid #1C1B24', fontSize: '0.75rem', fontWeight: 700 }}>
+                                  <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--card-inner-border)', fontSize: '0.75rem', fontWeight: 700 }}>
                                     <th style={{ padding: '8px 0', width: '40%' }}>Stone Name</th>
                                     <th style={{ padding: '8px 0', width: '30%' }}>Pieces</th>
                                     <th style={{ padding: '8px 0', width: '30%' }}>Weight</th>
@@ -1626,14 +1626,14 @@ const Products = () => {
                                 </thead>
                                 <tbody>
                                   {iss.stones.map((st, sidx) => (
-                                    <tr key={sidx} style={{ color: '#FFF', borderBottom: sidx < iss.stones.length - 1 ? '1px solid rgba(255,255,255,0.02)' : 'none' }}>
+                                    <tr key={sidx} style={{ color: 'var(--text-main)', borderBottom: sidx < iss.stones.length - 1 ? '1px solid var(--card-divider)' : 'none' }}>
                                       <td style={{ padding: '10px 0', fontWeight: 600 }}>{st.stoneName}</td>
-                                      <td style={{ padding: '10px 0', color: '#AFAEB4' }}>{st.pieces || 1} pcs</td>
-                                      <td style={{ padding: '10px 0', color: '#AFAEB4', fontWeight: 600 }}>{st.stoneWeight} {st.weightUnit === 'carat' ? 'ct' : 'g'}</td>
+                                      <td style={{ padding: '10px 0', color: 'var(--card-pill-text)' }}>{st.pieces || 1} pcs</td>
+                                      <td style={{ padding: '10px 0', color: 'var(--card-pill-text)', fontWeight: 600 }}>{st.stoneWeight} {st.weightUnit === 'carat' ? 'ct' : 'g'}</td>
                                     </tr>
                                   ))}
                                   {iss.stones.length > 1 && (
-                                    <tr style={{ color: '#AFAEB4', borderTop: '1px solid #1C1B24', fontWeight: 800 }}>
+                                    <tr style={{ color: 'var(--card-pill-text)', borderTop: '1px solid var(--card-inner-border)', fontWeight: 800 }}>
                                       <td style={{ padding: '10px 0' }}>Total</td>
                                       <td style={{ padding: '10px 0' }}>{iss.stones.reduce((acc, st) => acc + (parseInt(st.pieces) || 1), 0)} pcs</td>
                                       <td style={{ padding: '10px 0' }}>
@@ -1647,14 +1647,14 @@ const Products = () => {
                           )}
 
                           {iss.cashIssuance > 0 && (
-                            <div style={{ fontSize: '0.9rem', color: '#AFAEB4', fontWeight: 500 }}>
-                              Amount: <span style={{ color: '#FFF', fontWeight: 700 }}>₹ {iss.cashIssuance.toLocaleString('en-IN')}</span>
+                            <div style={{ fontSize: '0.9rem', color: 'var(--card-pill-text)', fontWeight: 500 }}>
+                              Amount: <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>₹ {iss.cashIssuance.toLocaleString('en-IN')}</span>
                             </div>
                           )}
 
                           {/* Notes snippet */}
                           {iss.notes && (
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '0.8rem', color: '#8F8B9E', borderTop: '1px solid #1C1B24', paddingTop: '12px', marginTop: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', borderTop: '1px solid var(--card-inner-border)', paddingTop: '12px', marginTop: '6px' }}>
                               <FileText size={14} style={{ marginTop: '2px', flexShrink: 0 }} /> 
                               <span>Notes: {iss.notes}</span>
                             </div>
@@ -1670,14 +1670,14 @@ const Products = () => {
               </div>
 
               {/* Right Side: Form (ADD NEW ISSUANCE) */}
-              <div style={{ background: '#0D0C12', border: '1px solid #1C1B24', borderRadius: '16px', padding: '30px', alignSelf: 'start', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div style={{ background: 'var(--card-deep-bg)', border: '1px solid var(--card-btn-border)', borderRadius: '16px', padding: '30px', alignSelf: 'start', display: 'flex', flexDirection: 'column', gap: '24px' }}>
                 <div>
-                  <h4 style={{ margin: 0, fontSize: '1.1rem', color: '#8B45FF', fontWeight: 800, letterSpacing: '0.5px' }}>{editingIssuanceId ? 'MODIFY ISSUANCE' : 'ADD NEW ISSUANCE'}</h4>
+                  <h4 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--primary-gold)', fontWeight: 800, letterSpacing: '0.5px' }}>{editingIssuanceId ? 'MODIFY ISSUANCE' : 'ADD NEW ISSUANCE'}</h4>
                 </div>
 
                 {/* Tabs list (Select Issuance Type) */}
                 <div>
-                  <label style={{ display: 'block', marginBottom: '12px', fontSize: '0.85rem', color: '#AFAEB4', fontWeight: 600 }}>Select Issuance Type</label>
+                  <label style={{ display: 'block', marginBottom: '12px', fontSize: '0.85rem', color: 'var(--card-pill-text)', fontWeight: 600 }}>Select Issuance Type</label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                     
                     {/* Gold Issuance tab */}
@@ -1685,11 +1685,11 @@ const Products = () => {
                       onClick={() => { setIssuanceType('gold'); }}
                       type="button"
                       style={{
-                        background: '#0D0C12',
-                        border: issuanceType === 'gold' ? '1.5px solid #8B45FF' : '1px solid #1C1B24',
+                        background: 'var(--card-deep-bg)',
+                        border: issuanceType === 'gold' ? '1.5px solid var(--primary-gold)' : '1px solid var(--card-btn-border)',
                         borderRadius: '8px',
                         padding: '14px 10px',
-                        color: '#FFF',
+                        color: 'var(--text-main)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -1703,7 +1703,7 @@ const Products = () => {
                       <span style={{ 
                         width: '10px', height: '10px', borderRadius: '50%', 
                         background: '#D4AF37', 
-                        border: '3px solid #8B45FF',
+                        border: '3px solid var(--primary-gold)',
                         boxSizing: 'border-box'
                       }} />
                       Gold Issuance
@@ -1714,11 +1714,11 @@ const Products = () => {
                       onClick={() => { setIssuanceType('stone'); }}
                       type="button"
                       style={{
-                        background: '#0D0C12',
-                        border: issuanceType === 'stone' ? '1.5px solid #8B45FF' : '1px solid #1C1B24',
+                        background: 'var(--card-deep-bg)',
+                        border: issuanceType === 'stone' ? '1.5px solid var(--primary-gold)' : '1px solid var(--card-btn-border)',
                         borderRadius: '8px',
                         padding: '14px 10px',
-                        color: '#FFF',
+                        color: 'var(--text-main)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -1729,7 +1729,7 @@ const Products = () => {
                         transition: 'all 0.2s'
                       }}
                     >
-                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#8B45FF' }} />
+                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--primary-gold)' }} />
                       Stone Issuance
                     </button>
 
@@ -1738,11 +1738,11 @@ const Products = () => {
                       onClick={() => { setIssuanceType('cash'); }}
                       type="button"
                       style={{
-                        background: '#0D0C12',
-                        border: issuanceType === 'cash' ? '1.5px solid #32D74B' : '1px solid #1C1B24',
+                        background: 'var(--card-deep-bg)',
+                        border: issuanceType === 'cash' ? '1.5px solid var(--success)' : '1px solid var(--card-btn-border)',
                         borderRadius: '8px',
                         padding: '14px 10px',
-                        color: '#FFF',
+                        color: 'var(--text-main)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -1753,7 +1753,7 @@ const Products = () => {
                         transition: 'all 0.2s'
                       }}
                     >
-                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#32D74B' }} />
+                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--success)' }} />
                       Cash Issuance
                     </button>
 
@@ -1769,7 +1769,7 @@ const Products = () => {
                       <div style={{ color: '#E0A96D', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Gold Details</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <label style={{ color: '#8F8B9E', fontWeight: 600, fontSize: '0.85rem' }}>Weight (g)</label>
+                          <label style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>Weight (g)</label>
                           <input 
                             type="number" step="0.001" placeholder="0.000" 
                             value={issuanceFormData.weight} 
@@ -1785,12 +1785,12 @@ const Products = () => {
                                 stones: []
                               });
                             }}
-                            style={{ background: '#07060A', color: '#FFF', border: '1px solid #1C1B24', padding: '14px', borderRadius: '8px', width: '100%', outline: 'none', fontSize: '0.9rem', fontWeight: 500 }}
+                            style={{ background: 'var(--dark-bg)', color: 'var(--text-main)', border: '1px solid var(--card-btn-border)', padding: '14px', borderRadius: '8px', width: '100%', outline: 'none', fontSize: '0.9rem', fontWeight: 500 }}
                             required
                           />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <label style={{ color: '#8F8B9E', fontWeight: 600, fontSize: '0.85rem' }}>Pure Wt (g)</label>
+                          <label style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>Pure Wt (g)</label>
                           <input 
                             type="number" step="0.001" placeholder="0.000" 
                             value={issuanceFormData.pureWeight} 
@@ -1804,11 +1804,11 @@ const Products = () => {
                                 purity: p
                               });
                             }}
-                            style={{ background: '#07060A', color: '#FFF', border: '1px solid #1C1B24', padding: '14px', borderRadius: '8px', width: '100%', outline: 'none', fontSize: '0.9rem', fontWeight: 500 }}
+                            style={{ background: 'var(--dark-bg)', color: 'var(--text-main)', border: '1px solid var(--card-btn-border)', padding: '14px', borderRadius: '8px', width: '100%', outline: 'none', fontSize: '0.9rem', fontWeight: 500 }}
                           />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <label style={{ color: '#8B45FF', fontWeight: 700, fontSize: '0.85rem' }}>Purity (%)</label>
+                          <label style={{ color: 'var(--primary-gold)', fontWeight: 700, fontSize: '0.85rem' }}>Purity (%)</label>
                           <input 
                             type="text" 
                             list="issuance-purity-standards"
@@ -1823,7 +1823,7 @@ const Products = () => {
                                 pureWeight: pw
                               });
                             }}
-                            style={{ background: '#07060A', color: '#FFF', border: '1.5px solid #8B45FF', padding: '14px', borderRadius: '8px', width: '100%', outline: 'none', fontSize: '0.9rem', fontWeight: 700 }}
+                            style={{ background: 'var(--dark-bg)', color: 'var(--text-main)', border: '1.5px solid var(--primary-gold)', padding: '14px', borderRadius: '8px', width: '100%', outline: 'none', fontSize: '0.9rem', fontWeight: 700 }}
                             placeholder="e.g. 100"
                           />
                           <datalist id="issuance-purity-standards">
@@ -1839,9 +1839,9 @@ const Products = () => {
                   {/* Stone Issuance Form Fields */}
                   {issuanceType === 'stone' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <div style={{ color: '#8B45FF', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ color: 'var(--primary-gold)', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>Stone Details</span>
-                        <button type="button" onClick={addIssuanceStone} style={{ background: '#1C1B24', border: '1px solid #282630', color: '#FFF', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}>+ Add Row</button>
+                        <button type="button" onClick={addIssuanceStone} style={{ background: 'var(--card-pill-bg)', border: '1px solid var(--card-pill-border)', color: 'var(--text-main)', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}>+ Add Row</button>
                       </div>
                       
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '220px', overflowY: 'auto' }}>
@@ -1850,8 +1850,8 @@ const Products = () => {
                             display: 'flex', 
                             flexDirection: 'column', 
                             gap: '10px', 
-                            background: '#121118', 
-                            border: '1px solid #1C1B24', 
+                            background: 'var(--card-inner-bg)', 
+                            border: '1px solid var(--card-inner-border)', 
                             padding: '12px', 
                             borderRadius: '8px',
                             marginBottom: '6px'
@@ -1860,7 +1860,7 @@ const Products = () => {
                               <select 
                                 value={stone.stoneName} 
                                 onChange={e => updateIssuanceStone(idx, 'stoneName', e.target.value)} 
-                                style={{ flex: 1.5, background: '#07060A', border: '1px solid #1C1B24', color: '#FFF', padding: '10px', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }}
+                                style={{ flex: 1.5, background: 'var(--dark-bg)', border: '1px solid var(--card-btn-border)', color: 'var(--text-main)', padding: '10px', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }}
                                 required
                               >
                                 <option value="">Select Stone...</option>
@@ -1870,7 +1870,7 @@ const Products = () => {
                               <select 
                                 value={stone.weightUnit || 'grams'} 
                                 onChange={e => updateIssuanceStone(idx, 'weightUnit', e.target.value)} 
-                                style={{ flex: 1, background: '#07060A', border: '1px solid #1C1B24', color: '#FFF', padding: '10px', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }}
+                                style={{ flex: 1, background: 'var(--dark-bg)', border: '1px solid var(--card-btn-border)', color: 'var(--text-main)', padding: '10px', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }}
                               >
                                 <option value="grams">Grams</option>
                                 <option value="carat">Carat</option>
@@ -1883,7 +1883,7 @@ const Products = () => {
                                   placeholder={stone.weightUnit === 'carat' ? 'Wt (ct)' : 'Wt (g)'} 
                                   value={stone.stoneWeight} 
                                   onChange={e => updateIssuanceStone(idx, 'stoneWeight', e.target.value)} 
-                                  style={{ flex: 1.2, padding: '10px', border: '1px solid #1C1B24', borderRadius: '6px', fontSize: '0.85rem', background: '#07060A', color: '#FFF', outline: 'none' }} 
+                                  style={{ flex: 1.2, padding: '10px', border: '1px solid var(--card-btn-border)', borderRadius: '6px', fontSize: '0.85rem', background: 'var(--dark-bg)', color: 'var(--text-main)', outline: 'none' }} 
                                   required
                                 />
                               )}
@@ -1893,11 +1893,11 @@ const Products = () => {
                                   type="number" placeholder="Pcs" 
                                   value={stone.pieces || ''} 
                                   onChange={e => updateIssuanceStone(idx, 'pieces', parseInt(e.target.value) || 1)} 
-                                  style={{ width: '60px', padding: '10px', border: '1px solid #1C1B24', borderRadius: '6px', fontSize: '0.85rem', background: '#07060A', color: '#FFF', outline: 'none' }} 
+                                  style={{ width: '60px', padding: '10px', border: '1px solid var(--card-btn-border)', borderRadius: '6px', fontSize: '0.85rem', background: 'var(--dark-bg)', color: 'var(--text-main)', outline: 'none' }} 
                                 />
                               )}
 
-                              <button type="button" onClick={() => removeIssuanceStone(idx)} style={{ background: 'transparent', border: 'none', color: '#FF453A', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={16} /></button>
+                              <button type="button" onClick={() => removeIssuanceStone(idx)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={16} /></button>
                             </div>
 
                             {stone.weightUnit === 'pieces' && (
@@ -1905,38 +1905,38 @@ const Products = () => {
                                 display: 'grid', 
                                 gridTemplateColumns: '1fr 1fr 1fr', 
                                 gap: '10px', 
-                                background: '#07060A', 
+                                background: 'var(--dark-bg)', 
                                 padding: '10px', 
                                 borderRadius: '6px',
                                 border: '1px solid rgba(139, 69, 255, 0.15)',
                                 marginTop: '4px'
                               }}>
                                 <div>
-                                  <label style={{ fontSize: '0.7rem', color: '#8F8B9E', display: 'block', marginBottom: '4px', fontWeight: 600 }}>Pieces Count</label>
+                                  <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', fontWeight: 600 }}>Pieces Count</label>
                                   <input 
                                     type="number" placeholder="Pieces" 
                                     value={stone.pieces || ''} 
                                     onChange={e => updateIssuanceStone(idx, 'pieces', parseInt(e.target.value) || 0)} 
-                                    style={{ width: '100%', padding: '8px', border: '1px solid #1C1B24', borderRadius: '6px', fontSize: '0.8rem', background: '#121118', color: '#FFF', outline: 'none' }} 
+                                    style={{ width: '100%', padding: '8px', border: '1px solid var(--card-inner-border)', borderRadius: '6px', fontSize: '0.8rem', background: 'var(--card-inner-bg)', color: 'var(--text-main)', outline: 'none' }} 
                                     required
                                   />
                                 </div>
                                 <div>
-                                  <label style={{ fontSize: '0.7rem', color: '#8F8B9E', display: 'block', marginBottom: '4px', fontWeight: 600 }}>Avg Wt / Pc (g)</label>
+                                  <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', fontWeight: 600 }}>Avg Wt / Pc (g)</label>
                                   <input 
                                     type="number" step="0.001" placeholder="Avg Wt" 
                                     value={stone.avgWeight || ''} 
                                     onChange={e => updateIssuanceStone(idx, 'avgWeight', e.target.value)} 
-                                    style={{ width: '100%', padding: '8px', border: '1px solid #1C1B24', borderRadius: '6px', fontSize: '0.8rem', background: '#121118', color: '#FFF', outline: 'none' }} 
+                                    style={{ width: '100%', padding: '8px', border: '1px solid var(--card-inner-border)', borderRadius: '6px', fontSize: '0.8rem', background: 'var(--card-inner-bg)', color: 'var(--text-main)', outline: 'none' }} 
                                   />
                                 </div>
                                 <div>
-                                  <label style={{ fontSize: '0.7rem', color: '#8B45FF', display: 'block', marginBottom: '4px', fontWeight: 700 }}>Total Wt (g)</label>
+                                  <label style={{ fontSize: '0.7rem', color: 'var(--primary-gold)', display: 'block', marginBottom: '4px', fontWeight: 700 }}>Total Wt (g)</label>
                                   <input 
                                     type="number" step="0.001" placeholder="Total Wt" 
                                     value={stone.stoneWeight} 
                                     onChange={e => updateIssuanceStone(idx, 'stoneWeight', e.target.value)} 
-                                    style={{ width: '100%', padding: '8px', border: '1px solid #8B45FF', borderRadius: '6px', fontSize: '0.8rem', background: '#121118', color: '#FFF', outline: 'none', fontWeight: 700 }} 
+                                    style={{ width: '100%', padding: '8px', border: '1px solid var(--primary-gold)', borderRadius: '6px', fontSize: '0.8rem', background: 'var(--card-inner-bg)', color: 'var(--text-main)', outline: 'none', fontWeight: 700 }} 
                                     required
                                   />
                                 </div>
@@ -1945,7 +1945,7 @@ const Products = () => {
                           </div>
                         ))}
                         {issuanceFormData.stones.length === 0 && (
-                          <p style={{ color: '#8F8B9E', fontSize: '0.85rem', textAlign: 'center', padding: '16px 0', border: '1px dashed #1C1B24', borderRadius: '8px' }}>No stones added yet. Click "+ Add Row" above.</p>
+                          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '16px 0', border: '1px dashed var(--card-btn-border)', borderRadius: '8px' }}>No stones added yet. Click "+ Add Row" above.</p>
                         )}
                       </div>
                     </div>
@@ -1954,14 +1954,14 @@ const Products = () => {
                   {/* Cash Issuance Form Fields */}
                   {issuanceType === 'cash' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <div style={{ color: '#32D74B', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Cash Details</div>
+                      <div style={{ color: 'var(--success)', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Cash Details</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <label style={{ color: '#8F8B9E', fontWeight: 600, fontSize: '0.85rem' }}>Amount (₹)</label>
+                        <label style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>Amount (₹)</label>
                         <input 
                           type="number" placeholder="5,000" 
                           value={issuanceFormData.cashIssuance} 
                           onChange={e => setIssuanceFormData({...issuanceFormData, cashIssuance: e.target.value, weight: '', stones: []})}
-                          style={{ background: '#07060A', color: '#FFF', border: '1px solid #1C1B24', padding: '14px', borderRadius: '8px', width: '100%', outline: 'none', fontSize: '0.9rem', fontWeight: 500 }}
+                          style={{ background: 'var(--dark-bg)', color: 'var(--text-main)', border: '1px solid var(--card-btn-border)', padding: '14px', borderRadius: '8px', width: '100%', outline: 'none', fontSize: '0.9rem', fontWeight: 500 }}
                           required
                         />
                       </div>
@@ -1970,12 +1970,12 @@ const Products = () => {
 
                   {/* Notes Input */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <label style={{ color: '#8F8B9E', fontWeight: 600, fontSize: '0.85rem' }}>NOTES (OPTIONAL)</label>
+                    <label style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>NOTES (OPTIONAL)</label>
                     <textarea 
                       value={issuanceFormData.notes} 
                       onChange={e => setIssuanceFormData({...issuanceFormData, notes: e.target.value})}
                       placeholder="Enter notes or instructions..."
-                      style={{ background: '#07060A', color: '#FFF', border: '1px solid #1C1B24', padding: '14px', borderRadius: '8px', width: '100%', minHeight: '100px', outline: 'none', resize: 'vertical', fontSize: '0.9rem', fontWeight: 500 }}
+                      style={{ background: 'var(--dark-bg)', color: 'var(--text-main)', border: '1px solid var(--card-btn-border)', padding: '14px', borderRadius: '8px', width: '100%', minHeight: '100px', outline: 'none', resize: 'vertical', fontSize: '0.9rem', fontWeight: 500 }}
                     />
                   </div>
 
@@ -1989,7 +1989,7 @@ const Products = () => {
                         });
                         setEditingIssuanceId(null);
                       }}
-                      style={{ flex: 1, padding: '14px', borderRadius: '8px', background: 'transparent', border: '1px solid #1C1B24', color: '#FFF', cursor: 'pointer', fontWeight: 700, fontSize: '0.95rem' }}
+                      style={{ flex: 1, padding: '14px', borderRadius: '8px', background: 'transparent', border: '1px solid var(--card-btn-border)', color: 'var(--text-main)', cursor: 'pointer', fontWeight: 700, fontSize: '0.95rem' }}
                     >
                       Clear
                     </button>
