@@ -40,7 +40,7 @@ const getCustomerById = async (req, res) => {
 // @route   POST /api/customers
 // @access  Private
 const createCustomer = async (req, res) => {
-    const { name, contact, email, address, outstandingBalance } = req.body;
+    const { name, contact, email, address, gstNumber, outstandingBalance } = req.body;
 
     try {
         const customer = await Customer.create({
@@ -48,6 +48,7 @@ const createCustomer = async (req, res) => {
             contact,
             email,
             address,
+            gstNumber,
             outstandingBalance: outstandingBalance || 0
         });
 
@@ -72,6 +73,7 @@ const updateCustomer = async (req, res) => {
         if (req.body.contact !== undefined) customer.contact = req.body.contact;
         if (req.body.email !== undefined) customer.email = req.body.email;
         if (req.body.address !== undefined) customer.address = req.body.address;
+        if (req.body.gstNumber !== undefined) customer.gstNumber = req.body.gstNumber;
         if (req.body.outstandingBalance !== undefined) customer.outstandingBalance = req.body.outstandingBalance;
 
         const updatedCustomer = await customer.save();

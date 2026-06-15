@@ -4,18 +4,23 @@ import api from '../api';
 import { BarChart3, FileText, Download, TrendingUp, PieChart, Info, Map, ChevronRight } from 'lucide-react';
 
 const Reports = () => {
-  const [data, setData] = useState({ transactions: [], products: [] });
+  const [data, setData] = useState({ transactions: [], products: [], goldIssues: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [tRes, pRes] = await Promise.all([
+        const [tRes, pRes, gRes] = await Promise.all([
           api.get('/mgmt/transactions').catch(() => ({ data: [] })),
-          api.get('/mgmt/products').catch(() => ({ data: [] }))
+          api.get('/mgmt/products').catch(() => ({ data: [] })),
+          api.get('/gold').catch(() => ({ data: [] }))
         ]);
-        setData({ transactions: tRes.data || [], products: pRes.data || [] });
+        setData({ 
+          transactions: tRes.data || [], 
+          products: pRes.data || [],
+          goldIssues: gRes.data || []
+        });
       } catch (err) {
         console.error(err);
       } finally {
@@ -95,8 +100,8 @@ const Reports = () => {
         data.transactions.forEach(t => {
             const name = t.workerId?.name || 'Unknown';
             if (!wStats[name]) wStats[name] = { earning: 0, payment: 0 };
-            if (t.type === 'earning') wStats[name].earning += (t.amount || 0);
-            if (t.type === 'payment') wStats[name].payment += (t.amount || 0);
+            if (t.type === 'earning') wStats[name].earning += (parseFloat(t.amount) || 0);
+            if (t.type === 'payment') wStats[name].payment += (parseFloat(t.amount) || 0);
         });
         Object.entries(wStats).forEach(([name, s]) => {
             csvContent += `"${name}",${s.earning},${s.payment},${s.earning - s.payment}\n`;
@@ -125,13 +130,25 @@ const Reports = () => {
   if (loading) return <div className="glass" style={{ padding: '40px', textAlign: 'center' }}>Loading Reports...</div>;
 
   // Operational metrics
-  const circulatingGold = data.products
+  const pendingProductsGold = data.products
     .filter(p => p.status !== 'completed')
-    .reduce((acc, p) => acc + (p.expectedWeight || 0), 0) / 1000; // in kg
+    .reduce((acc, p) => {
+      const baseWeight = parseFloat(p.expectedWeight) || 0;
+      const additionalWeight = (p.issuances || [])
+        .filter(iss => (!iss.cashIssuance || parseFloat(iss.cashIssuance) === 0) && (!iss.stones || iss.stones.length === 0))
+        .reduce((sum, iss) => sum + (parseFloat(iss.weight) || 0), 0);
+      return acc + baseWeight + additionalWeight;
+    }, 0);
+
+  const pendingRawGold = data.goldIssues
+    .filter(g => g.status !== 'completed')
+    .reduce((acc, g) => acc + (parseFloat(g.weight) || 0), 0);
+
+  const circulatingGold = pendingProductsGold + pendingRawGold; // in grams
 
   const unpaidLabour = data.transactions.reduce((acc, t) => {
-    if (t.type === 'earning') return acc + (t.amount || 0);
-    if (t.type === 'payment') return acc - (t.amount || 0);
+    if (t.type === 'earning') return acc + (parseFloat(t.amount) || 0);
+    if (t.type === 'payment') return acc - (parseFloat(t.amount) || 0);
     return acc;
   }, 0);
 
@@ -141,7 +158,7 @@ const Reports = () => {
 
   return (
     <div className="glass" style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
+      <div style={{ display: 'flex', justifycontent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
         <div>
           <h2 className="gold-gradient">REPORTS & ANALYTICS</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }} className="desktop-only">Generate and export business intelligence reports</p>
@@ -183,7 +200,7 @@ const Reports = () => {
         </div>
         
         <div className="responsive-grid" style={{ marginTop: '30px' }}>
-            <Metric title="Circulating Gold" value={`${circulatingGold.toFixed(3)} kg`} status={circulatingGold > 1 ? 'alert' : 'optimal'} />
+            <Metric title="Circulating Gold" value={`${circulatingGold.toFixed(3)} g`} status={circulatingGold > 1000 ? 'alert' : 'optimal'} />
             <Metric title="Total Unpaid Labour" value={`₹ ${unpaidLabour.toLocaleString()}`} status={unpaidLabour > 20000 ? 'alert' : 'optimal'} />
             <Metric title="Average Turnaround" value="4.2 Days" status="optimal" />
             <Metric title="Workshop Efficiency" value={`${efficiency.toFixed(1)}%`} status={efficiency > 90 ? 'optimal' : 'alert'} />

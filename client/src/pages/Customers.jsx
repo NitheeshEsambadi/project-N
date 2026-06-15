@@ -26,7 +26,7 @@ const Customers = () => {
 
     // Form states
     const [formData, setFormData] = useState({
-        name: '', contact: '', email: '', address: '', outstandingBalance: ''
+        name: '', contact: '', email: '', address: '', gstNumber: '', outstandingBalance: ''
     });
     
     const [paymentData, setPaymentData] = useState({
@@ -62,6 +62,7 @@ const Customers = () => {
             contact: customer.contact || '',
             email: customer.email || '',
             address: customer.address || '',
+            gstNumber: customer.gstNumber || '',
             outstandingBalance: customer.outstandingBalance || 0
         });
         setShowModal(true);
@@ -76,7 +77,7 @@ const Customers = () => {
     const closeModal = () => {
         setShowModal(false);
         setEditingCustomer(null);
-        setFormData({ name: '', contact: '', email: '', address: '', outstandingBalance: '' });
+        setFormData({ name: '', contact: '', email: '', address: '', gstNumber: '', outstandingBalance: '' });
     };
 
     const handleSubmit = async (e) => {
@@ -224,6 +225,11 @@ const Customers = () => {
                                     </td>
                                     <td style={{ padding: '16px 12px', fontWeight: 600, color: 'var(--primary-gold)' }}>
                                         {c.name}
+                                        {c.gstNumber && (
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'normal', marginTop: '2px', fontFamily: 'monospace' }}>
+                                                GST: {c.gstNumber.toUpperCase()}
+                                            </div>
+                                        )}
                                     </td>
                                     <td style={{ padding: '16px 12px' }}>
                                         {c.contact ? (
@@ -472,6 +478,18 @@ const Customers = () => {
                                         value={formData.address} 
                                         onChange={e => setFormData({...formData, address: e.target.value})} 
                                         placeholder="e.g. 12th Block, MG Road" 
+                                        style={{ width: '100%', padding: '12px 16px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-main)', outline: 'none' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                                        GST Number / GSTIN (Optional)
+                                    </label>
+                                    <input 
+                                        type="text"
+                                        value={formData.gstNumber} 
+                                        onChange={e => setFormData({...formData, gstNumber: e.target.value})} 
+                                        placeholder="e.g. 22AAAAA0000A1Z5" 
                                         style={{ width: '100%', padding: '12px 16px', background: 'var(--surface-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-main)', outline: 'none' }}
                                     />
                                 </div>

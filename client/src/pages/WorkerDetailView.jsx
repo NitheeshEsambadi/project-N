@@ -132,7 +132,7 @@ const WorkerDetailView = () => {
           <div class="item-row"><span>ID:</span> <span>${product.productID}</span></div>
           <div class="item-row"><span>Design:</span> <span>${product.designName}</span></div>
           <div class="item-row"><span>Category:</span> <span>${product.category}</span></div>
-          <div class="item-row"><span>Weight:</span> <span>${product.goldWeight}g</span></div>
+          <div class="item-row"><span>Weight:</span> <span>${product.netWeight || product.expectedWeight}g</span></div>
           <div class="item-row"><span>Status:</span> <span>${product.status.toUpperCase()}</span></div>
           
           <div class="bold" style="margin-top:15px">STONES:</div>
@@ -636,7 +636,7 @@ const ProductsTab = ({ products, setShowProductModal, handlePrintReceipt }) => (
                     {products.map(p => (
                         <tr key={p._id} style={{ borderTop: '1px solid var(--glass-border)', fontSize: '0.85rem' }}>
                             <td style={{ padding: '12px 10px', fontWeight: 500 }}>{p.designName}</td>
-                            <td style={{ padding: '12px 10px' }}>{p.goldWeight || p.expectedWeight}g</td>
+                            <td style={{ padding: '12px 10px' }}>{p.netWeight || p.expectedWeight}g</td>
                             <td style={{ padding: '12px 10px' }}>
                                 <span style={{ 
                                     padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase',

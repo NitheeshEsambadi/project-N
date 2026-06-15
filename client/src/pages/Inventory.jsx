@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { Package, ShieldCheck, Search, Download, Printer, X, Tag, Edit2, Trash2, Eye, FileText } from 'lucide-react';
+import Barcode from 'react-barcode';
 
 const Inventory = () => {
   const navigate = useNavigate();
@@ -351,6 +352,7 @@ const Inventory = () => {
                           </th>
                           <th style={{ padding: '15px 10px', fontWeight: 600 }}>S.no</th>
                           <th style={{ padding: '15px', fontWeight: 600 }}>Product Code</th>
+                          <th style={{ padding: '15px', fontWeight: 600 }}>Barcode</th>
                           <th style={{ padding: '15px', fontWeight: 600 }}>Product name</th>
                           <th style={{ padding: '15px', fontWeight: 600 }}>Net Wt</th>
                           <th style={{ padding: '15px', fontWeight: 600 }}>Gross Wt</th>
@@ -372,6 +374,7 @@ const Inventory = () => {
                               </td>
                               <td style={{ padding: '15px 10px' }}>{index + 1}</td>
                               <td style={{ padding: '15px', fontFamily: 'monospace', color: 'var(--text-muted)' }}>{product.productId}</td>
+                              <td style={{ padding: '15px' }}><Barcode value={product.productId} width={1} height={30} displayValue={false} /></td>
                               <td style={{ padding: '15px', fontWeight: 600, color: 'var(--text-main)' }}>{product.designName}</td>
                               <td style={{ padding: '15px' }}>{product.netWeight}g</td>
                               <td style={{ padding: '15px' }}>{product.grossWeight}g</td>

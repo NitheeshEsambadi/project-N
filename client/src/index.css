@@ -73,6 +73,40 @@ body.dark-theme {
   --card-btn-text: #FFF;
 }
 
+body.theme1 {
+  /* Theme 1 - Elegant Gold & Purple */
+  --primary-gold: #D4AF37;
+  --secondary-gold: #6D28D9;
+  --dark-bg: #FAF8F5;
+  --surface-bg: #FFFFFF;
+  --card-bg: #FFFFFF;
+  --hover-bg: rgba(212, 175, 55, 0.06);
+  --glass-bg: #FFFFFF;
+  --glass-border: #E5E7EB;
+  --text-main: #1F2937;
+  --text-muted: #6B7280;
+  --accent-blue: #3B82F6;
+  --danger: #DC2626;
+  --success: #16A34A;
+  --warning: #F59E0B;
+
+  /* Card-specific variables - Theme 1 */
+  --card-deep-bg: #F3F4F6;
+  --card-border: #E5E7EB;
+  --card-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+  --card-inner-bg: #F9FAFB;
+  --card-inner-border: #E5E7EB;
+  --card-pill-bg: #F3F4F6;
+  --card-pill-border: #E5E7EB;
+  --card-pill-text: #4B5563;
+  --card-title-text: #1F2937;
+  --card-stat-text: #1F2937;
+  --card-divider: #E5E7EB;
+  --card-btn-bg: #D4AF37;
+  --card-btn-border: #D4AF37;
+  --card-btn-text: #FFFFFF;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -508,4 +542,23 @@ input[type="date"]:hover::after {
 .custom-autocomplete-item:hover {
   background: var(--hover-bg);
   color: var(--primary-gold);
+}
+
+/* --- Custom Transparent Scrollbar --- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(150, 150, 150, 0.25);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 150, 150, 0.5);
 }

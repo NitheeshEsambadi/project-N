@@ -6,6 +6,7 @@ const customerSchema = new mongoose.Schema({
     contact: { type: String },
     email: { type: String },
     address: { type: String },
+    gstNumber: { type: String },
     outstandingBalance: { type: Number, default: 0 } // Amount the customer owes the jeweller
 }, { timestamps: true });
 

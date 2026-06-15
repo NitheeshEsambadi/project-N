@@ -24,7 +24,9 @@ const WorkerReceipt = () => {
     const [showStoneModal, setShowStoneModal] = useState(false);
     const [modalStones, setModalStones] = useState([]);
     const [tempStone, setTempStone] = useState({ stoneName: '', weight: '' });
-    
+    const [printDropdownOpen, setPrintDropdownOpen] = useState(false);
+    const [companySettings, setCompanySettings] = useState(null);
+
     // Form States
     const [selectedWorker, setSelectedWorker] = useState(() => {
         return localStorage.getItem('worker_receipt_worker') || '';
@@ -97,13 +99,11 @@ const WorkerReceipt = () => {
                     api.get('/company').catch(() => ({ data: {} }))
                 ]);
                 setWorkers(workersRes.data || []);
+                setCompanySettings(companyRes.data);
                 
                 if (companyRes.data && companyRes.data.categories) {
                     const activeCategories = companyRes.data.categories.filter(c => c.status !== 'Inactive');
                     setCategories(activeCategories);
-                    if (activeCategories.length > 0) {
-                        setOrnament(prev => ({ ...prev, product: activeCategories[0].name }));
-                    }
                 } else {
                     const fallbackCats = [
                         { name: 'Necklace', code: 'NE' },
@@ -112,7 +112,6 @@ const WorkerReceipt = () => {
                         { name: 'Chains', code: 'CH' }
                     ];
                     setCategories(fallbackCats);
-                    setOrnament(prev => ({ ...prev, product: fallbackCats[0].name }));
                 }
                 if (companyRes.data && companyRes.data.stones) {
                     const activeStones = companyRes.data.stones.filter(s => s.status !== 'Inactive');
@@ -283,7 +282,7 @@ const WorkerReceipt = () => {
     };
 
     // Print Receipt Layout
-    const handlePrintReceipt = (receiptData) => {
+    const handlePrintReceipt = (receiptData, format = 'receipt3') => {
         const data = receiptData || {
             receiptNumber: 'WR-TEMP-' + receiptDate,
             date: receiptDate,
@@ -312,129 +311,394 @@ const WorkerReceipt = () => {
             const parsedStones = parseStones(item.description);
             const displayDesc = (item.description || '').replace(/^\([^)]+\)\s*/, '');
             
-            const stoneCellsHtml = activeStones.map(stone => {
-                const match = parsedStones.find(s => s.name.toLowerCase() === stone.stoneName.toLowerCase());
-                return `<td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px; font-family: monospace;">${match ? match.weight : '—'}</td>`;
-            }).join('');
+            let stoneCellsHtml = '';
+            if (format === 'receipt3') {
+                stoneCellsHtml = activeStones.map(stone => {
+                    const match = parsedStones.find(s => s.name.toLowerCase() === stone.stoneName.toLowerCase());
+                    return `<td style="border: 1px solid #cbd5e1; padding: 8px; text-align: center; font-size: 12px; font-family: monospace;">${match ? match.weight : '—'}</td>`;
+                }).join('');
+            }
             
             return `
                 <tr>
-                    <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px;">${idx + 1}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px; font-family: monospace; font-weight: bold;">${item.barcode || '—'}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px; font-size: 12px;">${item.product}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px; text-align: right; font-size: 12px;">${item.grossWeight.toFixed(3)}g</td>
-                    <td style="border: 1px solid #ddd; padding: 8px; text-align: right; font-size: 12px;">${item.stoneWeight.toFixed(3)}g</td>
-                    <td style="border: 1px solid #ddd; padding: 8px; text-align: right; font-weight: 600; font-size: 12px;">${item.netWeight.toFixed(3)}g</td>
-                    <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px;">${item.purity}%</td>
-                    <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-family: monospace; font-size: 12px;">${item.huid}</td>
+                    <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: center; font-size: 12px;">${idx + 1}</td>
+                    <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: center; font-size: 12px; font-family: monospace; font-weight: bold;">${item.barcode || '—'}</td>
+                    <td style="border: 1px solid #cbd5e1; padding: 8px; font-size: 12px;">${item.product}</td>
+                    <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: right; font-size: 12px;">${item.grossWeight.toFixed(3)}g</td>
+                    ${format === 'receipt2' ? `<td style="border: 1px solid #cbd5e1; padding: 8px; text-align: right; font-size: 12px;">${item.stoneWeight.toFixed(3)}g</td>` : ''}
+                    <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: right; font-weight: 600; font-size: 12px;">${item.netWeight.toFixed(3)}g</td>
+                    <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: center; font-size: 12px;">${item.purity}%</td>
+                    <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: center; font-family: monospace; font-size: 12px;">${item.huid}</td>
                     ${stoneCellsHtml}
-                    <td style="border: 1px solid #ddd; padding: 8px; color: #333; font-size: 12px;">${displayDesc || '—'}</td>
+                    <td style="border: 1px solid #cbd5e1; padding: 8px; color: #333; font-size: 12px;">${displayDesc || '—'}</td>
                 </tr>
             `;
         }).join('');
+
+        // Build headers dynamically based on layout format
+        let tableHeaderHtml = '';
+        if (format === 'receipt3') {
+            tableHeaderHtml = `
+                <thead>
+                    <tr>
+                        <th class="items-th" rowspan="2" style="text-align: center; width: 50px; vertical-align: middle;">#</th>
+                        <th class="items-th" rowspan="2" style="text-align: center; vertical-align: middle;">Barcode</th>
+                        <th class="items-th" rowspan="2" style="vertical-align: middle;">Product</th>
+                        <th class="items-th" rowspan="2" style="text-align: right; width: 100px; vertical-align: middle;">Gross Wt</th>
+                        <th class="items-th" rowspan="2" style="text-align: right; width: 100px; vertical-align: middle;">Stone Wt</th>
+                        <th class="items-th" rowspan="2" style="text-align: right; width: 100px; vertical-align: middle;">Net Wt</th>
+                        <th class="items-th" rowspan="2" style="text-align: center; width: 60px; vertical-align: middle;">Purity</th>
+                        <th class="items-th" rowspan="2" style="text-align: center; width: 100px; vertical-align: middle;">HUID</th>
+                        <th class="items-th" colspan="${activeStones.length}" style="text-align: center; padding: 4px;">STONE DETAILS (g)</th>
+                        <th class="items-th" rowspan="2" style="vertical-align: middle;">Description</th>
+                    </tr>
+                    <tr>
+                        ${activeStones.map(s => `<th class="items-th" style="text-align: center; font-size: 10px; padding: 4px; border-top: 1px solid #cbd5e1;">${s.stoneName.toUpperCase()}</th>`).join('')}
+                    </tr>
+                </thead>
+            `;
+        } else if (format === 'receipt2') {
+            tableHeaderHtml = `
+                <thead>
+                    <tr>
+                        <th class="items-th" style="text-align: center; width: 50px;">#</th>
+                        <th class="items-th" style="text-align: center;">Barcode</th>
+                        <th class="items-th">Product</th>
+                        <th class="items-th" style="text-align: right; width: 100px;">Gross Wt</th>
+                        <th class="items-th" style="text-align: right; width: 100px;">Stone Wt</th>
+                        <th class="items-th" style="text-align: right; width: 100px;">Net Wt</th>
+                        <th class="items-th" style="text-align: center; width: 60px;">Purity</th>
+                        <th class="items-th" style="text-align: center; width: 100px;">HUID</th>
+                        <th class="items-th">Description</th>
+                    </tr>
+                </thead>
+            `;
+        } else {
+            // receipt1 (Basic)
+            tableHeaderHtml = `
+                <thead>
+                    <tr>
+                        <th class="items-th" style="text-align: center; width: 50px;">#</th>
+                        <th class="items-th" style="text-align: center;">Barcode</th>
+                        <th class="items-th">Product</th>
+                        <th class="items-th" style="text-align: right; width: 100px;">Gross Wt</th>
+                        <th class="items-th" style="text-align: right; width: 100px;">Net Wt</th>
+                        <th class="items-th" style="text-align: center; width: 60px;">Purity</th>
+                        <th class="items-th" style="text-align: center; width: 100px;">HUID</th>
+                        <th class="items-th">Description</th>
+                    </tr>
+                </thead>
+            `;
+        }
+
+        const getThemeStyles = (themeName) => {
+            switch (themeName) {
+              case 'luxury':
+                return {
+                  fontFamily: 'Georgia, serif',
+                  borderColor: '#b45309',
+                  headingColor: '#78350f',
+                  bgColor: '#fffcf5',
+                  accentColor: '#d97706'
+                };
+              case 'minimal':
+                return {
+                  fontFamily: 'sans-serif',
+                  borderColor: '#cbd5e1',
+                  headingColor: '#1e293b',
+                  bgColor: '#ffffff',
+                  accentColor: '#475569'
+                };
+              case 'corporate':
+                return {
+                  fontFamily: 'monospace',
+                  borderColor: '#334155',
+                  headingColor: '#0f172a',
+                  bgColor: '#f8fafc',
+                  accentColor: '#334155'
+                };
+              case 'classic':
+              default:
+                return {
+                  fontFamily: 'Georgia, serif',
+                  borderColor: '#b45309',
+                  headingColor: '#0f172a',
+                  bgColor: '#ffffff',
+                  accentColor: '#b45309'
+                };
+            }
+        };
+
+        const printSettings = companySettings?.printSettings || {
+            showHeaderLogo: true,
+            showHeaderGSTIN: true,
+            showHeaderAddress: true,
+            showHeaderContact: true,
+            showHallmarkLogo: true,
+            showBISLogo: true,
+            workerTemplate: 'corporate',
+            watermark: 'none',
+            defaultPageSize: 'a4'
+        };
+        const theme = getThemeStyles(printSettings.workerTemplate || 'corporate');
+
+        const logoUrl = companySettings?.logo || '';
+        const companyName = companySettings?.name || 'MAHALAKSHMI JEWELLERY';
+        const companyAddress = companySettings?.address || 'RAJENDHRA NACAR, NELLORE';
+        const companyPhone = companySettings?.phone || '';
+        const companyEmail = companySettings?.email || '';
+        const companyTaxId = companySettings?.taxId || '';
+
+        const headerLogoHtml = (printSettings.showHeaderLogo !== false) ? (logoUrl ? `
+            <div style="width: 90px; height: 90px; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: transparent;">
+                <img src="${logoUrl}" alt="Logo" style="width: 100%; height: 100%; object-fit: contain;" />
+            </div>
+        ` : `
+            <div style="width: 90px; height: 90px; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: transparent;">
+                <span style="font-weight: bold; font-size: 36px; color: #d97706;">
+                    ${(companyName || 'M')[0].toUpperCase()}
+                </span>
+            </div>
+        `) : '';
+
+        const companyDetailsHtml = `
+            <div>
+                <h1 style="font-size: 24px; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: 0.5px; font-family: Inter, sans-serif;">
+                    ${companyName.toUpperCase()}
+                </h1>
+                ${(printSettings.showHeaderAddress !== false) ? `
+                <p style="font-size: 11px; font-weight: 600; color: #d97706; margin: 4px 0 0 0; letter-spacing: 0.5px; text-transform: uppercase;">
+                    ${companyAddress}
+                </p>` : ''}
+                <div style="font-size: 9px; color: #475569; margin-top: 4px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                    ${(printSettings.showHeaderContact !== false && companyPhone) ? `<div>PH: ${companyPhone}</div>` : ''}
+                    ${(printSettings.showHeaderContact !== false && companyEmail) ? `<div>EMAIL: ${companyEmail}</div>` : ''}
+                    ${(printSettings.showHeaderGSTIN !== false && companyTaxId) ? `<div style="font-weight: bold;">GSTIN: ${companyTaxId.toUpperCase()}</div>` : ''}
+                </div>
+            </div>
+        `;
+
+        const headerHtml = `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 4px; margin-bottom: 4px; font-family: Inter, sans-serif;">
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    ${headerLogoHtml}
+                    ${companyDetailsHtml}
+                </div>
+                <div style="display: flex; align-items: center;">
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px; font-size: 10px; min-width: 150px;">
+                        <div>DATE: ${dateStr}</div>
+                        <div style="display: flex; gap: 1.5px; margin-top: 2px; height: 14px; align-items: center;">
+                            ${[1,3,1,2,4,1,3,2,1,4,2,1,3,1,2].map((w) => `<div style="width: ${w}px; height: 100%; background-color: #000;"></div>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const separatorAndTitleHtml = `
+            <div style="text-align: center; font-size: 11px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px; color: #0f172a;">
+                WORKER RECEIPT
+            </div>
+            <div style="height: 2.5px; background-color: #d97706; margin-bottom: 10px;"></div>
+        `;
+
+        const workerDetailsHtml = `
+            <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-family: Inter, sans-serif;">
+                <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+                    <div style="font-size: 10px; font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 2px;">WORKER DETAILS:</div>
+                    
+                    <div style="display: flex; font-size: 11px; line-height: 16px;">
+                        <span style="font-weight: 700; color: #0f172a; width: 80px; display: inline-block; text-align: right; margin-right: 8px;">NAME:</span>
+                        <span style="font-weight: normal; color: #334155; flex: 1;">${workerName}</span>
+                    </div>
+                    <div style="display: flex; font-size: 11px; line-height: 16px;">
+                        <span style="font-weight: 700; color: #0f172a; width: 80px; display: inline-block; text-align: right; margin-right: 8px;">PHONE:</span>
+                        <span style="font-weight: normal; color: #334155; flex: 1;">${workerPhone}</span>
+                    </div>
+                    <div style="display: flex; font-size: 11px; line-height: 16px;">
+                        <span style="font-weight: 700; color: #0f172a; width: 80px; display: inline-block; text-align: right; margin-right: 8px;">WORKER ID:</span>
+                        <span style="font-weight: normal; color: #334155; flex: 1;">${workerID}</span>
+                    </div>
+                </div>
+                <div style="width: 1px; height: 45px; background-color: #cbd5e1; margin: 0 20px;"></div>
+                <div style="text-align: right; white-space: nowrap;">
+                    <span style="font-size: 10px; font-weight: bold; color: #475569; margin-right: 5px;">RECEIPT NO.:</span>
+                    <span style="font-size: 14px; font-weight: 800; color: #0f172a;">${data.receiptNumber}</span>
+                </div>
+            </div>
+        `;
+
+        const summaryBoxHtml = `
+            <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; background-color: #ffffff; font-family: Inter, sans-serif; box-sizing: border-box; width: 100%;">
+                <h4 style="margin: 0 0 8px 0; border-bottom: 1.5px solid ${theme.borderColor}; padding-bottom: 4px; color: #1e293b; font-size: 11px; font-weight: 700;">RECEIPT SUMMARY</h4>
+                <table style="width: 100%; font-size: 9px; border-collapse: collapse;">
+                    <tbody>
+                        <tr>
+                            <td style="padding: 4px 0; color: #475569;">Total Items</td>
+                            <td style="padding: 4px 0; text-align: right; font-weight: bold;">: ${data.totalItems}</td>
+                        </tr>
+                        ${format !== 'receipt1' ? `
+                        <tr>
+                            <td style="padding: 4px 0; color: #475569;">Total Stone Weight</td>
+                            <td style="padding: 4px 0; text-align: right;">: ${data.totalStoneWeight.toFixed(3)}g</td>
+                        </tr>
+                        ` : ''}
+                        <tr>
+                            <td style="padding: 4px 0; color: #475569;">Total Net Weight</td>
+                            <td style="padding: 4px 0; text-align: right;">: ${(data.totalWeight - data.totalStoneWeight).toFixed(3)}g</td>
+                        </tr>
+                        <tr style="border-top: 1px solid #cbd5e1; font-weight: bold;">
+                            <td style="padding: 6px 0; color: #000;">Total Gross Weight</td>
+                            <td style="padding: 6px 0; text-align: right;">: ${data.totalWeight.toFixed(3)}g</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        const signaturesHtml = `
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; border-top: 1px solid #cbd5e1; padding-top: 12px; margin-bottom: 20px; font-family: Inter, sans-serif;">
+                <div style="font-size: 8px; color: #475569;">
+                    <strong style="font-size: 9px; color: #0f172a;">TERMS & CONDITIONS</strong>
+                    <ul style="margin: 4px 0 0 12px; padding: 0;">
+                        <li>Assigned gold ornaments remain the sole property of the company.</li>
+                        <li>Workers must return equivalent weight or finish the task as agreed.</li>
+                        <li>Any wastage exceeding limits will be charged as per standard rates.</li>
+                        <li>This is a computer generated receipt.</li>
+                    </ul>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 15px; margin-top: 20px;">
+                    <div style="text-align: center;">
+                        <div style="width: 80px; border-bottom: 1px solid #000; margin-bottom: 4px;"></div>
+                        <span style="font-size: 8px; color: #475569; font-weight: bold;">Worker Sign</span>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="width: 80px; border-bottom: 1px solid #000; margin-bottom: 4px;"></div>
+                        <span style="font-size: 8px; color: #475569; font-weight: bold;">Manager Sign</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const footerBarHtml = `
+            <div style="border-top: 2.5px solid #cbd5e1; border-bottom: 2.5px solid #cbd5e1; padding: 6px 0; display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: bold; color: #475569; font-family: Inter, sans-serif;">
+                <div style="display: flex; align-items: center; gap: 4px; color: ${theme.accentColor};">
+                    💎 MAHALAKSHMI JEWELLERY - WORKER ASSIGNMENT LOG
+                </div>
+                <div style="width: 1px; height: 10px; background-color: #cbd5e1;"></div>
+                <div>Purity You Can Trust, Elegance You Deserve.</div>
+                <div style="width: 1px; height: 10px; background-color: #cbd5e1;"></div>
+                <div>🎗 916 BIS Hallmarked</div>
+            </div>
+        `;
+
+        const isA5 = printSettings.defaultPageSize === 'a5';
+        const sizeCSS = isA5 ? `
+            @page {
+                size: A5 landscape;
+                margin: 8mm;
+            }
+        ` : `
+            @page {
+                size: A4 portrait;
+                margin: 12mm;
+            }
+        `;
+
+        const watermarkHtml = (printSettings.watermark && printSettings.watermark !== 'none') ? `
+            <div style="
+                position: absolute;
+                top: 40%;
+                left: 50%;
+                transform: translate(-50%, -50%) rotate(-30deg);
+                font-size: 6rem;
+                color: rgba(239, 68, 68, 0.08);
+                font-weight: 900;
+                pointer-events: none;
+                border: 10px double rgba(239, 68, 68, 0.08);
+                padding: 10px 40px;
+                letter-spacing: 10px;
+                z-index: 0;
+            ">
+                ${printSettings.watermark}
+            </div>
+        ` : '';
+
+        const logoWatermarkHtml = logoUrl ? `
+            <div style="
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 300px;
+                height: 300px;
+                opacity: 0.06;
+                background-image: url('${logoUrl}');
+                background-size: contain;
+                background-position: center;
+                background-repeat: no-repeat;
+                pointer-events: none;
+                z-index: 0;
+            "></div>
+        ` : watermarkHtml;
 
         const content = `
             <html>
                 <head>
                     <title>Worker Receipt - ${data.receiptNumber}</title>
                     <style>
-                        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 40px; }
-                        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-                        .company-name { font-size: 26px; font-weight: 800; color: #6405FF; letter-spacing: -0.5px; }
-                        .items-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-                        .items-th { background: #6405FF; color: white; padding: 12px 10px; font-weight: 600; text-align: left; font-size: 13px; }
+                        ${sizeCSS}
+                        body { 
+                            font-family: ${theme.fontFamily}; 
+                            color: #1e293b; 
+                            background-color: ${theme.bgColor};
+                            margin: 20px; 
+                            position: relative;
+                        }
+                        .items-table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }
+                        .items-th { 
+                            background: ${theme.headingColor}; 
+                            color: ${theme.headingColor === '#ffffff' ? '#000000' : '#ffffff'}; 
+                            padding: 8px 6px; 
+                            font-weight: bold; 
+                            text-align: center; 
+                            font-size: 11px; 
+                            border: 1px solid ${theme.borderColor};
+                        }
+                        .items-table td {
+                            padding: 6px;
+                            border: 1px solid #cbd5e1;
+                        }
                         @media print {
-                            body { margin: 20px; }
-                            .items-th { background: #f2f2f2 !important; color: #000 !important; border: 1px solid #ccc !important; }
+                            body { margin: 0; }
+                            .items-th { 
+                                background: #f1f5f9 !important; 
+                                color: #1e293b !important; 
+                                border: 1px solid #cbd5e1 !important; 
+                            }
                         }
                     </style>
                 </head>
                 <body>
-                    <table class="header-table">
-                        <tr>
-                            <td class="company-name">MAHALAKSHMI JEWELLERY</td>
-                            <td style="text-align: right; font-size: 14px; color: #333; line-height: 1.6;">
-                                <strong>Date:</strong> ${dateStr}<br />
-                                <strong>Receipt No:</strong> <span style="color: #6405FF; font-weight: 700;">${data.receiptNumber}</span>
-                            </td>
-                        </tr>
-                    </table>
-                    
-                    <div style="display: flex; align-items: center; margin-top: 15px; margin-bottom: 25px;">
-                        <div style="flex-grow: 1; height: 2px; background-color: #6405FF; margin-right: 15px;"></div>
-                        <div style="font-weight: 700; font-size: 13px; letter-spacing: 1px; color: #333; text-transform: uppercase;">WORKER RECEIPT</div>
-                    </div>
-
-                    <div style="border: 1px solid #ddd; border-radius: 6px; padding: 15px; margin-bottom: 30px;">
-                        <div style="color: #6405FF; font-weight: 700; font-size: 13px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">WORKER DETAILS</div>
-                        <table style="border-collapse: collapse; font-size: 14px; color: #333; width: auto;">
-                            <tr>
-                                <td style="font-weight: bold; width: 90px; padding: 4px 0;">Name</td>
-                                <td style="padding: 4px 10px;">:</td>
-                                <td style="padding: 4px 0;">${workerName}</td>
-                            </tr>
-                            <tr>
-                                <td style="font-weight: bold; padding: 4px 0;">Phone No</td>
-                                <td style="padding: 4px 10px;">:</td>
-                                <td style="padding: 4px 0;">${workerPhone}</td>
-                            </tr>
-                            <tr>
-                                <td style="font-weight: bold; padding: 4px 0;">Worker ID</td>
-                                <td style="padding: 4px 10px;">:</td>
-                                <td style="padding: 4px 0;">${workerID}</td>
-                            </tr>
-                        </table>
-                    </div>
+                    ${logoWatermarkHtml}
+                    ${headerHtml}
+                    ${separatorAndTitleHtml}
+                    ${workerDetailsHtml}
 
                     <table class="items-table">
-                        <thead>
-                            <tr>
-                                <th class="items-th" rowspan="2" style="text-align: center; width: 50px; vertical-align: middle;">#</th>
-                                <th class="items-th" rowspan="2" style="text-align: center; vertical-align: middle;">Barcode</th>
-                                <th class="items-th" rowspan="2" style="vertical-align: middle;">Product</th>
-                                <th class="items-th" rowspan="2" style="text-align: right; width: 100px; vertical-align: middle;">Gross Wt</th>
-                                <th class="items-th" rowspan="2" style="text-align: right; width: 100px; vertical-align: middle;">Stone Wt</th>
-                                <th class="items-th" rowspan="2" style="text-align: right; width: 100px; vertical-align: middle;">Net Wt</th>
-                                <th class="items-th" rowspan="2" style="text-align: center; width: 60px; vertical-align: middle;">Purity</th>
-                                <th class="items-th" rowspan="2" style="text-align: center; width: 100px; vertical-align: middle;">HUID</th>
-                                <th class="items-th" colspan="${activeStones.length}" style="text-align: center; padding: 4px;">STONE DETAILS (g)</th>
-                                <th class="items-th" rowspan="2" style="vertical-align: middle;">Description</th>
-                            </tr>
-                            <tr>
-                                ${activeStones.map(s => `<th class="items-th" style="text-align: center; font-size: 10px; padding: 4px; border-top: 1px solid #ddd;">${s.stoneName.toUpperCase()}</th>`).join('')}
-                            </tr>
-                        </thead>
+                        ${tableHeaderHtml}
                         <tbody>
                             ${rows}
                         </tbody>
                     </table>
 
-                    <div style="display: flex; justify-content: flex-end; margin-top: 30px; margin-bottom: 30px;">
-                        <div style="width: 300px;">
-                            <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #333; margin: 10px 0;">
-                                <tr>
-                                    <td style="padding: 6px 15px; width: 140px;">Total Items</td>
-                                    <td style="padding: 6px 5px; width: 10px;">:</td>
-                                    <td style="padding: 6px 15px; text-align: left; font-weight: bold;">${data.totalItems}</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 6px 15px;">Total Stone Weight</td>
-                                    <td style="padding: 6px 5px;">:</td>
-                                    <td style="padding: 6px 15px; text-align: left;">${data.totalStoneWeight.toFixed(3)}g</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 6px 15px;">Total Net Weight</td>
-                                    <td style="padding: 6px 5px;">:</td>
-                                    <td style="padding: 6px 15px; text-align: left;">${(data.totalWeight - data.totalStoneWeight).toFixed(3)}g</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 6px 15px;">Total Gross Weight</td>
-                                    <td style="padding: 6px 5px;">:</td>
-                                    <td style="padding: 6px 15px; text-align: left;">${data.totalWeight.toFixed(3)}g</td>
-                                </tr>
-                            </table>
-                        </div>
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px; align-items: start;">
+                        <div></div>
+                        ${summaryBoxHtml}
                     </div>
+
+                    ${signaturesHtml}
+                    ${footerBarHtml}
 
                     <script>
                         window.onload = function() {
@@ -588,14 +852,14 @@ const WorkerReceipt = () => {
                             <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
                                 <th rowSpan={2} style={{ padding: '8px 10px', textAlign: 'center', width: '60px', borderRight: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>#</th>
                                 <th rowSpan={2} style={{ padding: '8px 10px', textAlign: 'center', borderRight: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>Barcode</th>
-                                <th rowSpan={2} style={{ padding: '8px 10px', textAlign: 'left', borderRight: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>Item</th>
-                                <th rowSpan={2} style={{ padding: '8px 10px', textAlign: 'right', borderRight: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>Gross Wt</th>
-                                <th rowSpan={2} style={{ padding: '8px 10px', textAlign: 'right', borderRight: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>Stone Wt</th>
-                                <th rowSpan={2} style={{ padding: '8px 10px', textAlign: 'right', borderRight: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>Net Wt</th>
+                                <th rowSpan={2} style={{ padding: '8px 10px', textAlign: 'center', borderRight: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>Item</th>
+                                <th rowSpan={2} style={{ padding: '8px 10px', textAlign: 'center', borderRight: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>Gross Wt</th>
+                                <th rowSpan={2} style={{ padding: '8px 10px', textAlign: 'center', borderRight: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>Stone Wt</th>
+                                <th rowSpan={2} style={{ padding: '8px 10px', textAlign: 'center', borderRight: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>Net Wt</th>
                                 <th rowSpan={2} style={{ padding: '8px 10px', textAlign: 'center', borderRight: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>Purity (%)</th>
                                 <th rowSpan={2} style={{ padding: '8px 10px', textAlign: 'center', borderRight: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>HUID</th>
                                 <th colSpan={companyStones.length || 5} style={{ padding: '4px 10px', textAlign: 'center', borderBottom: '1px solid var(--glass-border)', borderRight: '1px solid var(--glass-border)' }}>STONE DETAILS (g)</th>
-                                <th rowSpan={2} style={{ padding: '8px 10px', textAlign: 'left', borderRight: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>Description</th>
+                                <th rowSpan={2} style={{ padding: '8px 10px', textAlign: 'center', borderRight: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>Description</th>
                                 <th rowSpan={2} style={{ padding: '8px 10px', textAlign: 'center', width: '100px', verticalAlign: 'middle' }}>Action</th>
                             </tr>
                             <tr>
@@ -763,16 +1027,64 @@ const WorkerReceipt = () => {
             </div>
 
             {/* Bottom Actions section aligned to the right */}
-            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: '20px' }}>
+            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: '20px', position: 'relative' }}>
                 <button onClick={handleSubmit} className="btn-primary" style={{ padding: '14px 40px', borderRadius: '8px', fontWeight: 700, background: '#2ec4b6', display: 'flex', alignItems: 'center', gap: '8px', border: 'none' }}>
                     <Check size={18} /> SUBMIT
                 </button>
                 <button onClick={handleClearAll} className="glass" style={{ padding: '14px 30px', borderRadius: '8px', fontWeight: 700, color: 'white', background: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '8px', border: 'none', cursor: 'pointer' }}>
                     <X size={18} /> Clear All
                 </button>
-                <button onClick={() => handlePrintReceipt(null)} className="glass" style={{ padding: '14px 30px', borderRadius: '8px', fontWeight: 700, color: '#000', background: 'var(--primary-gold)', display: 'flex', alignItems: 'center', gap: '8px', border: 'none', cursor: 'pointer' }}>
-                    <Printer size={18} /> Print Receipt
-                </button>
+                <div style={{ position: 'relative' }}>
+                    <button onClick={() => setPrintDropdownOpen(!printDropdownOpen)} className="glass" style={{ padding: '14px 30px', borderRadius: '8px', fontWeight: 700, color: '#000', background: 'var(--primary-gold)', display: 'flex', alignItems: 'center', gap: '8px', border: 'none', cursor: 'pointer' }}>
+                        <Printer size={18} /> Print Receipt
+                    </button>
+                    {printDropdownOpen && (
+                        <div style={{
+                            position: 'absolute',
+                            bottom: '100%',
+                            right: 0,
+                            marginBottom: '8px',
+                            backgroundColor: 'var(--surface-bg)',
+                            border: '1px solid var(--glass-border)',
+                            borderRadius: '8px',
+                            boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+                            zIndex: 999,
+                            minWidth: '240px',
+                            padding: '8px 0',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '2px'
+                        }}>
+                            <div style={{ padding: '6px 12px', fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>Receipt Layouts</div>
+                            {[
+                                { key: 'receipt1', label: '📄 Receipt Format 1 (Basic)' },
+                                { key: 'receipt2', label: '🧾 Receipt Format 2 (With Stone Weight)' },
+                                { key: 'receipt3', label: '📋 Receipt Format 3 (With Stone Details)' }
+                            ].map(opt => (
+                                <button
+                                    key={opt.key}
+                                    onClick={() => { setPrintDropdownOpen(false); handlePrintReceipt(null, opt.key); }}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        textAlign: 'left',
+                                        padding: '10px 16px',
+                                        fontSize: '12px',
+                                        color: 'var(--text-main)',
+                                        cursor: 'pointer',
+                                        display: 'block',
+                                        width: '100%',
+                                        transition: 'background 0.2s'
+                                    }}
+                                    onMouseEnter={e => e.target.style.backgroundColor = 'var(--hover-bg)'}
+                                    onMouseLeave={e => e.target.style.backgroundColor = 'transparent'}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {showStoneModal && (

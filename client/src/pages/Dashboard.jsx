@@ -56,7 +56,7 @@ const Dashboard = () => {
         
         // Custom stats for dashboard
         const totalSales = saleRes.data.reduce((acc, s) => acc + s.totalPrice, 0);
-        const invWeight = prodRes.data.reduce((acc, p) => acc + (p.goldWeight || 0), 0);
+        const invWeight = prodRes.data.reduce((acc, p) => acc + (p.netWeight || 0), 0);
         const gRate = parseFloat(sObj.goldRate) || 0;
         
         setDashboardAdditions({

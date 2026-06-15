@@ -16,7 +16,7 @@ const Products = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState(null); 
   
-  const [viewMode, setViewMode] = useState('card');
+  const [viewMode, setViewMode] = useState('list');
   
   // Create Assignment State
   const [newProductData, setNewProductData] = useState({

@@ -9,7 +9,8 @@ connectDB();
 // Jewellery Management System API
 const app = express();
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // CORS: Allow frontend origins (localhost for dev, Vercel URL for production)
 const allowedOrigins = process.env.ALLOWED_ORIGINS

@@ -11,9 +11,16 @@ const Billing = ({ setSidebarOpen }) => {
   const [wastage, setWastage] = useState('10');
   const [purity, setPurity] = useState('92'); 
   const [category, setCategory] = useState('Gold');
+  const [huid, setHuid] = useState('');
   const [autoSubmit, setAutoSubmit] = useState(true);
+  const [goldRate, setGoldRate] = useState(6200);
   const [printDropdownOpen, setPrintDropdownOpen] = useState(false);
   const [activePrintFormat, setActivePrintFormat] = useState('estimation');
+  const [invoiceSeq, setInvoiceSeq] = useState(() => {
+    const saved = localStorage.getItem('nextInvoiceSeq');
+    return saved ? parseInt(saved, 10) : 1;
+  });
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   // Db Products & Stones
   const [availableProducts, setAvailableProducts] = useState([]);
@@ -59,14 +66,21 @@ const Billing = ({ setSidebarOpen }) => {
     const fetchProdsAndStones = async () => {
       try {
         setLoadingProducts(true);
-        const [prodRes, companyRes, custRes] = await Promise.all([
+        const [prodRes, companyRes, custRes, settingsRes] = await Promise.all([
           api.get('/mgmt/products?status=completed').catch(() => ({ data: [] })),
           api.get('/company').catch(() => ({ data: {} })),
-          api.get('/customers').catch(() => ({ data: [] }))
+          api.get('/customers').catch(() => ({ data: [] })),
+          api.get('/settings').catch(() => ({ data: [] }))
         ]);
         setAvailableProducts(prodRes.data || []);
         setCompany(companyRes.data || {});
         setCustomers(custRes.data || []);
+        
+        // Load gold rate from settings
+        const settingsObj = (settingsRes.data || []).reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {});
+        if (settingsObj.goldRate) {
+          setGoldRate(parseFloat(settingsObj.goldRate) || 6200);
+        }
         
         // Use stones from company or default list if empty
         const fetchedStones = (companyRes.data?.stones || [])
@@ -89,12 +103,12 @@ const Billing = ({ setSidebarOpen }) => {
     fetchProdsAndStones();
   }, []);
 
-  // Keyboard Shortcuts (F1, F2, F4, Ctrl+J)
+  // Keyboard Shortcuts (F1, F2, F4, F8)
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.ctrlKey && e.key === 'j') {
+      if (e.key === 'F8') {
         e.preventDefault();
-        handlePrint();
+        setPrintDropdownOpen(prev => !prev);
       }
       if (e.key === 'F2') {
         e.preventDefault();
@@ -135,6 +149,7 @@ const Billing = ({ setSidebarOpen }) => {
       setCategory(found.category || 'Gold');
       setStoneWt(totalStWt.toString());
       setPurity('92');
+      setHuid(found.huid || '');
       
       if (autoSubmit) {
         const timer = setTimeout(() => {
@@ -149,7 +164,7 @@ const Billing = ({ setSidebarOpen }) => {
             return sum + (parseFloat(s.stoneWeight) || 0) * rate;
           }, 0);
 
-          const totalAmount = Math.round(billingWeight * 6200) + stoneCharges;
+          const totalAmount = Math.round(billingWeight * goldRate) + stoneCharges;
 
           commitItem({
             barcode: found.productId,
@@ -161,6 +176,7 @@ const Billing = ({ setSidebarOpen }) => {
             purity: parseFloat(purity) || 92,
             wastage: wastage,
             amount: totalAmount,
+            huid: found.huid || '',
             stones: (found.stones || []).map(s => {
               const matchedStone = companyStones.find(cs => cs.stoneName.toLowerCase().trim() === s.stoneName.toLowerCase().trim());
               return {
@@ -174,13 +190,14 @@ const Billing = ({ setSidebarOpen }) => {
           setGrossWt('');
           setStoneWt('0');
           setNetWt('');
+          setHuid('');
           setItemStones([]);
           setShowStoneDetail(false);
         }, 150);
         return () => clearTimeout(timer);
       }
     }
-  }, [barcode, availableProducts, autoSubmit, wastage, purity, companyStones]);
+  }, [barcode, availableProducts, autoSubmit, wastage, purity, companyStones, goldRate]);
 
 
 
@@ -254,7 +271,8 @@ const Billing = ({ setSidebarOpen }) => {
       em: 0,
       emRate: 0,
       amount: customItem.amount,
-      stones: customItem.stones || []
+      stones: customItem.stones || [],
+      huid: customItem.huid || ''
     };
     setItems(prev => [...prev, newItem]);
   };
@@ -273,7 +291,7 @@ const Billing = ({ setSidebarOpen }) => {
 
     // Calculate total stone charges (weight * rate)
     const stoneCharges = itemStones.reduce((acc, curr) => acc + (parseFloat(curr.weight) || 0) * (parseFloat(curr.rate) || 0), 0);
-    const totalAmount = Math.round(billingWeight * 6200) + stoneCharges;
+    const totalAmount = Math.round(billingWeight * goldRate) + stoneCharges;
 
     commitItem({
       barcode: barcode || `BC-${Math.floor(100000 + Math.random() * 900000)}`,
@@ -285,13 +303,15 @@ const Billing = ({ setSidebarOpen }) => {
       purity: parseFloat(purity) || 92,
       wastage: wastage,
       amount: totalAmount,
-      stones: itemStones
+      stones: itemStones,
+      huid: huid
     });
 
     setBarcode('');
     setGrossWt('');
     setStoneWt('0');
     setNetWt('');
+    setHuid('');
     setItemStones([]);
     setShowStoneDetail(false);
   };
@@ -307,8 +327,10 @@ const Billing = ({ setSidebarOpen }) => {
       setGrossWt('');
       setStoneWt('0');
       setNetWt('');
+      setHuid('');
       setCustomerName('');
       setCustomerPhone('');
+      setSelectedCustomer(null);
       setDescription('');
       setTotalTagWeight('');
       setHallmarkCharges('');
@@ -341,12 +363,13 @@ const Billing = ({ setSidebarOpen }) => {
   const totalNet = items.reduce((acc, curr) => acc + curr.netWeight, 0);
   const totalPure = items.reduce((acc, curr) => acc + curr.pureWeight, 0);
   const cashTotal = items.reduce((acc, curr) => acc + curr.amount, 0);
+  const hasHUID = items.some(item => item.huid && item.huid.trim() !== '');
 
   const subtotal = cashTotal + (parseFloat(hallmarkCharges) || 0);
 
-  const totalBaseGoldCost = items.reduce((sum, item) => sum + Math.round(item.netWeight * 6200), 0);
+  const totalBaseGoldCost = items.reduce((sum, item) => sum + Math.round(item.netWeight * goldRate), 0);
   const totalWastageWt = items.reduce((sum, item) => sum + (item.netWeight * (parseFloat(item.wastage) || 0) / 100), 0);
-  const totalWastageCost = items.reduce((sum, item) => sum + Math.round((item.netWeight * (parseFloat(item.wastage) || 0) / 100) * 6200), 0);
+  const totalWastageCost = items.reduce((sum, item) => sum + Math.round((item.netWeight * (parseFloat(item.wastage) || 0) / 100) * goldRate), 0);
   const totalStoneCost = items.reduce((sum, item) => sum + (item.stones || []).reduce((sSum, s) => sSum + (parseFloat(s.weight) || 0) * (parseFloat(s.rate) || 0), 0), 0);
 
   const goldValue = totalBaseGoldCost + totalWastageCost;
@@ -453,6 +476,8 @@ const Billing = ({ setSidebarOpen }) => {
     showItemHUID: true,
     showItemDescription: true,
     showItemStoneDetails: true,
+    showItemNetWeight: true,
+    showItemStoneWeight: true,
     groupStoneDetails: true,
     showItemProductImage: true,
     showAmountGoldRate: true,
@@ -471,6 +496,11 @@ const Billing = ({ setSidebarOpen }) => {
     let sizeStr = 'A4 portrait';
     let marginStr = '12mm';
     
+    if (printSettings.defaultPageSize === 'a5') {
+      sizeStr = 'A5 landscape';
+      marginStr = '8mm';
+    }
+
     if (activePrintFormat === 'tag') {
       sizeStr = '50mm 25mm';
       marginStr = '0mm';
@@ -480,6 +510,9 @@ const Billing = ({ setSidebarOpen }) => {
     } else if (activePrintFormat === 'thermal') {
       sizeStr = '80mm auto';
       marginStr = '2mm';
+    } else if (activePrintFormat === 'bill3') {
+      sizeStr = 'A4 portrait';
+      marginStr = '10mm';
     }
     
     return `
@@ -545,7 +578,18 @@ const Billing = ({ setSidebarOpen }) => {
             <h2 style={{ fontSize: '15px', fontWeight: '700', margin: 0, letterSpacing: 'normal', color: '#ffffff' }}>
               Billing
             </h2>
-            {/* <span className="desktop-only" style={{ fontSize: '11px', color: '#cbd5e1' }}>Sales & Returns Module</span>/ */}
+            <span style={{ fontSize: '12px', backgroundColor: 'rgba(255, 255, 255, 0.2)', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>
+              INVOICE NO: {String(invoiceSeq).padStart(2, '0')}
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '10px' }}>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', fontWeight: 'bold' }}>GOLD RATE:</span>
+              <input 
+                type="number" 
+                value={goldRate}
+                onChange={e => setGoldRate(parseFloat(e.target.value) || 0)}
+                style={{ width: '85px', padding: '3px 8px', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'rgba(0,0,0,0.2)', color: '#ffffff', textAlign: 'right', fontWeight: 'bold', outline: 'none' }}
+              />
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button 
@@ -709,7 +753,9 @@ const Billing = ({ setSidebarOpen }) => {
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '10px' }}>
               
               <div style={{ flex: '1 1 140px' }}>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '3px', color: 'var(--text-muted)', fontSize: '11px' }}>Barcode Lookup</label>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '3px', color: 'var(--text-muted)', fontSize: '11px' }}>
+                  Barcode Lookup (Inv: {String(invoiceSeq).padStart(2, '0')})
+                </label>
                 <div style={{ display: 'flex', gap: '4px' }}>
                   <input 
                     type="text" 
@@ -816,6 +862,17 @@ const Billing = ({ setSidebarOpen }) => {
                 </select>
               </div>
 
+              <div style={{ flex: '1 1 90px' }}>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '3px', color: 'var(--text-muted)', fontSize: '11px' }}>HUID</label>
+                <input 
+                  type="text" 
+                  value={huid}
+                  onChange={e => setHuid(e.target.value)}
+                  placeholder="HUID"
+                  style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
+                />
+              </div>
+
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px', paddingBottom: '8px' }}>
                 <input 
                   type="checkbox" 
@@ -896,6 +953,7 @@ const Billing = ({ setSidebarOpen }) => {
                     <th style={{ padding: '8px 10px', width: '40px' }}>Del</th>
                     <th style={{ padding: '8px 10px' }}>Item Name</th>
                     <th style={{ padding: '8px 10px' }}>Barcode</th>
+                    {hasHUID && <th style={{ padding: '8px 10px' }}>HUID</th>}
                     <th style={{ padding: '8px 10px', textAlign: 'right' }}>Gross Wt.</th>
                     <th style={{ padding: '8px 10px', textAlign: 'right' }}>Stone Wt.</th>
                     <th style={{ padding: '8px 10px', textAlign: 'right' }}>Net Wt.</th>
@@ -935,6 +993,7 @@ const Billing = ({ setSidebarOpen }) => {
                         {item.name}
                       </td>
                       <td style={{ padding: '6px 10px', color: 'var(--text-muted)' }}>{item.barcode}</td>
+                      {hasHUID && <td style={{ padding: '6px 10px', color: 'var(--text-muted)' }}>{item.huid || '—'}</td>}
                       <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: '600' }}>{item.grossWt.toFixed(3)}g</td>
                       <td style={{ padding: '6px 10px', textAlign: 'right', color: 'var(--text-muted)' }}>{item.stoneWt.toFixed(3)}g</td>
                       <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: '600' }}>{item.netWeight.toFixed(3)}g</td>
@@ -977,7 +1036,7 @@ const Billing = ({ setSidebarOpen }) => {
                   ))}
                   {items.length === 0 && (
                     <tr>
-                      <td colSpan={10 + (companyStones.length > 0 ? companyStones.length * 3 : 1)} style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                      <td colSpan={10 + (companyStones.length > 0 ? companyStones.length * 3 : 1) + (hasHUID ? 1 : 0)} style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                         {loadingProducts ? "Loading completed stock list..." : "No items selected. Use Barcode Lookup above or press F4 to search."}
                       </td>
                     </tr>
@@ -1044,7 +1103,10 @@ const Billing = ({ setSidebarOpen }) => {
                         type="text" 
                         placeholder="Customer Name"
                         value={customerName}
-                        onChange={e => setCustomerName(e.target.value)}
+                        onChange={e => {
+                          setCustomerName(e.target.value);
+                          setSelectedCustomer(null);
+                        }}
                         style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--surface-bg)', color: 'var(--text-main)' }}
                       />
                       <button type="button" onClick={() => setShowCustomerSearch(true)} style={{ padding: '6px', background: 'var(--primary-gold)', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
@@ -1346,13 +1408,15 @@ const Billing = ({ setSidebarOpen }) => {
                         ₹{items.reduce((sum, item) => sum + Math.round((item.netWeight * (parseFloat(item.wastage) || 0) / 100) * 6200), 0).toLocaleString()}
                       </td>
                     </tr>
-                    <tr style={{ borderBottom: '1px dashed var(--glass-border)' }}>
-                      <td style={{ padding: '6px 0', fontWeight: '500' }}>Hallmark Charges</td>
-                      <td style={{ padding: '6px 0', textAlign: 'right' }}>{items.length} items</td>
-                      <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: '600' }}>
-                        ₹{(parseFloat(hallmarkCharges) || 0).toLocaleString()}
-                      </td>
-                    </tr>
+                    {(parseFloat(hallmarkCharges) || 0) > 0 && (
+                      <tr style={{ borderBottom: '1px dashed var(--glass-border)' }}>
+                        <td style={{ padding: '6px 0', fontWeight: '500' }}>Hallmark Charges</td>
+                        <td style={{ padding: '6px 0', textAlign: 'right' }}>{items.length} items</td>
+                        <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: '600' }}>
+                          ₹{(parseFloat(hallmarkCharges) || 0).toLocaleString()}
+                        </td>
+                      </tr>
+                    )}
                     {applyTax && (
                       <>
                         <tr style={{ borderBottom: '1px dashed var(--glass-border)' }}>
@@ -1410,6 +1474,10 @@ const Billing = ({ setSidebarOpen }) => {
                   alert("Please add at least one item to complete the bill.");
                   return;
                 }
+                const nextSeq = invoiceSeq + 1;
+                setInvoiceSeq(nextSeq);
+                localStorage.setItem('nextInvoiceSeq', nextSeq.toString());
+                
                 setItems([]);
                 setBarcode('');
                 setGrossWt('');
@@ -1417,6 +1485,7 @@ const Billing = ({ setSidebarOpen }) => {
                 setNetWt('');
                 setCustomerName('');
                 setCustomerPhone('');
+                setSelectedCustomer(null);
                 setDescription('');
                 setTotalTagWeight('');
               }} 
@@ -1489,6 +1558,10 @@ const Billing = ({ setSidebarOpen }) => {
                 }}>
                   <div style={{ padding: '6px 12px', fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid var(--glass-border)' }}>ERP Print Center</div>
                   {[
+                    { key: 'bill1', label: '📄 Bill Format 1 (Basic)' },
+                    { key: 'bill2', label: '🧾 Bill Format 2 (With Stone Cost)' },
+                    { key: 'bill3', label: '📋 Bill Format 3 (With Stone Details)' },
+                    { key: 'bill4', label: '📋 Bill Format 4 (Live Settings Layout)' },
                     { key: 'invoice', label: '📄 Tax Invoice' },
                     { key: 'estimation', label: '🧾 Estimation Bill' },
                     { key: 'detailed', label: '📋 Detailed Bill' }
@@ -1592,14 +1665,16 @@ const Billing = ({ setSidebarOpen }) => {
                   {customers
                     .filter(c => 
                       c.name.toLowerCase().includes(customerSearchQuery.toLowerCase()) || 
-                      (c.phone && c.phone.includes(customerSearchQuery))
+                      (c.phone && c.phone.includes(customerSearchQuery)) ||
+                      (c.contact && c.contact.includes(customerSearchQuery))
                     )
                     .map(c => (
                     <div 
                       key={c._id || c.id} 
                       onClick={() => {
                         setCustomerName(c.name);
-                        setCustomerPhone(c.phone || '');
+                        setCustomerPhone(c.contact || c.phone || '');
+                        setSelectedCustomer(c);
                         setShowCustomerSearch(false);
                       }}
                       style={{
@@ -1614,7 +1689,7 @@ const Billing = ({ setSidebarOpen }) => {
                       }}
                     >
                       <span style={{ fontWeight: '600' }}>{c.name}</span>
-                      <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{c.phone}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{c.contact || c.phone}</span>
                     </div>
                   ))}
                   {customers.length === 0 && (
@@ -1700,6 +1775,7 @@ const Billing = ({ setSidebarOpen }) => {
                                 setNetWt(p.netWeight || '');
                                 setCategory(p.category || 'Gold');
                                 setStoneWt(totalStWt.toString());
+                                setHuid(p.huid || '');
                                 // Populate individual stone rows if product has stones
                                 if (p.stones && p.stones.length > 0) {
                                   setItemStones(p.stones.map(s => {
@@ -1724,7 +1800,7 @@ const Billing = ({ setSidebarOpen }) => {
                         </tr>
                           );
                         })
-                      }}
+                      }
                       {availableProducts.length === 0 && (
                         <tr>
                           <td colSpan="7" style={{ textAlign: 'center', padding: '15px', color: 'var(--text-muted)' }}>No completed products in stock.</td>
@@ -1782,7 +1858,7 @@ const Billing = ({ setSidebarOpen }) => {
                   <span>Edit Stone Rates Modal</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
-                  <kbd style={{ background: 'var(--dark-bg)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--glass-border)', fontWeight: 'bold' }}>Ctrl + J</kbd>
+                  <kbd style={{ background: 'var(--dark-bg)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--glass-border)', fontWeight: 'bold' }}>F8</kbd>
                   <span>Trigger Print Options</span>
                 </div>
               </div>
@@ -1906,7 +1982,6 @@ const Billing = ({ setSidebarOpen }) => {
           return copiesToPrint.map((copyTitle, copyIdx) => {
             const isLast = copyIdx === copiesToPrint.length - 1;
             
-            // Format specific overrides
             const isWorker = activePrintFormat === 'worker';
             const isTag = activePrintFormat === 'tag';
             const isJobCard = activePrintFormat === 'jobcard';
@@ -1915,6 +1990,10 @@ const Billing = ({ setSidebarOpen }) => {
             const isOrder = activePrintFormat === 'order';
             const isEstimation = activePrintFormat === 'estimation';
             const isDetailed = activePrintFormat === 'detailed';
+            const isBill1 = activePrintFormat === 'bill1';
+            const isBill2 = activePrintFormat === 'bill2';
+            const isBill3 = activePrintFormat === 'bill3';
+            const isBill4 = activePrintFormat === 'bill4';
 
             const theme = (isWorker || isJobCard) ? workerTheme : customerTheme;
 
@@ -1927,6 +2006,10 @@ const Billing = ({ setSidebarOpen }) => {
             if (isDelivery) docTitle = "DELIVERY RECEIPT";
             if (isJobCard) docTitle = "JOB CARD";
             if (isOrder) docTitle = "ORDER RECEIPT";
+            if (isBill1) docTitle = "INVOICE";
+            if (isBill2) docTitle = "INVOICE";
+            if (isBill3) docTitle = "INVOICE";
+            if (isBill4) docTitle = "INVOICE";
 
             // 1. Tag Print Layout (Compact 50x25 / aspect ratios)
             if (isTag) {
@@ -2032,267 +2115,542 @@ const Billing = ({ setSidebarOpen }) => {
               );
             }
 
-            // 3. Regular A4/A5 Bill templates (Estimation, Invoice, Delivery Note, Job Card, Order Receipt)
+            const isA5 = (printSettings.defaultPageSize === 'a5' && activePrintFormat !== 'bill3') || activePrintFormat === 'worker' || activePrintFormat === 'jobcard';
+            const containerMinHeight = isA5 ? '148mm' : '297mm';
             return (
               <div key={copyIdx} style={{
                 boxSizing: 'border-box',
                 fontFamily: theme.fontFamily,
                 backgroundColor: theme.bgColor,
                 padding: '20px',
-                minHeight: '297mm',
+                minHeight: containerMinHeight,
                 position: 'relative',
                 border: copyIdx > 0 ? '1px dashed #cbd5e1' : 'none',
                 marginTop: copyIdx > 0 ? '40px' : '0',
                 pageBreakAfter: isLast ? 'auto' : 'always'
               }}>
-                {/* Watermark overlay */}
-                {((isEstimation && printSettings.watermark !== 'none') || (isInvoice && printSettings.watermark === 'none' ? false : printSettings.watermark !== 'none')) && (
+                {/* Logo Watermark overlay */}
+                {company?.logo ? (
                   <div style={{
                     position: 'absolute',
-                    top: '40%',
+                    top: '50%',
                     left: '50%',
-                    transform: 'translate(-50%, -50%) rotate(-30deg)',
-                    fontSize: '6rem',
-                    color: 'rgba(239, 68, 68, 0.08)',
-                    fontWeight: '900',
+                    transform: 'translate(-50%, -50%)',
+                    width: '300px',
+                    height: '300px',
+                    opacity: 0.06,
+                    backgroundImage: `url(${company.logo})`,
+                    backgroundSize: 'contain',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
                     pointerEvents: 'none',
-                    border: '10px double rgba(239, 68, 68, 0.08)',
-                    padding: '10px 40px',
-                    letterSpacing: '10px',
                     zIndex: 0
-                  }}>
-                    {printSettings.watermark === 'none' ? (isEstimation ? 'ESTIMATION' : 'PAID') : printSettings.watermark}
-                  </div>
+                  }} />
+                ) : (
+                  ((isEstimation && printSettings.watermark !== 'none') || (isInvoice && printSettings.watermark === 'none' ? false : printSettings.watermark !== 'none')) && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '40%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%) rotate(-30deg)',
+                      fontSize: '6rem',
+                      color: 'rgba(239, 68, 68, 0.08)',
+                      fontWeight: '900',
+                      pointerEvents: 'none',
+                      border: '10px double rgba(239, 68, 68, 0.08)',
+                      padding: '10px 40px',
+                      letterSpacing: '10px',
+                      zIndex: 0
+                    }}>
+                      {printSettings.watermark === 'none' ? (isEstimation ? 'ESTIMATION' : 'PAID') : printSettings.watermark}
+                    </div>
+                  )
                 )}
 
                 {/* Copy title Badge */}
-                <div style={{ position: 'absolute', top: '10px', right: '20px', fontSize: '9px', fontWeight: 'bold', color: '#64748b', border: '1px solid #cbd5e1', padding: '2px 8px', borderRadius: '4px' }}>
-                  {copyTitle}
-                </div>
+                {!(isBill1 || isBill2 || isBill3) && (
+                  <div style={{ position: 'absolute', top: '10px', right: '20px', fontSize: '9px', fontWeight: 'bold', color: '#64748b', border: '1px solid #cbd5e1', padding: '2px 8px', borderRadius: '4px' }}>
+                    {copyTitle}
+                  </div>
+                )}
 
                 {/* Invoice Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: `2px solid ${theme.borderColor}`, paddingBottom: '12px', marginBottom: '15px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    {printSettings.showHeaderLogo && (
-                      company?.logo ? (
-                        <img src={company.logo} alt="Logo" style={{ width: '55px', height: '55px', objectFit: 'contain', borderRadius: '8px' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '4px', marginBottom: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    {/* Logo */}
+                    <div style={{ width: '90px', height: '90px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: 'transparent' }}>
+                      {company?.logo ? (
+                        <img src={company.logo} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                       ) : (
-                        <div style={{ border: `2px solid ${theme.accentColor}`, borderRadius: '50%', width: '55px', height: '55px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '24px', color: theme.accentColor }}>
+                        <span style={{ fontWeight: 'bold', fontSize: '36px', color: '#d97706' }}>
                           {(company?.name || 'M')[0].toUpperCase()}
-                        </div>
-                      )
-                    )}
-                    <div>
-                      <h1 style={{ fontSize: '22px', fontWeight: '800', color: theme.headingColor, margin: '0', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                        {company?.name || 'MAHALAKSHMI JEWELLERY'}
-                      </h1>
-                      {printSettings.showHeaderAddress && <p style={{ fontSize: '9px', color: '#475569', margin: '2px 0 2px 0' }}>{company?.address || '123, Gold Street, Coimbatore - 641 001'}</p>}
-                      {printSettings.showHeaderContact && (
-                        <p style={{ fontSize: '9px', color: '#475569', margin: '0' }}>
-                          {company?.phone ? `📞 ${company.phone}` : ''} {company?.email ? ` | ✉ ${company.email}` : ''}
-                        </p>
+                        </span>
                       )}
-                      {printSettings.showHeaderGSTIN && company?.taxId && <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e293b', margin: '2px 0 0 0' }}>GSTIN : {company.taxId}</p>}
+                    </div>
+                    <div>
+                      <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', margin: '0', letterSpacing: '0.5px', fontFamily: 'Inter, sans-serif' }}>
+                        {company?.name ? company.name.toUpperCase() : 'MAHA LAKSHMI JEWELER\'S'}
+                      </h1>
+                      <p style={{ fontSize: '11px', fontWeight: '600', color: '#d97706', margin: '4px 0 0 0', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                        {company?.address || 'RAJENDHRA NACAR, NELLORE'}
+                      </p>
+                      <div style={{ fontSize: '9px', color: '#475569', marginTop: '4px', display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {company?.phone && <div>PH: {company.phone}</div>}
+                        {company?.email && <div>EMAIL: {company.email}</div>}
+                        {company?.taxId && <div style={{ fontWeight: 'bold' }}>GSTIN: {company.taxId.toUpperCase()}</div>}
+                      </div>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right', marginTop: '10px' }}>
-                    <div style={{ background: theme.accentColor, color: '#ffffff', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '8px', display: 'inline-block' }}>
-                      {docTitle}
+                  
+                  {/* Right Header Section */}
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px', fontSize: '10px', minWidth: '150px' }}>
+                      <div>DATE: {new Date(billDate).toLocaleDateString('en-GB')}</div>
+                      {/* Barcode representation */}
+                      <div style={{ display: 'flex', gap: '1.5px', marginTop: '2px', height: '14px', alignItems: 'center' }}>
+                        {[1,3,1,2,4,1,3,2,1,4,2,1,3,1,2].map((w, idx) => (
+                          <div key={idx} style={{ width: `${w}px`, height: '100%', backgroundColor: '#000' }}></div>
+                        ))}
+                      </div>
                     </div>
-                    <table style={{ fontSize: '10px', width: '200px', borderCollapse: 'collapse', textAlign: 'left', border: 'none', marginLeft: 'auto' }}>
-                      <tbody>
-                        <tr><td style={{ padding: '2px 0', fontWeight: 'bold', color: '#475569' }}>Bill No.</td><td style={{ padding: '2px 0', textAlign: 'right' }}>{isInvoice ? 'INV' : 'EST'}-{Math.floor(10000 + Math.random() * 90000)}</td></tr>
-                        <tr><td style={{ padding: '2px 0', fontWeight: 'bold', color: '#475569' }}>Date</td><td style={{ padding: '2px 0', textAlign: 'right' }}>{new Date(billDate).toLocaleDateString('en-GB')}</td></tr>
-                        {isEstimation && <tr><td style={{ padding: '2px 0', fontWeight: 'bold', color: '#475569' }}>Est Date</td><td style={{ padding: '2px 0', textAlign: 'right' }}>{new Date(estimationDate).toLocaleDateString('en-GB')}</td></tr>}
-                        <tr><td style={{ padding: '2px 0', fontWeight: 'bold', color: '#475569' }}>Valid Till</td><td style={{ padding: '2px 0', textAlign: 'right' }}>07/06/2026</td></tr>
-                      </tbody>
-                    </table>
                   </div>
                 </div>
 
-                {/* Customer Details Row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-                  <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '8px 12px' }}>
-                    <h4 style={{ margin: '0 0 6px 0', color: theme.accentColor, fontSize: '11px', borderBottom: '1px solid #e2e8f0', paddingBottom: '3px' }}>CUSTOMER DETAILS</h4>
-                    <table style={{ width: '100%', fontSize: '10px', borderCollapse: 'collapse' }}>
-                      <tbody>
-                        <tr><td style={{ width: '80px', padding: '2px 0', color: '#64748b' }}>Name</td><td style={{ padding: '2px 0', fontWeight: 'bold' }}>: {customerName}</td></tr>
-                        <tr><td style={{ padding: '2px 0', color: '#64748b' }}>Mobile</td><td style={{ padding: '2px 0' }}>: {customerPhone}</td></tr>
-                        <tr><td style={{ padding: '2px 0', color: '#64748b' }}>Customer ID</td><td style={{ padding: '2px 0' }}>: CUST000123</td></tr>
-                      </tbody>
-                    </table>
+                {/* Title */}
+                <div style={{ textAlign: 'center', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px', color: '#0f172a' }}>
+                  {docTitle}
+                </div>
+
+                {/* Horizontal Gold Line */}
+                <div style={{ height: '2.5px', backgroundColor: '#d97706', marginBottom: '10px' }}></div>
+
+                {/* Customer Details rounded light grey box */}
+                <div style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                    <div style={{ fontSize: '10px', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', marginBottom: '2px' }}>CUSTOMER DETAILS:</div>
+                    
+                    <div style={{ display: 'flex', fontSize: '11px', lineHeight: '16px' }}>
+                      <span style={{ fontWeight: '700', color: '#0f172a', width: '70px', display: 'inline-block', textAlign: 'right', marginRight: '8px' }}>NAME:</span>
+                      <span style={{ fontWeight: 'normal', color: '#334155', flex: 1 }}>{customerName || 'Walk-in Customer'}</span>
+                    </div>
+
+                    {customerPhone && (
+                      <div style={{ display: 'flex', fontSize: '11px', lineHeight: '16px' }}>
+                        <span style={{ fontWeight: '700', color: '#0f172a', width: '70px', display: 'inline-block', textAlign: 'right', marginRight: '8px' }}>PHONE:</span>
+                        <span style={{ fontWeight: 'normal', color: '#334155', flex: 1 }}>{customerPhone}</span>
+                      </div>
+                    )}
+                    
+                    {selectedCustomer && (
+                      <>
+                        {selectedCustomer.address && (
+                          <div style={{ display: 'flex', fontSize: '11px', lineHeight: '16px' }}>
+                            <span style={{ fontWeight: '700', color: '#0f172a', width: '70px', display: 'inline-block', textAlign: 'right', marginRight: '8px' }}>ADDRESS:</span>
+                            <span style={{ fontWeight: 'normal', color: '#334155', flex: 1 }}>{selectedCustomer.address}</span>
+                          </div>
+                        )}
+                        {selectedCustomer.email && (
+                          <div style={{ display: 'flex', fontSize: '11px', lineHeight: '16px' }}>
+                            <span style={{ fontWeight: '700', color: '#0f172a', width: '70px', display: 'inline-block', textAlign: 'right', marginRight: '8px' }}>EMAIL:</span>
+                            <span style={{ fontWeight: 'normal', color: '#334155', flex: 1 }}>{selectedCustomer.email}</span>
+                          </div>
+                        )}
+                        {selectedCustomer.gstNumber && (
+                          <div style={{ display: 'flex', fontSize: '11px', lineHeight: '16px' }}>
+                            <span style={{ fontWeight: '700', color: '#0f172a', width: '70px', display: 'inline-block', textAlign: 'right', marginRight: '8px' }}>GSTIN:</span>
+                            <span style={{ fontWeight: 'normal', color: '#334155', flex: 1 }}>{selectedCustomer.gstNumber.toUpperCase()}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
-                  <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '8px 12px' }}>
-                    <h4 style={{ margin: '0 0 6px 0', color: theme.accentColor, fontSize: '11px', borderBottom: '1px solid #e2e8f0', paddingBottom: '3px' }}>DOCUMENT DETAILS</h4>
-                    <table style={{ width: '100%', fontSize: '10px', borderCollapse: 'collapse' }}>
-                      <tbody>
-                        <tr><td style={{ width: '80px', padding: '2px 0', color: '#64748b' }}>Total Items</td><td style={{ padding: '2px 0', fontWeight: 'bold' }}>: {items.length}</td></tr>
-                        {printSettings.showHeaderGSTIN && isInvoice && <tr><td style={{ padding: '2px 0', color: '#64748b' }}>HSN Code</td><td style={{ padding: '2px 0' }}>: 7113 (Gold Jewellery)</td></tr>}
-                        <tr><td style={{ padding: '2px 0', color: '#64748b' }}>Description</td><td style={{ padding: '2px 0' }}>: {description}</td></tr>
-                      </tbody>
-                    </table>
+                  
+                  {/* Middle separator inside box */}
+                  <div style={{ width: '1px', height: '45px', backgroundColor: '#cbd5e1', margin: '0 20px' }}></div>
+                  
+                  <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#475569', marginRight: '5px' }}>INVOICE NO.:</span>
+                    <span style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a' }}>{String(invoiceSeq).padStart(2, '0')}</span>
                   </div>
                 </div>
 
                 {/* Items Grid Table */}
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', marginBottom: '15px' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: theme.headingColor, color: '#ffffff', textAlign: 'left', fontWeight: 'bold' }}>
-                      <th style={{ padding: '6px', border: '1px solid #334155' }}>#</th>
-                      <th style={{ padding: '6px', border: '1px solid #334155' }}>PRODUCT / DESIGN</th>
-                      {printSettings.showItemBarcode && <th style={{ padding: '6px', border: '1px solid #334155' }}>BARCODE</th>}
-                      {printSettings.showItemHUID && <th style={{ padding: '6px', border: '1px solid #334155' }}>HUID</th>}
-                      <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>GROSS WT</th>
-                      {printSettings.showItemStoneDetails && !printSettings.groupStoneDetails && companyStones.map(stone => (
-                        <th key={stone.stoneName} style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>{stone.stoneName}</th>
-                      ))}
-                      <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>NET WT</th>
-                      <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'center' }}>PURITY</th>
-                      <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>AMOUNT</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item, idx) => (
-                      <tr key={item.id} style={{ borderBottom: '1px solid #cbd5e1' }}>
-                        <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>{idx + 1}</td>
-                        <td style={{ padding: '6px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>
-                          {item.name}
-                          {printSettings.showItemDescription && <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 'normal' }}>Description: {item.category} Ornament</div>}
-                          {item.stones && item.stones.length > 0 ? (
-                            <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 'normal', fontStyle: 'italic', marginTop: '2px' }}>
-                              Stone Details: {item.stones.map(s => `${s.stoneName} (${s.weight}g @ ₹${s.rate})`).join(', ')}
-                            </div>
-                          ) : (
-                            printSettings.showItemStoneDetails && printSettings.groupStoneDetails && (
-                              <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 'normal', fontStyle: 'italic', marginTop: '2px' }}>
-                                Stone Details: {companyStones.map((stone, sidx) => `${stone.stoneName} ${(item.stoneWt > 0 ? (item.stoneWt / companyStones.length) : 0).toFixed(2)}g`).join(', ')}
-                              </div>
-                            )
-                          )}
-                        </td>
-                        {printSettings.showItemBarcode && <td style={{ padding: '6px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}>{item.barcode}</td>}
-                        {printSettings.showItemHUID && <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>HUID{Math.floor(100000 + Math.random()*900000)}</td>}
-                        <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{item.grossWt.toFixed(3)}g</td>
-                        {printSettings.showItemStoneDetails && !printSettings.groupStoneDetails && companyStones.map(stone => {
-                          const matchedStoneWeight = (item.stones || [])
-                            .filter(s => s.stoneName && s.stoneName.toLowerCase().trim() === stone.stoneName.toLowerCase().trim())
-                            .reduce((sum, s) => sum + (parseFloat(s.weight) || 0), 0);
-                          return (
-                            <td key={stone.stoneName} style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
-                              {matchedStoneWeight > 0 ? matchedStoneWeight.toFixed(3) : '0.000'}
-                            </td>
-                          );
-                        })}
-                        <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 'bold' }}>{item.netWeight.toFixed(3)}g</td>
-                        <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>{item.purity}%</td>
-                        <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 'bold' }}>₹{item.amount.toLocaleString()}.00</td>
+                {(isBill1 || isBill2 || isBill3) ? (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isBill3 ? '7px' : '9px', marginBottom: '15px' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: theme.headingColor, color: '#ffffff', textAlign: 'left', fontWeight: 'bold' }}>
+                        <th style={{ padding: isBill3 ? '3px 2px' : '6px', border: '1px solid #334155' }}>S.No</th>
+                        <th style={{ padding: isBill3 ? '3px 2px' : '6px', border: '1px solid #334155' }}>Product Code</th>
+                        {hasHUID && <th style={{ padding: isBill3 ? '3px 2px' : '6px', border: '1px solid #334155' }}>HUID</th>}
+                        <th style={{ padding: isBill3 ? '3px 2px' : '6px', border: '1px solid #334155' }}>Description</th>
+                        <th style={{ padding: isBill3 ? '3px 2px' : '6px', border: '1px solid #334155', textAlign: 'right' }}>Gross Weight</th>
+                        <th style={{ padding: isBill3 ? '3px 2px' : '6px', border: '1px solid #334155', textAlign: 'right' }}>Net Weight</th>
+                        {isBill3 ? (
+                          <>
+                            <th style={{ padding: '3px 2px', border: '1px solid #334155', textAlign: 'right' }}>Ruby</th>
+                            <th style={{ padding: '3px 2px', border: '1px solid #334155', textAlign: 'right' }}>Ruby Rate</th>
+                            <th style={{ padding: '3px 2px', border: '1px solid #334155', textAlign: 'right' }}>Ruby Cost</th>
+                            <th style={{ padding: '3px 2px', border: '1px solid #334155', textAlign: 'right' }}>Emrald</th>
+                            <th style={{ padding: '3px 2px', border: '1px solid #334155', textAlign: 'right' }}>Emrald Rate</th>
+                            <th style={{ padding: '3px 2px', border: '1px solid #334155', textAlign: 'right' }}>Emrald Cost</th>
+                            <th style={{ padding: '3px 2px', border: '1px solid #334155', textAlign: 'right' }}>AD</th>
+                            <th style={{ padding: '3px 2px', border: '1px solid #334155', textAlign: 'right' }}>AD Rate</th>
+                            <th style={{ padding: '3px 2px', border: '1px solid #334155', textAlign: 'right' }}>AD Cost</th>
+                            <th style={{ padding: '3px 2px', border: '1px solid #334155', textAlign: 'right' }}>Moti</th>
+                            <th style={{ padding: '3px 2px', border: '1px solid #334155', textAlign: 'right' }}>Moti Rate</th>
+                            <th style={{ padding: '3px 2px', border: '1px solid #334155', textAlign: 'right' }}>Moti Cost</th>
+                          </>
+                        ) : (
+                          <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>Stone Weight</th>
+                        )}
+                        {isBill2 && <th style={{ padding: isBill3 ? '3px 2px' : '6px', border: '1px solid #334155', textAlign: 'right' }}>Stone Cost</th>}
+                        <th style={{ padding: isBill3 ? '3px 2px' : '6px', border: '1px solid #334155', textAlign: 'right' }}>Total</th>
                       </tr>
-                    ))}
-                    {/* Total Row */}
-                    <tr style={{ fontWeight: 'bold', backgroundColor: '#f8fafc' }}>
-                      <td colSpan={printSettings.showItemBarcode ? (printSettings.showItemHUID ? 4 : 3) : (printSettings.showItemHUID ? 3 : 2)} style={{ padding: '6px', border: '1px solid #cbd5e1' }}>TOTAL</td>
-                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalGross.toFixed(3)}g</td>
-                      {printSettings.showItemStoneDetails && !printSettings.groupStoneDetails && companyStones.map(stone => {
-                        const totalForStone = items.reduce((acc, item) => {
-                          const matchedStoneWeight = (item.stones || [])
-                            .filter(s => s.stoneName && s.stoneName.toLowerCase().trim() === stone.stoneName.toLowerCase().trim())
-                            .reduce((sum, s) => sum + (parseFloat(s.weight) || 0), 0);
-                          return acc + matchedStoneWeight;
-                        }, 0);
+                    </thead>
+                    <tbody>
+                      {items.map((item, idx) => {
+                        const stoneCost = (item.stones || []).reduce((sum, s) => sum + (parseFloat(s.weight) || 0) * (parseFloat(s.rate) || 0), 0);
+                        
+                        // Extract stone parameters
+                        const getStoneData = (stonesList, key) => {
+                          if (!stonesList || !Array.isArray(stonesList)) return { weight: 0, rate: 0, cost: 0 };
+                          const found = stonesList.find(s => {
+                            const name = (s.stoneName || '').toLowerCase().trim();
+                            if (key === 'emrald') {
+                              return name === 'emrald' || name === 'emerald';
+                            }
+                            return name === key;
+                          });
+                          if (!found) return { weight: 0, rate: 0, cost: 0 };
+                          const weight = parseFloat(found.weight) || 0;
+                          const rate = parseFloat(found.rate) || 0;
+                          return { weight, rate, cost: weight * rate };
+                        };
+
+                        const ruby = getStoneData(item.stones, 'ruby');
+                        const emrald = getStoneData(item.stones, 'emrald');
+                        const ad = getStoneData(item.stones, 'ad');
+                        const moti = getStoneData(item.stones, 'moti');
+
+                        const cellPadding = isBill3 ? '3px 2px' : '6px';
+
                         return (
-                          <td key={stone.stoneName} style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalForStone.toFixed(3)}</td>
+                          <tr key={item.id} style={{ borderBottom: '1px solid #cbd5e1' }}>
+                            <td style={{ padding: cellPadding, border: '1px solid #cbd5e1', textAlign: 'center' }}>{idx + 1}</td>
+                            <td style={{ padding: cellPadding, border: '1px solid #cbd5e1', fontWeight: 'bold' }}>{item.barcode}</td>
+                            {hasHUID && <td style={{ padding: cellPadding, border: '1px solid #cbd5e1' }}>{item.huid || '—'}</td>}
+                            <td style={{ padding: cellPadding, border: '1px solid #cbd5e1' }}>{item.name}</td>
+                            <td style={{ padding: cellPadding, border: '1px solid #cbd5e1', textAlign: 'right' }}>{item.grossWt.toFixed(3)}g</td>
+                            <td style={{ padding: cellPadding, border: '1px solid #cbd5e1', textAlign: 'right' }}>{item.netWeight.toFixed(3)}g</td>
+                            {isBill3 ? (
+                              <>
+                                {/* Ruby */}
+                                <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{ruby.weight.toFixed(3)}g</td>
+                                <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right', color: '#475569' }}>₹{ruby.rate.toLocaleString()}</td>
+                                <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 'bold' }}>₹{ruby.cost.toLocaleString()}</td>
+                                
+                                {/* Emrald */}
+                                <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{emrald.weight.toFixed(3)}g</td>
+                                <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right', color: '#475569' }}>₹{emrald.rate.toLocaleString()}</td>
+                                <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 'bold' }}>₹{emrald.cost.toLocaleString()}</td>
+                                
+                                {/* AD */}
+                                <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{ad.weight.toFixed(3)}g</td>
+                                <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right', color: '#475569' }}>₹{ad.rate.toLocaleString()}</td>
+                                <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 'bold' }}>₹{ad.cost.toLocaleString()}</td>
+                                
+                                {/* Moti */}
+                                <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{moti.weight.toFixed(3)}g</td>
+                                <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right', color: '#475569' }}>₹{moti.rate.toLocaleString()}</td>
+                                <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 'bold' }}>₹{moti.cost.toLocaleString()}</td>
+                              </>
+                            ) : (
+                              <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
+                                {item.stoneWt.toFixed(3)}g
+                              </td>
+                            )}
+                            {isBill2 && <td style={{ padding: cellPadding, border: '1px solid #cbd5e1', textAlign: 'right' }}>₹{stoneCost.toLocaleString()}.00</td>}
+                            <td style={{ padding: cellPadding, border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 'bold' }}>₹{item.amount.toLocaleString()}.00</td>
+                          </tr>
                         );
                       })}
-                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalNet.toFixed(3)}g</td>
-                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}></td>
-                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>₹{cashTotal.toLocaleString()}.00</td>
-                    </tr>
-                  </tbody>
-                </table>
+                      {/* Total Row */}
+                      <tr style={{ fontWeight: 'bold', backgroundColor: '#f8fafc' }}>
+                        <td colSpan={hasHUID ? 4 : 3} style={{ padding: isBill3 ? '3px 2px' : '6px', border: '1px solid #cbd5e1' }}>TOTAL</td>
+                        <td style={{ padding: isBill3 ? '3px 2px' : '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalGross.toFixed(3)}g</td>
+                        <td style={{ padding: isBill3 ? '3px 2px' : '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalNet.toFixed(3)}g</td>
+                        {isBill3 ? (
+                          <>
+                            {/* Ruby Totals */}
+                            <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
+                              {items.reduce((sum, item) => {
+                                const found = (item.stones || []).find(s => (s.stoneName || '').toLowerCase().trim() === 'ruby');
+                                return sum + (found ? (parseFloat(found.weight) || 0) : 0);
+                              }, 0).toFixed(3)}g
+                            </td>
+                            <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1' }}></td>
+                            <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
+                              ₹{items.reduce((sum, item) => {
+                                const found = (item.stones || []).find(s => (s.stoneName || '').toLowerCase().trim() === 'ruby');
+                                return sum + (found ? (parseFloat(found.weight) || 0) * (parseFloat(found.rate) || 0) : 0);
+                              }, 0).toLocaleString()}
+                            </td>
+
+                            {/* Emrald Totals */}
+                            <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
+                              {items.reduce((sum, item) => {
+                                const found = (item.stones || []).find(s => {
+                                  const name = (s.stoneName || '').toLowerCase().trim();
+                                  return name === 'emrald' || name === 'emerald';
+                                });
+                                return sum + (found ? (parseFloat(found.weight) || 0) : 0);
+                              }, 0).toFixed(3)}g
+                            </td>
+                            <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1' }}></td>
+                            <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
+                              ₹{items.reduce((sum, item) => {
+                                const found = (item.stones || []).find(s => {
+                                  const name = (s.stoneName || '').toLowerCase().trim();
+                                  return name === 'emrald' || name === 'emerald';
+                                });
+                                return sum + (found ? (parseFloat(found.weight) || 0) * (parseFloat(found.rate) || 0) : 0);
+                              }, 0).toLocaleString()}
+                            </td>
+
+                            {/* AD Totals */}
+                            <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
+                              {items.reduce((sum, item) => {
+                                const found = (item.stones || []).find(s => (s.stoneName || '').toLowerCase().trim() === 'ad');
+                                return sum + (found ? (parseFloat(found.weight) || 0) : 0);
+                              }, 0).toFixed(3)}g
+                            </td>
+                            <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1' }}></td>
+                            <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
+                              ₹{items.reduce((sum, item) => {
+                                const found = (item.stones || []).find(s => (s.stoneName || '').toLowerCase().trim() === 'ad');
+                                return sum + (found ? (parseFloat(found.weight) || 0) * (parseFloat(found.rate) || 0) : 0);
+                              }, 0).toLocaleString()}
+                            </td>
+
+                            {/* Moti Totals */}
+                            <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
+                              {items.reduce((sum, item) => {
+                                const found = (item.stones || []).find(s => (s.stoneName || '').toLowerCase().trim() === 'moti');
+                                return sum + (found ? (parseFloat(found.weight) || 0) : 0);
+                              }, 0).toFixed(3)}g
+                            </td>
+                            <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1' }}></td>
+                            <td style={{ padding: '3px 2px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
+                              ₹{items.reduce((sum, item) => {
+                                const found = (item.stones || []).find(s => (s.stoneName || '').toLowerCase().trim() === 'moti');
+                                return sum + (found ? (parseFloat(found.weight) || 0) * (parseFloat(found.rate) || 0) : 0);
+                              }, 0).toLocaleString()}
+                            </td>
+                          </>
+                        ) : (
+                          <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalStone.toFixed(3)}g</td>
+                        )}
+                        {isBill2 && (
+                          <td style={{ padding: isBill3 ? '3px 2px' : '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
+                            ₹{items.reduce((sum, item) => sum + (item.stones || []).reduce((sSum, s) => sSum + (parseFloat(s.weight) || 0) * (parseFloat(s.rate) || 0), 0), 0).toLocaleString()}.00
+                          </td>
+                        )}
+                        <td style={{ padding: isBill3 ? '3px 2px' : '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>₹{cashTotal.toLocaleString()}.00</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', marginBottom: '15px' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: theme.headingColor, color: '#ffffff', textAlign: 'left', fontWeight: 'bold' }}>
+                        <th style={{ padding: '6px', border: '1px solid #334155' }}>#</th>
+                        <th style={{ padding: '6px', border: '1px solid #334155' }}>PRODUCT / DESIGN</th>
+                        {printSettings.showItemBarcode && <th style={{ padding: '6px', border: '1px solid #334155' }}>BARCODE</th>}
+                        {printSettings.showItemHUID && <th style={{ padding: '6px', border: '1px solid #334155' }}>HUID</th>}
+                        <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>GROSS WT</th>
+                        {printSettings.showItemStoneDetails && !printSettings.groupStoneDetails && companyStones.map(stone => (
+                          <th key={stone.stoneName} style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>{stone.stoneName}</th>
+                        ))}
+                        {printSettings.showItemStoneWeight && <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>STONE WT</th>}
+                        {printSettings.showItemNetWeight && <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>NET WT</th>}
+                        <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'center' }}>PURITY</th>
+                        <th style={{ padding: '6px', border: '1px solid #334155', textAlign: 'right' }}>AMOUNT</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item, idx) => (
+                        <tr key={item.id} style={{ borderBottom: '1px solid #cbd5e1' }}>
+                          <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>{idx + 1}</td>
+                          <td style={{ padding: '6px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>
+                            {item.name}
+                            {printSettings.showItemDescription && <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 'normal' }}>Description: {item.category} Ornament</div>}
+                            {item.stones && item.stones.length > 0 ? (
+                              <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 'normal', fontStyle: 'italic', marginTop: '2px' }}>
+                                Stone Details: {item.stones.map(s => `${s.stoneName} (${s.weight}g @ ₹${s.rate})`).join(', ')}
+                              </div>
+                            ) : (
+                              printSettings.showItemStoneDetails && printSettings.groupStoneDetails && (
+                                <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 'normal', fontStyle: 'italic', marginTop: '2px' }}>
+                                  Stone Details: {companyStones.map((stone, sidx) => `${stone.stoneName} ${(item.stoneWt > 0 ? (item.stoneWt / companyStones.length) : 0).toFixed(2)}g`).join(', ')}
+                                </div>
+                              )
+                            )}
+                          </td>
+                          {printSettings.showItemBarcode && <td style={{ padding: '6px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}>{item.barcode}</td>}
+                          {printSettings.showItemHUID && <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>{item.huid || '—'}</td>}
+                          <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{item.grossWt.toFixed(3)}g</td>
+                          {printSettings.showItemStoneDetails && !printSettings.groupStoneDetails && companyStones.map(stone => {
+                            const matchedStoneWeight = (item.stones || [])
+                              .filter(s => s.stoneName && s.stoneName.toLowerCase().trim() === stone.stoneName.toLowerCase().trim())
+                              .reduce((sum, s) => sum + (parseFloat(s.weight) || 0), 0);
+                            return (
+                              <td key={stone.stoneName} style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
+                                {matchedStoneWeight > 0 ? matchedStoneWeight.toFixed(3) : '0.000'}
+                              </td>
+                            );
+                          })}
+                          {printSettings.showItemStoneWeight && <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{(parseFloat(item.stoneWt) || 0).toFixed(3)}g</td>}
+                          {printSettings.showItemNetWeight && <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 'bold' }}>{item.netWeight.toFixed(3)}g</td>}
+                          <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>{item.purity}%</td>
+                          <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: 'bold' }}>₹{item.amount.toLocaleString()}.00</td>
+                        </tr>
+                      ))}
+                      {/* Total Row */}
+                      <tr style={{ fontWeight: 'bold', backgroundColor: '#f8fafc' }}>
+                        <td colSpan={printSettings.showItemBarcode ? (printSettings.showItemHUID ? 4 : 3) : (printSettings.showItemHUID ? 3 : 2)} style={{ padding: '6px', border: '1px solid #cbd5e1' }}>TOTAL</td>
+                        <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalGross.toFixed(3)}g</td>
+                        {printSettings.showItemStoneDetails && !printSettings.groupStoneDetails && companyStones.map(stone => {
+                          const totalForStone = items.reduce((acc, item) => {
+                            const matchedStoneWeight = (item.stones || [])
+                              .filter(s => s.stoneName && s.stoneName.toLowerCase().trim() === stone.stoneName.toLowerCase().trim())
+                              .reduce((sum, s) => sum + (parseFloat(s.weight) || 0), 0);
+                            return acc + matchedStoneWeight;
+                          }, 0);
+                          return (
+                            <td key={stone.stoneName} style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalForStone.toFixed(3)}</td>
+                          );
+                        })}
+                        {printSettings.showItemStoneWeight && <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalStone.toFixed(3)}g</td>}
+                        {printSettings.showItemNetWeight && <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalNet.toFixed(3)}g</td>}
+                        <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}></td>
+                        <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>₹{cashTotal.toLocaleString()}.00</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                )}
 
                 {/* Estimation / Invoice Summaries */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: (isBill1 || isBill2 || isBill3) ? '1fr 1fr' : '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
                   
-                  {/* Weight Summary */}
-                  <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px' }}>
-                    <h4 style={{ margin: '0 0 8px 0', borderBottom: `1.5px solid ${theme.borderColor}`, paddingBottom: '4px', color: '#1e293b', fontSize: '11px', fontWeight: '700' }}>WEIGHT SUMMARY</h4>
-                    <table style={{ width: '100%', fontSize: '10px' }}>
-                      <tbody>
-                        <tr><td style={{ padding: '3px 0', color: '#475569' }}>Gross Total</td><td style={{ padding: '3px 0', textAlign: 'right', fontWeight: 'bold' }}>: {totalGross.toFixed(3)} g</td></tr>
-                        <tr><td style={{ padding: '3px 0', color: '#475569' }}>Stone Total</td><td style={{ padding: '3px 0', textAlign: 'right', fontWeight: 'bold' }}>: {totalStone.toFixed(3)} g</td></tr>
-                        <tr><td style={{ padding: '3px 0', color: '#475569' }}>Net Total</td><td style={{ padding: '3px 0', textAlign: 'right', fontWeight: 'bold' }}>: {totalNet.toFixed(3)} g</td></tr>
-                        <tr><td style={{ padding: '3px 0', color: '#475569' }}>Pure Total</td><td style={{ padding: '3px 0', textAlign: 'right', fontWeight: 'bold', color: '#15803d' }}>: {totalPure.toFixed(3)} g</td></tr>
-                      </tbody>
-                    </table>
-                  </div>
+                  {/* Weight Summary placeholder to preserve grid position */}
+                  <div></div>
 
                   {/* Rate & Value Summary */}
                   <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px' }}>
-                    <h4 style={{ margin: '0 0 8px 0', borderBottom: `1.5px solid ${theme.borderColor}`, paddingBottom: '4px', color: '#1e293b', fontSize: '11px', fontWeight: '700' }}>RATE & VALUE SUMMARY</h4>
+                    <h4 style={{ margin: '0 0 8px 0', borderBottom: `1.5px solid ${theme.borderColor}`, paddingBottom: '4px', color: '#1e293b', fontSize: '11px', fontWeight: '700' }}>BILL SUMMARY</h4>
                     <table style={{ width: '100%', fontSize: '9px' }}>
                       <tbody>
-                        {printSettings.showAmountGoldRate && <tr><td style={{ padding: '2px 0', color: '#475569' }}>Gold Rate (₹/g)</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: 6,150.00</td></tr>}
-                        {printSettings.showAmountGoldRate && <tr><td style={{ padding: '2px 0', color: '#475569' }}>Gold Value</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {(totalNet * 6150).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>}
-                        {printSettings.showAmountStoneCharges && <tr><td style={{ padding: '2px 0', color: '#475569' }}>Stone Charges</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {(totalStone * 1200).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>}
-                        {printSettings.showAmountMakingCharges && <tr><td style={{ padding: '2px 0', color: '#475569' }}>Making Charges (10%)</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {(totalNet * 6150 * 0.1).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>}
-                        {printSettings.showAmountDiscount && <tr><td style={{ padding: '2px 0', color: '#475569' }}>Discount</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {finalDiscount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>}
-                        {printSettings.showAmountGST && isInvoice && <tr><td style={{ padding: '2px 0', color: '#475569' }}>GST (3%)</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {(balanceCash * 0.03).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>}
-                        <tr style={{ borderTop: '1px solid #cbd5e1', fontWeight: 'bold' }}><td style={{ padding: '4px 0', color: '#000' }}>Sub Total</td><td style={{ padding: '4px 0', textAlign: 'right' }}>: {(balanceCash * (isInvoice ? 1.03 : 1)).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>
+                        {printSettings.showAmountGoldRate && <tr><td style={{ padding: '2px 0', color: '#475569' }}>Gold Rate (₹/g)</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {goldRate.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>}
+                        {printSettings.showAmountGoldRate && <tr><td style={{ padding: '2px 0', color: '#475569' }}>Gold Value</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {totalBaseGoldCost.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>}
+                        {printSettings.showAmountStoneCharges && <tr><td style={{ padding: '2px 0', color: '#475569' }}>Stone Charges</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {totalStoneCost.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>}
+                        {printSettings.showAmountMakingCharges && <tr><td style={{ padding: '2px 0', color: '#475569' }}>Making Charges</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {totalWastageCost.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>}
+                        
+                        {/* Dynamic Discount row based on user selection */}
+                        {(makeDiscount || finalDiscount > 0) && (
+                          <tr>
+                            <td style={{ padding: '2px 0', color: '#475569' }}>Discount</td>
+                            <td style={{ padding: '2px 0', textAlign: 'right', color: 'red' }}>: - ₹{finalDiscount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                          </tr>
+                        )}
+                        
+                        {/* Dynamic Tax / VAT rows based on user selection */}
+                        {applyTax ? (
+                          <>
+                            {(parseFloat(taxGoldPercent) || 0) > 0 && (
+                              <tr>
+                                <td style={{ padding: '2px 0', color: '#475569' }}>Tax on Gold ({taxGoldPercent}%)</td>
+                                <td style={{ padding: '2px 0', textAlign: 'right' }}>: ₹{taxGoldValue.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                              </tr>
+                            )}
+                            {(parseFloat(taxStonePercent) || 0) > 0 && (
+                              <tr>
+                                <td style={{ padding: '2px 0', color: '#475569' }}>Tax on Stones ({taxStonePercent}%)</td>
+                                <td style={{ padding: '2px 0', textAlign: 'right' }}>: ₹{taxStoneValue.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                              </tr>
+                            )}
+                            {(parseFloat(vatPercent) || 0) > 0 && (
+                              <tr>
+                                <td style={{ padding: '2px 0', color: '#475569' }}>VAT on Making ({vatPercent}%)</td>
+                                <td style={{ padding: '2px 0', textAlign: 'right' }}>: ₹{vatValue.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                              </tr>
+                            )}
+                          </>
+                        ) : (
+                          printSettings.showAmountGST && isInvoice && <tr><td style={{ padding: '2px 0', color: '#475569' }}>GST (3%)</td><td style={{ padding: '2px 0', textAlign: 'right' }}>: {(balanceCash * 0.03).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>
+                        )}
+
+                        <tr style={{ borderTop: '1px solid #cbd5e1', fontWeight: 'bold' }}><td style={{ padding: '4px 0', color: '#000' }}>Sub Total</td><td style={{ padding: '4px 0', textAlign: 'right' }}>: {(balanceCash * (!applyTax && isInvoice ? 1.03 : 1)).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>
                       </tbody>
                     </table>
                   </div>
 
                   {/* Estimation Total Badge */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ border: `1px solid ${theme.borderColor}`, borderRadius: '6px', overflow: 'hidden' }}>
-                      <div style={{ background: theme.accentColor, color: '#ffffff', padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', letterSpacing: '1px' }}>
-                        ₹ {isInvoice ? 'INVOICE TOTAL' : 'ESTIMATION TOTAL'}
-                      </div>
-                      <div style={{ padding: '10px', textAlign: 'center', background: theme.bgColor }}>
-                        <div style={{ fontSize: '18px', fontWeight: '800', color: theme.headingColor }}>₹ {Math.round(balanceCash * (isInvoice ? 1.03 : 1)).toLocaleString()}.00</div>
-                        <div style={{ fontSize: '8px', color: '#475569', marginTop: '4px', textTransform: 'capitalize', fontStyle: 'italic' }}>
-                          ({numberToWords(Math.round(balanceCash * (isInvoice ? 1.03 : 1)))})
+                  {!(isBill1 || isBill2 || isBill3) && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ border: `1px solid ${theme.borderColor}`, borderRadius: '6px', overflow: 'hidden' }}>
+                        <div style={{ background: theme.accentColor, color: '#ffffff', padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', letterSpacing: '1px' }}>
+                          ₹ {isInvoice ? 'INVOICE TOTAL' : 'ESTIMATION TOTAL'}
+                        </div>
+                        <div style={{ padding: '10px', textAlign: 'center', background: theme.bgColor }}>
+                          <div style={{ fontSize: '18px', fontWeight: '800', color: theme.headingColor }}>₹ {Math.round(balanceCash * (isInvoice ? 1.03 : 1)).toLocaleString()}.00</div>
+                          <div style={{ fontSize: '8px', color: '#475569', marginTop: '4px', textTransform: 'capitalize', fontStyle: 'italic' }}>
+                            ({numberToWords(Math.round(balanceCash * (isInvoice ? 1.03 : 1)))})
+                          </div>
                         </div>
                       </div>
+                      {/* Hallmark / BIS details */}
+                      <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
+                        {printSettings.showHallmarkLogo && <span style={{ fontSize: '8px', border: '1px solid #d97706', padding: '2px 5px', borderRadius: '4px', color: '#d97706', fontWeight: 'bold' }}>🎗 916 BIS Hallmark</span>}
+                        {printSettings.showBISLogo && <span style={{ fontSize: '8px', border: '1px solid #0284c7', padding: '2px 5px', borderRadius: '4px', color: '#0284c7', fontWeight: 'bold' }}>BIS Certified</span>}
+                      </div>
                     </div>
-                    {/* Hallmark / BIS details */}
-                    <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
-                      {printSettings.showHallmarkLogo && <span style={{ fontSize: '8px', border: '1px solid #d97706', padding: '2px 5px', borderRadius: '4px', color: '#d97706', fontWeight: 'bold' }}>🎗 916 BIS Hallmark</span>}
-                      {printSettings.showBISLogo && <span style={{ fontSize: '8px', border: '1px solid #0284c7', padding: '2px 5px', borderRadius: '4px', color: '#0284c7', fontWeight: 'bold' }}>BIS Certified</span>}
-                    </div>
-                  </div>
+                  )}
 
                 </div>
 
                 {/* Terms & Conditions & Signatory */}
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', borderTop: '1px solid #cbd5e1', paddingTop: '12px', marginBottom: '20px' }}>
-                  <div style={{ fontSize: '8px', color: '#475569' }}>
-                    <strong style={{ fontSize: '9px', color: '#0f172a' }}>TERMS & CONDITIONS</strong>
-                    <ul style={{ margin: '4px 0 0 12px', padding: 0 }}>
-                      <li>Gold rate and making charges are subject to change without notice.</li>
-                      <li>100% advance to be paid for order confirmation.</li>
-                      <li>Delivery will be made as per the mutually agreed timeline.</li>
-                      <li>This is computer generated estimate, no signature required.</li>
-                    </ul>
+                {!(isBill1 || isBill2 || isBill3) && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', borderTop: '1px solid #cbd5e1', paddingTop: '12px', marginBottom: '20px' }}>
+                    <div style={{ fontSize: '8px', color: '#475569' }}>
+                      <strong style={{ fontSize: '9px', color: '#0f172a' }}>TERMS & CONDITIONS</strong>
+                      <ul style={{ margin: '4px 0 0 12px', padding: 0 }}>
+                        <li>Gold rate and making charges are subject to change without notice.</li>
+                        <li>100% advance to be paid for order confirmation.</li>
+                        <li>Delivery will be made as per the mutually agreed timeline.</li>
+                        <li>This is computer generated estimate, no signature required.</li>
+                      </ul>
+                    </div>
+                    <div style={{ textAlign: 'center', alignSelf: 'end' }}>
+                      <p style={{ fontSize: '9px', fontWeight: 'bold', margin: '0 0 35px 0' }}>For {company?.name || 'Mahalakshmi Jewellery'}</p>
+                      <div style={{ width: '150px', borderBottom: '1px solid #000', margin: '0 auto 4px auto' }} />
+                      <p style={{ fontSize: '8px', color: '#475569', margin: 0 }}>Authorised Signatory</p>
+                    </div>
                   </div>
-                  <div style={{ textAlign: 'center', alignSelf: 'end' }}>
-                    <p style={{ fontSize: '9px', fontWeight: 'bold', margin: '0 0 35px 0' }}>For {company?.name || 'Mahalakshmi Jewellery'}</p>
-                    <div style={{ width: '150px', borderBottom: '1px solid #000', margin: '0 auto 4px auto' }} />
-                    <p style={{ fontSize: '8px', color: '#475569', margin: 0 }}>Authorised Signatory</p>
-                  </div>
-                </div>
+                )}
 
                 {/* Footer Badges bar */}
-                <div style={{ borderTop: '2.5px solid #cbd5e1', borderBottom: '2.5px solid #cbd5e1', padding: '6px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '8px', fontWeight: 'bold', color: '#475569' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: theme.accentColor }}>
-                    💎 THANK YOU FOR CHOOSING US!
+                {!(isBill1 || isBill2 || isBill3) && (
+                  <div style={{ borderTop: '2.5px solid #cbd5e1', borderBottom: '2.5px solid #cbd5e1', padding: '6px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '8px', fontWeight: 'bold', color: '#475569' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: theme.accentColor }}>
+                      💎 THANK YOU FOR CHOOSING US!
+                    </div>
+                    <div style={{ width: '1px', height: '10px', backgroundColor: '#cbd5e1' }} />
+                    <div>Purity You Can Trust, Elegance You Deserve.</div>
+                    <div style={{ width: '1px', height: '10px', backgroundColor: '#cbd5e1' }} />
+                    <div>🎗 916 BIS Hallmarked</div>
                   </div>
-                  <div style={{ width: '1px', height: '10px', backgroundColor: '#cbd5e1' }} />
-                  <div>Purity You Can Trust, Elegance You Deserve.</div>
-                  <div style={{ width: '1px', height: '10px', backgroundColor: '#cbd5e1' }} />
-                  <div>🎗 916 BIS Hallmarked</div>
+                )}
               </div>
-            </div>
           );
         });
       })()}

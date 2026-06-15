@@ -52,6 +52,8 @@ const companySchema = new mongoose.Schema({
         showItemHUID: { type: Boolean, default: true },
         showItemDescription: { type: Boolean, default: true },
         showItemStoneDetails: { type: Boolean, default: true },
+        showItemNetWeight: { type: Boolean, default: true },
+        showItemStoneWeight: { type: Boolean, default: true },
         groupStoneDetails: { type: Boolean, default: true },
         showItemProductImage: { type: Boolean, default: true },
         showAmountGoldRate: { type: Boolean, default: true },

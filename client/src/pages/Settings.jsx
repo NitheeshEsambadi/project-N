@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
+import { QRCodeSVG } from 'qrcode.react';
+import Barcode from 'react-barcode';
 import { 
     Coins, TrendingUp, Users, Save, ToggleLeft, ToggleRight, 
     Tag, Gem, QrCode, Image as ImageIcon, Plus, Trash2, 
-    UserPlus, Shield, Trash, X, Settings as SettingsIcon, History
+    UserPlus, Shield, Trash, X, Settings as SettingsIcon, History,
+    Printer, CheckSquare, Square, RefreshCw, Eye
 } from 'lucide-react';
 
 const Settings = ({ onCompanyUpdate }) => {
@@ -29,6 +32,8 @@ const Settings = ({ onCompanyUpdate }) => {
         showItemHUID: true,
         showItemDescription: true,
         showItemStoneDetails: true,
+        showItemNetWeight: true,
+        showItemStoneWeight: true,
         groupStoneDetails: true,
         showItemProductImage: true,
         showAmountGoldRate: true,
@@ -56,7 +61,7 @@ const Settings = ({ onCompanyUpdate }) => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState('general');
-    const [printSubTab, setPrintSubTab] = useState('customer');
+    const [printSubTab, setPrintSubTab] = useState('receipts');
     const [isDark, setIsDark] = useState(document.body.classList.contains('dark-theme'));
     
     // New Extended Settings
@@ -68,6 +73,109 @@ const Settings = ({ onCompanyUpdate }) => {
     const [purityStandards, setPurityStandards] = useState([]);
     const [auditLogs, setAuditLogs] = useState([]);
     const [currency, setCurrency] = useState('₹');
+
+    // Barcode & QR Label states
+    const [productsList, setProductsList] = useState([]);
+    const [labelType, setLabelType] = useState('barcode'); // 'barcode', 'qr'
+    const [quickTemplate, setQuickTemplate] = useState('barcode_wt'); // 'barcode_only', 'barcode_wt', 'barcode_wt_stone', 'barcode_wt_stone_details', 'custom'
+    const [selectedFields, setSelectedFields] = useState({
+        itemCode: true,
+        productName: true,
+        grossWeight: true,
+        netWeight: true,
+        stoneWeight: true,
+        detailedStones: false,
+        purity: true,
+        huid: true,
+        makingCharges: false,
+        sellingPrice: false,
+        category: true,
+        designCode: false
+    });
+    const [labelSizePreset, setLabelSizePreset] = useState('custom'); // custom 65x15
+    const [labelWidth, setLabelWidth] = useState(65);
+    const [labelHeight, setLabelHeight] = useState(15);
+    const [labelMargin, setLabelMargin] = useState(2);
+    const [labelFontSize, setLabelFontSize] = useState(10);
+    
+    const [printSettingsConfig, setPrintSettingsConfig] = useState({
+        copies: 1,
+        startPosition: 1,
+        printer: 'default',
+        thermalPrinter: true,
+        autoFitText: true,
+        printBorder: true
+    });
+
+    const [selectedPreviewProduct, setSelectedPreviewProduct] = useState({
+        productId: 'ITEM-000123',
+        designName: 'Bridal Ring',
+        category: 'Ring',
+        netWeight: 12.450,
+        grossWeight: 13.700,
+        actualWastage: 0,
+        huid: 'HUID7890',
+        purity: '22k',
+        stones: [
+            { stoneName: 'Ruby', stoneWeight: 0.500 },
+            { stoneName: 'Emerald', stoneWeight: 0.300 },
+            { stoneName: 'Diamond', stoneWeight: 0.450 }
+        ]
+    });
+
+    const calculateTotalStoneWeight = (stones) => {
+        if (!stones || stones.length === 0) return 0;
+        return stones.reduce((acc, current) => acc + (parseFloat(current.stoneWeight) || 0), 0);
+    };
+
+    const handleQuickTemplateChange = (template) => {
+        setQuickTemplate(template);
+        if (template === 'barcode_only') {
+            setSelectedFields({
+                itemCode: true, productName: false, grossWeight: false, netWeight: false,
+                stoneWeight: false, detailedStones: false, purity: false, huid: false,
+                makingCharges: false, sellingPrice: false, category: false, designCode: false
+            });
+        } else if (template === 'barcode_wt') {
+            setSelectedFields({
+                itemCode: true, productName: true, grossWeight: false, netWeight: true,
+                stoneWeight: false, detailedStones: false, purity: true, huid: false,
+                makingCharges: false, sellingPrice: false, category: true, designCode: false
+            });
+        } else if (template === 'barcode_wt_stone') {
+            setSelectedFields({
+                itemCode: true, productName: true, grossWeight: true, netWeight: true,
+                stoneWeight: true, detailedStones: false, purity: true, huid: true,
+                makingCharges: false, sellingPrice: false, category: true, designCode: false
+            });
+        } else if (template === 'barcode_wt_stone_details') {
+            setSelectedFields({
+                itemCode: true, productName: true, grossWeight: true, netWeight: true,
+                stoneWeight: true, detailedStones: true, purity: true, huid: true,
+                makingCharges: false, sellingPrice: true, category: true, designCode: false
+            });
+        }
+    };
+
+    const handleLabelSizePresetChange = (preset) => {
+        setLabelSizePreset(preset);
+        if (preset === '25x15') {
+            setLabelWidth(25);
+            setLabelHeight(15);
+            setLabelMargin(1);
+            setLabelFontSize(8);
+        } else if (preset === '30x20') {
+            setLabelWidth(30);
+            setLabelHeight(20);
+            setLabelMargin(2);
+            setLabelFontSize(10);
+        } else if (preset === '50x25') {
+            setLabelWidth(50);
+            setLabelHeight(25);
+            setLabelMargin(2.5);
+            setLabelFontSize(12);
+        }
+    };
 
     // Products and Stones states
     const [prodForm, setProdForm] = useState({ name: '', code: '' });
@@ -225,11 +333,13 @@ const Settings = ({ onCompanyUpdate }) => {
     const fetchAllData = async () => {
         try {
             setLoading(true);
-            const [setRes, compRes, userRes] = await Promise.all([
+            const [setRes, compRes, userRes, prodRes] = await Promise.all([
                 api.get('/settings'),
                 api.get('/company'),
-                api.get('/mgmt/system/users')
+                api.get('/mgmt/system/users'),
+                api.get('/mgmt/products?status=completed').catch(() => ({ data: [] }))
             ]);
+            setProductsList(prodRes.data || []);
             
             // Map settings array to object
             const settingsObj = setRes.data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {});
@@ -735,250 +845,577 @@ const Settings = ({ onCompanyUpdate }) => {
             {/* Print/QR Tab */}
             {activeTab === 'qr' && (
                 <div className="fade-in">
-                    <h3 style={{ marginBottom: '20px' }}>Advanced Print & QR Configuration</h3>
+                    <h3 style={{ marginBottom: '20px' }}>Print & QR Settings</h3>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', alignItems: 'start', marginBottom: '30px' }} className="responsive-grid">
-                        
-                        {/* Configuration Controls */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            
-                            {/* Templates & Watermarks */}
-                            <div className="glass" style={{ padding: '20px', background: 'var(--dark-bg)' }}>
-                                <h4 style={{ color: 'var(--primary-gold)', marginBottom: '15px' }}>Premium Document Styles</h4>
-                                
-                                <div style={{ display: 'flex', borderBottom: '1px solid var(--glass-border)', marginBottom: '15px' }}>
-                                    <button 
-                                        type="button"
-                                        onClick={() => setPrintSubTab('customer')}
-                                        style={{
-                                            padding: '8px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
-                                            color: printSubTab === 'customer' ? 'var(--primary-gold)' : 'var(--text-muted)',
-                                            borderBottom: printSubTab === 'customer' ? '2px solid var(--primary-gold)' : 'none',
-                                            fontWeight: 600, fontSize: '0.85rem'
-                                        }}
-                                    >
-                                        Customer Templates
-                                    </button>
-                                    <button 
-                                        type="button"
-                                        onClick={() => setPrintSubTab('worker')}
-                                        style={{
-                                            padding: '8px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
-                                            color: printSubTab === 'worker' ? 'var(--primary-gold)' : 'var(--text-muted)',
-                                            borderBottom: printSubTab === 'worker' ? '2px solid var(--primary-gold)' : 'none',
-                                            fontWeight: 600, fontSize: '0.85rem'
-                                        }}
-                                    >
-                                        Worker Templates
-                                    </button>
-                                </div>
-
-                                {printSubTab === 'customer' ? (
-                                    <div className="input-group" style={{ marginBottom: '15px' }}>
-                                        <label>Customer Template Theme</label>
-                                        <select 
-                                            value={printSettings.customerTemplate} 
-                                            onChange={e => setPrintSettings({ ...printSettings, customerTemplate: e.target.value })}
-                                            style={{ background: 'var(--surface-bg)', padding: '10px', width: '100%', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px' }}
-                                        >
-                                            <option value="classic">Classic Jewellery (Elegant & Traditional)</option>
-                                            <option value="minimal">Minimal Modern (Sleek, High White-space)</option>
-                                            <option value="luxury">Luxury Gold (Warm Amber Accents)</option>
-                                            <option value="corporate">Corporate ERP (Clean Grid Lines)</option>
-                                        </select>
-                                    </div>
-                                ) : (
-                                    <div className="input-group" style={{ marginBottom: '15px' }}>
-                                        <label>Worker Template Theme</label>
-                                        <select 
-                                            value={printSettings.workerTemplate} 
-                                            onChange={e => setPrintSettings({ ...printSettings, workerTemplate: e.target.value })}
-                                            style={{ background: 'var(--surface-bg)', padding: '10px', width: '100%', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px' }}
-                                        >
-                                            <option value="classic">Classic Jewellery (Elegant & Traditional)</option>
-                                            <option value="minimal">Minimal Modern (Sleek, High White-space)</option>
-                                            <option value="luxury">Luxury Gold (Warm Amber Accents)</option>
-                                            <option value="corporate">Corporate ERP (Clean Grid Lines)</option>
-                                        </select>
-                                    </div>
-                                )}
-                                <div className="input-group" style={{ marginBottom: '15px' }}>
-                                    <label>Watermark Stamp</label>
-                                    <select 
-                                        value={printSettings.watermark} 
-                                        onChange={e => setPrintSettings({ ...printSettings, watermark: e.target.value })}
-                                        style={{ background: 'var(--surface-bg)', padding: '10px', width: '100%', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px' }}
-                                    >
-                                        <option value="none">No Watermark</option>
-                                        <option value="ESTIMATION">ESTIMATION</option>
-                                        <option value="PAID">PAID</option>
-                                        <option value="UNPAID">UNPAID</option>
-                                        <option value="DELIVERED">DELIVERED</option>
-                                        <option value="CANCELLED">CANCELLED</option>
-                                    </select>
-                                </div>
-                                <div className="input-group">
-                                    <label>Label / Document Format Strategy</label>
-                                    <select 
-                                        value={qrFormat} 
-                                        onChange={e => setQrFormat(e.target.value)} 
-                                        style={{ background: 'var(--surface-bg)', padding: '10px', width: '100%', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px' }}
-                                    >
-                                        <option value="qr">Standard QR Code (ID Only)</option>
-                                        <option value="qr_name_wt">QR + Name & Net Wt</option>
-                                        <option value="qr_name_wt_stone">QR + Name, Gross/Net & Stone Wt</option>
-                                        <option value="qr_name_wt_stonewt_details">QR + Full Details (Includes individual stones)</option>
-                                        <option value="barcode_128">Standard Barcode (CODE128)</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Page size, QR Option & Copies */}
-                            <div className="glass" style={{ padding: '20px', background: 'var(--dark-bg)' }}>
-                                <h4 style={{ color: 'var(--primary-gold)', marginBottom: '15px' }}>Page Sizes & Print Queue</h4>
-                                <div className="input-group" style={{ marginBottom: '15px' }}>
-                                    <label>Default Page Size & aspect ratio</label>
-                                    <select 
-                                        value={printSettings.defaultPageSize} 
-                                        onChange={e => setPrintSettings({ ...printSettings, defaultPageSize: e.target.value })}
-                                        style={{ background: 'var(--surface-bg)', padding: '10px', width: '100%', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px' }}
-                                    >
-                                        <option value="a4">A4 Portrait (210 x 297mm - Standard Invoices)</option>
-                                        <option value="a5">A5 Portrait (148 x 210mm - Receipts & Job Cards)</option>
-                                        <option value="thermal_80">Thermal Roll (80mm - Fast Payment Receipts)</option>
-                                        <option value="tag_50_25">Jewellery Tag (50 x 25mm)</option>
-                                        <option value="tag_60_40">Jewellery Tag (60 x 40mm)</option>
-                                        <option value="tag_80_50">Jewellery Tag (80 x 50mm)</option>
-                                    </select>
-                                </div>
-                                <div className="input-group" style={{ marginBottom: '15px' }}>
-                                    <label>QR Code Target Option</label>
-                                    <select 
-                                        value={printSettings.qrOption} 
-                                        onChange={e => setPrintSettings({ ...printSettings, qrOption: e.target.value })}
-                                        style={{ background: 'var(--surface-bg)', padding: '10px', width: '100%', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px' }}
-                                    >
-                                        <option value="invoice">Invoice QR (ID, Customer, Amount, Date)</option>
-                                        <option value="product">Product QR (ID, Barcode)</option>
-                                        <option value="worker">Worker QR (Worker ID)</option>
-                                        <option value="tracking">Order Tracking QR (Premium Status Link)</option>
-                                    </select>
-                                </div>
-                                <div style={{ display: 'flex', gap: '15px', marginTop: '10px' }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={printSettings.multiCopy?.customerCopy || false}
-                                            onChange={e => setPrintSettings({
-                                                ...printSettings,
-                                                multiCopy: { ...printSettings.multiCopy, customerCopy: e.target.checked }
-                                            })}
-                                        /> Customer Copy
-                                    </label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={printSettings.multiCopy?.officeCopy || false}
-                                            onChange={e => setPrintSettings({
-                                                ...printSettings,
-                                                multiCopy: { ...printSettings.multiCopy, officeCopy: e.target.checked }
-                                            })}
-                                        /> Office Copy
-                                    </label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={printSettings.multiCopy?.workerCopy || false}
-                                            onChange={e => setPrintSettings({
-                                                ...printSettings,
-                                                multiCopy: { ...printSettings.multiCopy, workerCopy: e.target.checked }
-                                            })}
-                                        /> Worker Copy
-                                    </label>
-                                </div>
-                            </div>
-
-                        </div>
-
-                        {/* Layout Toggle Settings */}
-                        <div className="glass" style={{ padding: '20px', background: 'var(--dark-bg)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            <div>
-                                <h4 style={{ color: 'var(--primary-gold)', marginBottom: '10px' }}>Header Settings</h4>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                    {[
-                                        { key: 'showHeaderLogo', label: 'Show Logo' },
-                                        { key: 'showHeaderGSTIN', label: 'Show GSTIN' },
-                                        { key: 'showHeaderAddress', label: 'Show Address' },
-                                        { key: 'showHeaderContact', label: 'Show Contact' },
-                                        { key: 'showHallmarkLogo', label: 'Show Hallmark Logo' },
-                                        { key: 'showBISLogo', label: 'Show BIS Logo' }
-                                    ].map(item => (
-                                        <label key={item.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
-                                            <input 
-                                                type="checkbox" 
-                                                checked={printSettings[item.key] || false} 
-                                                onChange={e => setPrintSettings({ ...printSettings, [item.key]: e.target.checked })} 
-                                            />
-                                            {item.label}
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <hr style={{ border: '0', borderTop: '1px solid var(--glass-border)', margin: '0' }} />
-
-                            <div>
-                                <h4 style={{ color: 'var(--primary-gold)', marginBottom: '10px' }}>Item Table Settings</h4>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                    {[
-                                        { key: 'showItemBarcode', label: 'Show Barcode' },
-                                        { key: 'showItemHUID', label: 'Show HUID' },
-                                        { key: 'showItemDescription', label: 'Show Description' },
-                                        { key: 'showItemStoneDetails', label: 'Show Stone Details' },
-                                        { key: 'groupStoneDetails', label: 'Group Stone Details' },
-                                        { key: 'showItemProductImage', label: 'Show Product Image' }
-                                    ].map(item => (
-                                        <label key={item.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
-                                            <input 
-                                                type="checkbox" 
-                                                checked={printSettings[item.key] || false} 
-                                                onChange={e => setPrintSettings({ ...printSettings, [item.key]: e.target.checked })} 
-                                            />
-                                            {item.label}
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <hr style={{ border: '0', borderTop: '1px solid var(--glass-border)', margin: '0' }} />
-
-                            <div>
-                                <h4 style={{ color: 'var(--primary-gold)', marginBottom: '10px' }}>Amount Settings</h4>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                    {[
-                                        { key: 'showAmountGoldRate', label: 'Show Gold Rate' },
-                                        { key: 'showAmountStoneCharges', label: 'Show Stone Charges' },
-                                        { key: 'showAmountMakingCharges', label: 'Show Making Charges' },
-                                        { key: 'showAmountDiscount', label: 'Show Discount' },
-                                        { key: 'showAmountGST', label: 'Show GST' }
-                                    ].map(item => (
-                                        <label key={item.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
-                                            <input 
-                                                type="checkbox" 
-                                                checked={printSettings[item.key] || false} 
-                                                onChange={e => setPrintSettings({ ...printSettings, [item.key]: e.target.checked })} 
-                                            />
-                                            {item.label}
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
+                    <div style={{ display: 'flex', borderBottom: '1px solid var(--glass-border)', marginBottom: '20px' }}>
+                        <button 
+                            type="button"
+                            onClick={() => setPrintSubTab('receipts')}
+                            style={{
+                                padding: '10px 20px', background: 'transparent', border: 'none', cursor: 'pointer',
+                                color: printSubTab !== 'labels' ? 'var(--primary-gold)' : 'var(--text-muted)',
+                                borderBottom: printSubTab !== 'labels' ? '2px solid var(--primary-gold)' : 'none',
+                                fontWeight: 600, fontSize: '0.9rem', transition: 'var(--transition)'
+                            }}
+                        >
+                            Invoices & Receipts
+                        </button>
+                        <button 
+                            type="button"
+                            onClick={() => setPrintSubTab('labels')}
+                            style={{
+                                padding: '10px 20px', background: 'transparent', border: 'none', cursor: 'pointer',
+                                color: printSubTab === 'labels' ? 'var(--primary-gold)' : 'var(--text-muted)',
+                                borderBottom: printSubTab === 'labels' ? '2px solid var(--primary-gold)' : 'none',
+                                fontWeight: 600, fontSize: '0.9rem', transition: 'var(--transition)'
+                            }}
+                        >
+                            Barcode & QR Labels
+                        </button>
                     </div>
 
-                    {/* Preview Area */}
-                    <div className="glass" style={{ padding: '24px', background: 'var(--dark-bg)' }}>
+                    {printSubTab !== 'labels' ? (
+                        /* RECEIPTS / INVOICES CONFIGURATION */
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', alignItems: 'start', marginBottom: '30px' }} className="responsive-grid">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                                {/* Page size & Copies */}
+                                <div className="glass" style={{ padding: '20px', background: 'var(--dark-bg)' }}>
+                                    <h4 style={{ color: 'var(--primary-gold)', marginBottom: '15px' }}>Page Layout & Copies</h4>
+                                    <div className="input-group" style={{ marginBottom: '15px' }}>
+                                        <label>Default Page Size</label>
+                                        <select 
+                                            value={printSettings.defaultPageSize} 
+                                            onChange={e => setPrintSettings({ ...printSettings, defaultPageSize: e.target.value })}
+                                            style={{ background: 'var(--surface-bg)', padding: '10px', width: '100%', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px' }}
+                                        >
+                                            <option value="a4">A4 Portrait (210 x 297mm - Standard Invoices)</option>
+                                            <option value="a5">A5 Portrait (148 x 210mm - Receipts & Job Cards)</option>
+                                        </select>
+                                    </div>
+                                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>Automatically print multiple copies of invoices:</label>
+                                    <div style={{ display: 'flex', gap: '15px' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={printSettings.multiCopy?.customerCopy || false}
+                                                onChange={e => setPrintSettings({
+                                                    ...printSettings,
+                                                    multiCopy: { ...printSettings.multiCopy, customerCopy: e.target.checked }
+                                                })}
+                                            /> Customer Copy
+                                        </label>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={printSettings.multiCopy?.officeCopy || false}
+                                                onChange={e => setPrintSettings({
+                                                    ...printSettings,
+                                                    multiCopy: { ...printSettings.multiCopy, officeCopy: e.target.checked }
+                                                })}
+                                            /> Office Copy
+                                        </label>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={printSettings.multiCopy?.workerCopy || false}
+                                                onChange={e => setPrintSettings({
+                                                    ...printSettings,
+                                                    multiCopy: { ...printSettings.multiCopy, workerCopy: e.target.checked }
+                                                })}
+                                            /> Worker Copy
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Layout Toggle Settings */}
+                            <div className="glass" style={{ padding: '20px', background: 'var(--dark-bg)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                <div>
+                                    <h4 style={{ color: 'var(--primary-gold)', marginBottom: '10px' }}>Header Certifications</h4>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                        {[
+                                            { key: 'showHallmarkLogo', label: 'Show Hallmark Logo' },
+                                            { key: 'showBISLogo', label: 'Show BIS Logo' }
+                                        ].map(item => (
+                                            <label key={item.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={printSettings[item.key] || false} 
+                                                    onChange={e => setPrintSettings({ ...printSettings, [item.key]: e.target.checked })} 
+                                                />
+                                                {item.label}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <hr style={{ border: '0', borderTop: '1px solid var(--glass-border)', margin: '0' }} />
+
+                                <div>
+                                    <h4 style={{ color: 'var(--primary-gold)', marginBottom: '10px' }}>Item Table Columns</h4>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                        {[
+                                            { key: 'showItemBarcode', label: 'Show Barcode' },
+                                            { key: 'showItemHUID', label: 'Show HUID' },
+                                            { key: 'showItemDescription', label: 'Show Description' },
+                                            { key: 'showItemNetWeight', label: 'Show Net Weight' },
+                                            { key: 'showItemStoneWeight', label: 'Show Stone Weight' },
+                                            { key: 'showItemStoneDetails', label: 'Show Stone Details' },
+                                            { key: 'groupStoneDetails', label: 'Group Stone Details' }
+                                        ].map(item => (
+                                            <label key={item.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={printSettings[item.key] || false} 
+                                                    onChange={e => setPrintSettings({ ...printSettings, [item.key]: e.target.checked })} 
+                                                />
+                                                {item.label}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <hr style={{ border: '0', borderTop: '1px solid var(--glass-border)', margin: '0' }} />
+
+                                <div>
+                                    <h4 style={{ color: 'var(--primary-gold)', marginBottom: '10px' }}>Pricing & Tax Breakdown</h4>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                        {[
+                                            { key: 'showAmountGoldRate', label: 'Show Gold Rate' },
+                                            { key: 'showAmountStoneCharges', label: 'Show Stone Charges' },
+                                            { key: 'showAmountMakingCharges', label: 'Show Making Charges' },
+                                            { key: 'showAmountGST', label: 'Show GST' }
+                                        ].map(item => (
+                                            <label key={item.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={printSettings[item.key] || false} 
+                                                    onChange={e => setPrintSettings({ ...printSettings, [item.key]: e.target.checked })} 
+                                                />
+                                                {item.label}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        /* BARCODE & QR LABELS CONFIGURATION */
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.1fr', gap: '30px', alignItems: 'start', marginBottom: '30px' }} className="responsive-grid">
+                            
+                            {/* Left Side: Configurations */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                
+                                {/* Label Type Selection & Product Selector */}
+                                <div className="glass" style={{ padding: '24px', background: 'var(--dark-bg)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+                                        <h4 style={{ color: 'var(--primary-gold)', margin: 0 }}>Label Source & Type</h4>
+                                        
+                                        {/* Segmented Button Selection */}
+                                        <div style={{ display: 'flex', background: 'var(--surface-bg)', padding: '4px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                                            <button 
+                                                type="button"
+                                                onClick={() => setLabelType('barcode')}
+                                                style={{
+                                                    padding: '6px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem',
+                                                    background: labelType === 'barcode' ? 'var(--primary-gold)' : 'transparent',
+                                                    color: labelType === 'barcode' ? 'white' : 'var(--text-muted)'
+                                                }}
+                                            >
+                                                Barcode
+                                            </button>
+                                            <button 
+                                                type="button"
+                                                onClick={() => setLabelType('qr')}
+                                                style={{
+                                                    padding: '6px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem',
+                                                    background: labelType === 'qr' ? 'var(--primary-gold)' : 'transparent',
+                                                    color: labelType === 'qr' ? 'white' : 'var(--text-muted)'
+                                                }}
+                                            >
+                                                QR Code
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Product Dropdown Selector */}
+                                    <div className="input-group" style={{ marginBottom: 0 }}>
+                                        <label>Select Product from Inventory</label>
+                                        <select 
+                                            onChange={e => {
+                                                const p = productsList.find(item => item._id === e.target.value);
+                                                if (p) {
+                                                    setSelectedPreviewProduct({
+                                                        productId: p.productId,
+                                                        designName: p.designName,
+                                                        category: p.category,
+                                                        netWeight: p.netWeight || 0,
+                                                        grossWeight: p.grossWeight || 0,
+                                                        actualWastage: p.actualWastage || 0,
+                                                        huid: p.huid || 'HUID-UNSET',
+                                                        purity: p.purity || '22k',
+                                                        stones: p.stones || []
+                                                    });
+                                                }
+                                            }}
+                                            style={{ background: 'var(--surface-bg)', padding: '12px', width: '100%', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}
+                                        >
+                                            <option value="">-- Sample Product (ITEM-000123) --</option>
+                                            {productsList.map(p => (
+                                                <option key={p._id} value={p._id}>{p.productId} - {p.designName} ({p.netWeight}g)</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Print Content Configuration */}
+                                <div className="glass" style={{ padding: '24px', background: 'var(--dark-bg)' }}>
+                                    <h4 style={{ color: 'var(--primary-gold)', marginBottom: '15px' }}>Label Content Options</h4>
+                                    
+                                    {/* Quick Templates Subcard */}
+                                    <div style={{ background: 'var(--surface-bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', marginBottom: '20px' }}>
+                                        <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '10px' }}>QUICK TEMPLATES</p>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                            {[
+                                                { key: 'barcode_only', label: 'Barcode Only' },
+                                                { key: 'barcode_wt', label: 'Barcode + Weight' },
+                                                { key: 'barcode_wt_stone', label: 'Barcode + Wt + Stone Wt' },
+                                                { key: 'barcode_wt_stone_details', label: 'Barcode + Wt + Stones Detailed' }
+                                            ].map(t => (
+                                                <button
+                                                    key={t.key}
+                                                    type="button"
+                                                    onClick={() => handleQuickTemplateChange(t.key)}
+                                                    style={{
+                                                        padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', textAlign: 'center', transition: 'var(--transition)',
+                                                        background: quickTemplate === t.key ? 'var(--hover-bg)' : 'transparent',
+                                                        color: quickTemplate === t.key ? 'var(--primary-gold)' : 'var(--text-muted)',
+                                                        borderColor: quickTemplate === t.key ? 'var(--primary-gold)' : 'var(--glass-border)'
+                                                    }}
+                                                >
+                                                    {t.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Individual Fields Checkboxes grid */}
+                                    <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '12px' }}>INDIVIDUAL FIELDS</p>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '12px' }}>
+                                        {[
+                                            { key: 'itemCode', label: 'Item Code' },
+                                            { key: 'productName', label: 'Product Name' },
+                                            { key: 'grossWeight', label: 'Gross Weight' },
+                                            { key: 'netWeight', label: 'Net Weight' },
+                                            { key: 'stoneWeight', label: 'Stone Weight' },
+                                            { key: 'detailedStones', label: 'Detailed Stones' },
+                                            { key: 'purity', label: 'Purity' },
+                                            { key: 'huid', label: 'HUID Number' },
+                                            { key: 'makingCharges', label: 'Making Charges' },
+                                            { key: 'sellingPrice', label: 'Selling Price' },
+                                            { key: 'designCode', label: 'Design Code' }
+                                        ].map(f => {
+                                            const active = selectedFields[f.key];
+                                            return (
+                                                <div 
+                                                    key={f.key}
+                                                    onClick={() => {
+                                                        setSelectedFields({ ...selectedFields, [f.key]: !active });
+                                                        setQuickTemplate('custom');
+                                                    }}
+                                                    style={{
+                                                        padding: '12px', borderRadius: '10px', border: '1px solid var(--glass-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'var(--transition)',
+                                                        background: active ? 'var(--hover-bg)' : 'var(--surface-bg)',
+                                                        borderColor: active ? 'var(--primary-gold)' : 'var(--glass-border)'
+                                                    }}
+                                                    className="card-hover"
+                                                >
+                                                    {active ? <CheckSquare size={18} color="var(--primary-gold)" /> : <Square size={18} color="var(--text-muted)" />}
+                                                    <span style={{ fontSize: '0.8rem', fontWeight: 500, color: active ? 'var(--text-main)' : 'var(--text-muted)' }}>{f.label}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Label Size Configuration */}
+                                <div className="glass" style={{ padding: '24px', background: 'var(--dark-bg)' }}>
+                                    <h4 style={{ color: 'var(--primary-gold)', marginBottom: '15px' }}>Label Sizes</h4>
+                                    
+                                    <div className="input-group" style={{ marginBottom: '15px' }}>
+                                        <label>Label Size Presets</label>
+                                        <select 
+                                            value={labelSizePreset} 
+                                            onChange={e => handleLabelSizePresetChange(e.target.value)}
+                                            style={{ background: 'var(--surface-bg)', padding: '10px', width: '100%', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px' }}
+                                        >
+                                            <option value="25x15">25mm × 15mm (Small Jewellery Tag)</option>
+                                            <option value="30x20">30mm × 20mm (Standard Tag)</option>
+                                            <option value="50x25">50mm × 25mm (Large Tag)</option>
+                                            <option value="custom">Custom Size</option>
+                                        </select>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px' }}>
+                                        <div className="input-group" style={{ marginBottom: 0 }}>
+                                            <label style={{ fontSize: '0.75rem' }}>Width (mm)</label>
+                                            <input type="number" value={labelWidth} disabled={labelSizePreset !== 'custom'} onChange={e => { setLabelWidth(parseInt(e.target.value) || 0); setLabelSizePreset('custom'); }} />
+                                        </div>
+                                        <div className="input-group" style={{ marginBottom: 0 }}>
+                                            <label style={{ fontSize: '0.75rem' }}>Height (mm)</label>
+                                            <input type="number" value={labelHeight} disabled={labelSizePreset !== 'custom'} onChange={e => { setLabelHeight(parseInt(e.target.value) || 0); setLabelSizePreset('custom'); }} />
+                                        </div>
+                                        <div className="input-group" style={{ marginBottom: 0 }}>
+                                            <label style={{ fontSize: '0.75rem' }}>Margin (mm)</label>
+                                            <input type="number" value={labelMargin} disabled={labelSizePreset !== 'custom'} onChange={e => { setLabelMargin(parseInt(e.target.value) || 0); setLabelSizePreset('custom'); }} />
+                                        </div>
+                                        <div className="input-group" style={{ marginBottom: 0 }}>
+                                            <label style={{ fontSize: '0.75rem' }}>Font (px)</label>
+                                            <input type="number" value={labelFontSize} disabled={labelSizePreset !== 'custom'} onChange={e => { setLabelFontSize(parseInt(e.target.value) || 0); setLabelSizePreset('custom'); }} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Printing Configuration */}
+                                <div className="glass" style={{ padding: '24px', background: 'var(--dark-bg)' }}>
+                                    <h4 style={{ color: 'var(--primary-gold)', marginBottom: '15px' }}>Print Settings</h4>
+                                    
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                                        <div className="input-group" style={{ marginBottom: 0 }}>
+                                            <label>Number of Copies</label>
+                                            <input type="number" min="1" value={printSettingsConfig.copies} onChange={e => setPrintSettingsConfig({ ...printSettingsConfig, copies: parseInt(e.target.value) || 1 })} />
+                                        </div>
+                                        <div className="input-group" style={{ marginBottom: 0 }}>
+                                            <label>Start Position</label>
+                                            <input type="number" min="1" value={printSettingsConfig.startPosition} onChange={e => setPrintSettingsConfig({ ...printSettingsConfig, startPosition: parseInt(e.target.value) || 1 })} />
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={printSettingsConfig.thermalPrinter} 
+                                                onChange={e => setPrintSettingsConfig({ ...printSettingsConfig, thermalPrinter: e.target.checked })} 
+                                            />
+                                            Thermal Mode
+                                        </label>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={printSettingsConfig.autoFitText} 
+                                                onChange={e => setPrintSettingsConfig({ ...printSettingsConfig, autoFitText: e.target.checked })} 
+                                            />
+                                            Auto Fit
+                                        </label>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={printSettingsConfig.printBorder} 
+                                                onChange={e => setPrintSettingsConfig({ ...printSettingsConfig, printBorder: e.target.checked })} 
+                                            />
+                                            Print Border
+                                        </label>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            {/* Right Side: Live Preview & Action Buttons */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', position: 'sticky', top: '20px' }}>
+                                
+                                {/* Action Bar */}
+                                <div className="glass" style={{ padding: '20px', display: 'flex', gap: '10px' }}>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => {
+                                            alert(`Generated sheet for ${printSettingsConfig.copies} copies of ${selectedPreviewProduct.productId}`);
+                                        }} 
+                                        className="glass" 
+                                        style={{ flex: 1, padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-main)' }}
+                                    >
+                                        <RefreshCw size={16} /> Generate
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => {
+                                            const win = window.open('', '_blank', 'width=500,height=500');
+                                            win.document.write(`
+                                                <html>
+                                                    <head><title>Label Preview</title></head>
+                                                    <body style="margin: 20px; display: flex; justify-content: center; align-items: center; background: #f3f4f6;">
+                                                        <div style="background: white; padding: 20px; border: 1px solid #ccc; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                                            ${document.getElementById('live-label-preview-panel').innerHTML}
+                                                        </div>
+                                                    </body>
+                                                </html>
+                                            `);
+                                            win.document.close();
+                                        }} 
+                                        className="glass" 
+                                        style={{ flex: 1, padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--accent-blue)', borderColor: 'rgba(52,152,219,0.3)' }}
+                                    >
+                                        <Eye size={16} /> Preview
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => {
+                                            const win = window.open('', '_blank', 'width=350,height=300');
+                                            const printHtml = `
+                                                <html>
+                                                    <head>
+                                                        <style>
+                                                            @page { size: ${labelWidth}mm ${labelHeight}mm; margin: 0; }
+                                                            body { margin: 0; padding: ${labelMargin}mm; display: flex; justify-content: center; align-items: center; width: ${labelWidth}mm; height: ${labelHeight}mm; box-sizing: border-box; }
+                                                            #tag {
+                                                                width: 100%;
+                                                                height: 100%;
+                                                                text-align: center;
+                                                                font-family: monospace;
+                                                                font-size: ${labelFontSize}px;
+                                                                box-sizing: border-box;
+                                                                border: ${printSettingsConfig.printBorder ? '1px solid black' : 'none'};
+                                                                display: flex;
+                                                                flex-direction: column;
+                                                                justify-content: center;
+                                                                align-items: center;
+                                                                overflow: hidden;
+                                                            }
+                                                        </style>
+                                                    </head>
+                                                    <body>
+                                                        <div id="tag">
+                                                            ${document.getElementById('live-label-preview-panel-inner').innerHTML}
+                                                        </div>
+                                                        <script>
+                                                            window.onload = function() {
+                                                                window.print();
+                                                                setTimeout(() => window.close(), 500);
+                                                            }
+                                                        </script>
+                                                    </body>
+                                                </html>
+                                            `;
+                                            win.document.write(printHtml);
+                                            win.document.close();
+                                        }} 
+                                        className="btn-primary" 
+                                        style={{ flex: 1.2, padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', borderRadius: '8px', fontSize: '0.85rem' }}
+                                    >
+                                        <Printer size={16} /> Print
+                                    </button>
+                                </div>
+
+                                {/* Live Preview Card */}
+                                <div className="glass" style={{ padding: '24px', background: 'var(--surface-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+                                    <h4 style={{ color: 'var(--primary-gold)', alignSelf: 'flex-start', margin: 0 }}>Live Preview</h4>
+                                    
+                                    {/* Physical Tag Container */}
+                                    <div 
+                                        id="live-label-preview-panel"
+                                        style={{ 
+                                            width: '100%',
+                                            maxWidth: '300px',
+                                            padding: '20px',
+                                            background: 'white',
+                                            color: '#000',
+                                            borderRadius: '8px',
+                                            border: printSettingsConfig.printBorder ? '1px solid #ccc' : '1px dashed #eee',
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            alignItems: 'center'
+                                        }}
+                                    >
+                                        <div 
+                                            id="live-label-preview-panel-inner"
+                                            style={{
+                                                width: `${labelWidth * 6}px`,
+                                                height: `${labelHeight * 6}px`,
+                                                padding: `${labelMargin * 6}px`,
+                                                fontSize: `${labelFontSize}px`,
+                                                fontFamily: 'monospace',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                justifyContent: 'center',
+                                                alignItems: 'center',
+                                                textAlign: 'center',
+                                                overflow: 'hidden',
+                                                lineHeight: 1.2
+                                            }}
+                                        >
+                                            {/* Barcode/QR rendering */}
+                                            {labelType === 'barcode' && (
+                                                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px', maxWidth: '100%', overflow: 'hidden' }}>
+                                                    <Barcode value={selectedPreviewProduct.productId} width={0.9} height={25} fontSize={7} margin={0} displayValue={true} />
+                                                </div>
+                                            )}
+
+                                            {labelType === 'qr' && (
+                                                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
+                                                    <QRCodeSVG value={selectedPreviewProduct.productId} size={50} level="M" />
+                                                </div>
+                                            )}
+
+                                            {/* Labels info fields - side layout */}
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginTop: '2px' }}>
+                                                <div style={{ flex: 1, textAlign: 'left' }}>
+                                                    {selectedFields.productName && (
+                                                        <p style={{ margin: 0, fontWeight: 'bold', textTransform: 'uppercase', fontSize: `${labelFontSize + 1}px` }}>{selectedPreviewProduct.designName}</p>
+                                                    )}
+
+                                                    {selectedFields.netWeight && (
+                                                        <p style={{ margin: 0, fontWeight: 'bold' }}>NW: {selectedPreviewProduct.netWeight.toFixed(3)}g</p>
+                                                    )}
+
+                                                    {selectedFields.grossWeight && (
+                                                        <p style={{ margin: 0 }}>GW: {selectedPreviewProduct.grossWeight.toFixed(3)}g</p>
+                                                    )}
+
+                                                    {selectedFields.stoneWeight && (
+                                                        <p style={{ margin: 0 }}>ST: {calculateTotalStoneWeight(selectedPreviewProduct.stones).toFixed(2)} ct</p>
+                                                    )}
+
+                                                    {selectedFields.purity && (
+                                                        <p style={{ margin: 0 }}>Purity: {selectedPreviewProduct.purity}</p>
+                                                    )}
+
+                                                    {selectedFields.huid && (
+                                                        <p style={{ margin: 0 }}>HUID: {selectedPreviewProduct.huid}</p>
+                                                    )}
+                                                </div>
+                                                {selectedFields.detailedStones && selectedPreviewProduct.stones && selectedPreviewProduct.stones.length > 0 && (
+                                                    <div style={{ flex: 1, textAlign: 'right', borderLeft: '1px dashed #aaa', paddingLeft: '8px' }}>
+                                                        {(() => {
+                                                            const agg = {};
+                                                            selectedPreviewProduct.stones.forEach(st => {
+                                                                const name = st.stoneName;
+                                                                const weight = parseFloat(st.stoneWeight) || 0;
+                                                                agg[name] = (agg[name] || 0) + weight;
+                                                            });
+                                                            return (
+                                                                <div>
+                                                                    {Object.entries(agg).map(([name, weight]) => (
+                                                                        <p key={name} style={{ margin: 0, fontSize: `${labelFontSize - 2}px` }}>• {name}: {weight.toFixed(3)}ct</p>
+                                                                    ))}
+                                                                </div>
+                                                            );
+                                                        })()}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    )}
+
+                    {printSubTab !== 'labels' && (
+                        /* Preview Area */
+                        <div className="glass" style={{ padding: '24px', background: 'var(--dark-bg)', marginTop: '20px' }}>
                         <h4 style={{ color: 'var(--primary-gold)', marginBottom: '15px' }}>Template Output Preview (Live)</h4>
                         
                         {(() => {
@@ -1007,7 +1444,8 @@ const Settings = ({ onCompanyUpdate }) => {
                                     pointerEvents: 'none',
                                     border: '6px double rgba(239, 68, 68, 0.15)',
                                     padding: '5px 20px',
-                                    letterSpacing: '5px'
+                                    letterSpacing: '5px',
+                                    zIndex: 1
                                 }}>
                                     {printSettings.watermark}
                                 </div>
@@ -1016,17 +1454,23 @@ const Settings = ({ onCompanyUpdate }) => {
                             {/* Header details preview */}
                             <div style={{ borderBottom: '1px solid #cbd5e1', paddingBottom: '10px', marginBottom: '15px' }}>
                                 <div style={{ display: 'flex', justifyItems: 'center', justifyContent: 'space-between' }}>
-                                    <div>
-                                        {printSettings.showHeaderLogo && <div style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--primary-gold)', border: '1px solid #cbd5e1', padding: '2px 5px', display: 'inline-block', marginBottom: '5px' }}>[COMPANY LOGO]</div>}
-                                        <h5 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>{name || 'MAHALAKSHMI JEWELLERY'}</h5>
-                                        {printSettings.showHeaderAddress && <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>{address || '123 Gold Bazaar Road'}</p>}
-                                        {printSettings.showHeaderContact && <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>{phone || '+91-999999999'}</p>}
+                                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                                        {logo && (
+                                            <div style={{ width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                                                <img src={logo} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                            </div>
+                                        )}
+                                        <div>
+                                            <h5 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>{name || 'MAHALAKSHMI JEWELLERY'}</h5>
+                                            <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>{address || '123 Gold Bazaar Road'}</p>
+                                            <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>{phone || '+91-999999999'}</p>
+                                        </div>
                                     </div>
                                     <div style={{ textAlign: 'right' }}>
-                                        {printSettings.showHeaderGSTIN && <div style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>GSTIN: {taxId || '33AAAAA0000A1Z5'}</div>}
+                                        {taxId && <div style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>GSTIN: {taxId}</div>}
                                         <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end', marginTop: '10px' }}>
-                                            {printSettings.showHallmarkLogo && <span style={{ fontSize: '8px', border: '1px solid #d97706', padding: '1px 3px', borderRadius: '3px', color: '#d97706' }}>HALLMARK</span>}
-                                            {printSettings.showBISLogo && <span style={{ fontSize: '8px', border: '1px solid #0284c7', padding: '1px 3px', borderRadius: '3px', color: '#0284c7' }}>BIS</span>}
+                                            {printSettings.showHallmarkLogo && <span style={{ fontSize: '8px', border: '1px solid #d97706', padding: '1px 3px', borderRadius: '3px', color: '#d97706', fontWeight: 'bold' }}>HALLMARK</span>}
+                                            {printSettings.showBISLogo && <span style={{ fontSize: '8px', border: '1px solid #0284c7', padding: '1px 3px', borderRadius: '3px', color: '#0284c7', fontWeight: 'bold' }}>BIS</span>}
                                         </div>
                                     </div>
                                 </div>
@@ -1041,6 +1485,8 @@ const Settings = ({ onCompanyUpdate }) => {
                                         {printSettings.showItemHUID && <th style={{ padding: '6px', textAlign: 'left' }}>HUID</th>}
                                         {printSettings.showItemDescription && <th style={{ padding: '6px', textAlign: 'left' }}>Description</th>}
                                         <th style={{ padding: '6px', textAlign: 'right' }}>Gross Wt</th>
+                                        {printSettings.showItemStoneWeight && <th style={{ padding: '6px', textAlign: 'right' }}>Stone Wt</th>}
+                                        {printSettings.showItemNetWeight && <th style={{ padding: '6px', textAlign: 'right' }}>Net Wt</th>}
                                         <th style={{ padding: '6px', textAlign: 'right' }}>Price</th>
                                     </tr>
                                 </thead>
@@ -1058,15 +1504,17 @@ const Settings = ({ onCompanyUpdate }) => {
                                         {printSettings.showItemHUID && <td style={{ padding: '6px' }}>HUID12345</td>}
                                         {printSettings.showItemDescription && <td style={{ padding: '6px', color: '#64748b' }}>Custom handmade engagement ring</td>}
                                         <td style={{ padding: '6px', textAlign: 'right' }}>8.500 g</td>
+                                        {printSettings.showItemStoneWeight && <td style={{ padding: '6px', textAlign: 'right' }}>2.500 g</td>}
+                                        {printSettings.showItemNetWeight && <td style={{ padding: '6px', textAlign: 'right' }}>6.000 g</td>}
                                         <td style={{ padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>₹56,400.00</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
-                    );
+                            );
                         })()}
-                    </div>
-
+                        </div>
+                    )}
                 </div>
             )}
 
