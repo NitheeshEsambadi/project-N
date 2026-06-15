@@ -53,10 +53,22 @@ const Settings = ({ onCompanyUpdate }) => {
         qrOption: 'invoice'
     });
     
-    // User Management
+    // User Management State
     const [users, setUsers] = useState([]);
     const [showUserModal, setShowUserModal] = useState(false);
     const [newUserData, setNewUserData] = useState({ username: '', password: '', role: 'accountant' });
+    
+    // Edit User State
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
+    const availablePermissions = [
+        { id: 'manage_users', label: 'Manage Users' },
+        { id: 'manage_products', label: 'Manage Products' },
+        { id: 'manage_gold', label: 'Manage Gold & Workers' },
+        { id: 'view_reports', label: 'View Financial Reports' },
+        { id: 'print_labels', label: 'Print Labels & Receipts' },
+        { id: 'clear_data', label: 'Wipe System Data (Danger)' }
+    ];
     
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -382,15 +394,55 @@ const Settings = ({ onCompanyUpdate }) => {
     const handleCreateUser = async (e) => {
         e.preventDefault();
         try {
-            // Reusing auth/register or a system route
             await api.post('/auth/register', newUserData);
             alert('User created successfully');
             setShowUserModal(false);
             setNewUserData({ username: '', password: '', role: 'accountant' });
             fetchAllData();
         } catch (err) {
-            alert('Failed to create user');
+            alert('Failed to create user: ' + (err.response?.data?.message || err.message));
         }
+    };
+
+    const handleDeleteUser = async (id) => {
+        if (!window.confirm('Are you sure you want to completely delete this user? This action cannot be undone.')) return;
+        try {
+            await api.delete(`/mgmt/system/users/${id}`);
+            setUsers(users.filter(u => u._id !== id));
+            alert('User deleted successfully');
+        } catch (err) {
+            alert('Failed to delete user: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
+    const handleUpdateUserPermissions = async (e) => {
+        e.preventDefault();
+        try {
+            const res = await api.put(`/mgmt/system/users/${editingUser._id}`, {
+                role: editingUser.role,
+                permissions: editingUser.permissions
+            });
+            setUsers(users.map(u => u._id === editingUser._id ? res.data : u));
+            setShowEditModal(false);
+            alert('User permissions updated successfully');
+        } catch (err) {
+            alert('Failed to update permissions: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
+    const togglePermission = (permId) => {
+        if (!editingUser) return;
+        const currentPerms = editingUser.permissions || [];
+        const hasPerm = currentPerms.includes(permId);
+        
+        let newPerms;
+        if (hasPerm) {
+            newPerms = currentPerms.filter(p => p !== permId);
+        } else {
+            newPerms = [...currentPerms, permId];
+        }
+        
+        setEditingUser({ ...editingUser, permissions: newPerms });
     };
 
     const handleSaveAll = async () => {
@@ -1557,23 +1609,29 @@ const Settings = ({ onCompanyUpdate }) => {
 
                     {showUserModal && (
                         <div className="modal-overlay" style={{ position: 'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex: 1100 }}>
-                            <div className="glass" style={{ width:'400px', padding:'24px' }}>
-                                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'20px' }}>
-                                    <h3>Create System User</h3>
-                                    <X size={20} cursor="pointer" onClick={() => setShowUserModal(false)} />
+                            <div className="glass-card fade-in" style={{ width:'400px', padding:'30px', background:'var(--surface-bg)', boxShadow:'0 10px 40px rgba(0,0,0,0.2)' }}>
+                                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'24px' }}>
+                                    <h3 style={{ margin: 0, color: 'var(--primary-gold)' }}>Create System User</h3>
+                                    <X size={20} cursor="pointer" onClick={() => setShowUserModal(false)} style={{ color: 'var(--text-muted)' }} />
                                 </div>
-                                <form onSubmit={handleCreateUser}>
-                                    <div className="input-group"><label>Username</label><input required value={newUserData.username} onChange={e => setNewUserData({...newUserData, username: e.target.value})} /></div>
-                                    <div className="input-group"><label>Password</label><input type="password" required value={newUserData.password} onChange={e => setNewUserData({...newUserData, password: e.target.value})} /></div>
+                                <form onSubmit={handleCreateUser} autoComplete="off">
+                                    <div className="input-group">
+                                        <label>Username</label>
+                                        <input required value={newUserData.username} onChange={e => setNewUserData({...newUserData, username: e.target.value})} placeholder="Enter username" autoComplete="new-password" />
+                                    </div>
+                                    <div className="input-group">
+                                        <label>Password</label>
+                                        <input type="password" required value={newUserData.password} onChange={e => setNewUserData({...newUserData, password: e.target.value})} placeholder="Enter password" autoComplete="new-password" />
+                                    </div>
                                     <div className="input-group">
                                         <label>Role</label>
-                                        <select value={newUserData.role} onChange={e => setNewUserData({...newUserData, role: e.target.value})} style={{ width:'100%', padding:'10px', background:'var(--dark-bg)', color:'white', border:'none', borderRadius:'8px' }}>
+                                        <select value={newUserData.role} onChange={e => setNewUserData({...newUserData, role: e.target.value})} style={{ width:'100%', padding:'12px', background:'var(--dark-bg)', color:'var(--text-main)', border:'1px solid var(--glass-border)', borderRadius:'8px' }}>
                                             <option value="admin">Admin (All Power)</option>
                                             <option value="accountant">Accountant</option>
                                             <option value="worker">Worker (View Only)</option>
                                         </select>
                                     </div>
-                                    <button type="submit" className="btn-primary" style={{ width:'100%', marginTop:'10px' }}>Create User</button>
+                                    <button type="submit" className="btn-primary" style={{ width:'100%', marginTop:'15px', padding: '12px' }}>Create User</button>
                                 </form>
                             </div>
                         </div>
@@ -1602,14 +1660,73 @@ const Settings = ({ onCompanyUpdate }) => {
                                                 {(!u.permissions || u.permissions.length === 0) && <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>No direct permissions</span>}
                                             </div>
                                         </td>
-                                        <td style={{ padding: '15px', textAlign: 'right' }}>
-                                            <button className="glass" style={{ padding: '5px 10px', fontSize: '0.8rem' }}>Manager Actions</button>
+                                        <td style={{ padding: '15px', textAlign: 'right', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                                            <button 
+                                                className="glass" 
+                                                style={{ padding: '5px 15px', fontSize: '0.8rem', color: 'var(--primary-gold)', borderColor: 'var(--primary-gold)' }}
+                                                onClick={() => {
+                                                    setEditingUser({ ...u, permissions: u.permissions || [] });
+                                                    setShowEditModal(true);
+                                                }}
+                                            >
+                                                Edit Access
+                                            </button>
+                                            <button 
+                                                className="glass" 
+                                                style={{ padding: '5px 15px', fontSize: '0.8rem', color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                                                onClick={() => handleDeleteUser(u._id)}
+                                            >
+                                                Delete
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Edit Permissions Modal */}
+                    {showEditModal && editingUser && (
+                        <div className="modal-overlay" style={{ position: 'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex: 1100 }}>
+                            <div className="glass-card fade-in" style={{ width:'450px', padding:'30px', background:'var(--surface-bg)', boxShadow:'0 10px 40px rgba(0,0,0,0.2)' }}>
+                                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'24px' }}>
+                                    <h3 style={{ margin: 0, color: 'var(--primary-gold)' }}>Edit Permissions: {editingUser.username}</h3>
+                                    <X size={20} cursor="pointer" onClick={() => setShowEditModal(false)} style={{ color: 'var(--text-muted)' }} />
+                                </div>
+                                <form onSubmit={handleUpdateUserPermissions}>
+                                    <div className="input-group" style={{ marginBottom: '20px' }}>
+                                        <label>Role</label>
+                                        <select 
+                                            value={editingUser.role} 
+                                            onChange={e => setEditingUser({...editingUser, role: e.target.value})} 
+                                            style={{ width:'100%', padding:'12px', background:'var(--dark-bg)', color:'var(--text-main)', border:'1px solid var(--glass-border)', borderRadius:'8px' }}
+                                        >
+                                            <option value="admin">Admin (All Power)</option>
+                                            <option value="accountant">Accountant</option>
+                                            <option value="worker">Worker (View Only)</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '10px', display: 'block' }}>Custom Access Privileges</label>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '25px', maxHeight: '200px', overflowY: 'auto', paddingRight: '5px' }}>
+                                        {availablePermissions.map(perm => (
+                                            <label key={perm.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '10px', background: 'var(--hover-bg)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={(editingUser.permissions || []).includes(perm.id)} 
+                                                    onChange={() => togglePermission(perm.id)} 
+                                                    style={{ width: '18px', height: '18px', accentColor: 'var(--primary-gold)' }}
+                                                />
+                                                <span style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>{perm.label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+
+                                    <button type="submit" className="btn-primary" style={{ width:'100%', padding: '14px', borderRadius: '8px' }}>Save Changes</button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

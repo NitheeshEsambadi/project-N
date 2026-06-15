@@ -22,8 +22,8 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/print-qr" element={<PrintQR />} />
-          <Route path="/*" element={<Dashboard />} />
+          <Route path="/print-qr" element={<ProtectedRoute><PrintQR /></ProtectedRoute>} />
+          <Route path="/*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         </Routes>
       </Router>
     </AuthProvider>

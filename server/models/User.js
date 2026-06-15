@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema({
         default: 'worker' 
     },
     permissions: [{ type: String }], // Array of permission strings
-    email: { type: String, unique: true }
+    email: { type: String, unique: true, sparse: true }
 }, { timestamps: true });
 
 userSchema.pre('save', async function() {

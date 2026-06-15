@@ -32,10 +32,12 @@ const { createWorkerReceipt, getWorkerReceipts } = require('../controllers/worke
 router.route('/worker-receipts').get(protect, getWorkerReceipts).post(protect, authorize('admin', 'accountant'), createWorkerReceipt);
 
 // System Management
-const { clearAllData, getUsers, updateUser } = require('../controllers/systemController');
+const { clearAllData, getUsers, updateUser, deleteUser } = require('../controllers/systemController');
 router.route('/system/clear-data').post(protect, authorize('admin'), clearAllData);
 router.route('/system/users').get(protect, authorize('admin'), getUsers);
-router.route('/system/users/:id').put(protect, authorize('admin'), updateUser);
+router.route('/system/users/:id')
+    .put(protect, authorize('admin'), updateUser)
+    .delete(protect, authorize('admin'), deleteUser);
 
 // Sales
 const { recordSale, getSales } = require('../controllers/saleController');
